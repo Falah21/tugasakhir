@@ -1,4 +1,3 @@
-# css_style.py
 import streamlit as st
 
 def load_css():
@@ -157,26 +156,34 @@ def load_css():
             max-width: 700px !important;
         }
 
-        /* ===== SIDEBAR STYLES (untuk Admin, Terapis/Dokter) ===== */
-        
-        /* Background sidebar */
+        /* ===== SIDEBAR STYLES (DARI KODE YANG ANDA KIRIM) ===== */
+        body { background-color: #f9f9f9; }
+
+        /* Sidebar */
         section[data-testid="stSidebar"] {
-            background-color: #560000 !important;
+            background-color: #560000;
         }
 
         .sidebar-title {
-            color: white !important;
-            font-size: 18px !important;
-            font-weight: bold !important;
-            padding: 10px 20px !important;
-            margin: 0 !important;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 10px 20px;
         }
 
         .sidebar-subtitle {
-            color: #ddd !important;
-            font-size: 14px !important;
-            padding-left: 20px !important;
-            margin-bottom: 10px !important;
+            color: #ddd;
+            font-size: 14px;
+            padding-left: 20px;
+            margin-bottom: 10px;
+        }
+
+        .filter-box {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 10px;
         }
 
         /* Mengubah warna teks di sidebar menjadi putih */
@@ -198,45 +205,79 @@ def load_css():
             color: white !important;
         }
 
-        /* Tombol sidebar */
+        /* FIX: Button sidebar agar tulisan selalu terlihat */
         section[data-testid="stSidebar"] button {
             background-color: #6b0000 !important;
             color: #ffffff !important;
-            border-radius: 8px !important;
-            height: 42px !important;
-            font-weight: 600 !important;
-            border: none !important;
-            width: 100% !important;
-            margin: 2px 0 !important;
-            padding: 0 15px !important;
+            border-radius: 8px;
+            height: 42px;
+            font-weight: 600;
+            border: none;
         }
         
-        /* Hover tombol sidebar */
+        /* Hover */
         section[data-testid="stSidebar"] button:hover {
             background-color: #8a0000 !important;
             color: #ffffff !important;
         }
         
-        /* Tombol sidebar aktif (menu terpilih) */
+        /* Tombol aktif (menu terpilih) */
         section[data-testid="stSidebar"] button[kind="primary"] {
             background-color: #ffffff !important;
             color: #560000 !important;
             border: 2px solid #560000 !important;
         }
-        
-        /* Pastikan semua teks di dalam tombol mewarisi warna */
         section[data-testid="stSidebar"] button * {
             color: inherit !important;
         }
 
         /* Main content area */
         .main .block-container {
-            padding-top: 2rem !important;
-            padding-left: 2rem !important;
-            padding-right: 2rem !important;
+            padding-top: 2rem;
+            padding-left: 2rem;
+            padding-right: 2rem;
         }
 
-        /* ===== CARD STYLES ===== */
+        /* Stats cards */
+        .stats-card {
+            background: #ffffff !important;
+            color: #000000 !important;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .stats-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        /* Panel styling */
+        .panel {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        /* Account card */
+        .account-card {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            border-left: 4px solid #560000;
+        }
+
+        /* ===== CARD STYLES YANG SUDAH ADA ===== */
+        /* Stats cards, panel, account-card sudah di atas, jadi bagian ini bisa dihapus atau dibiarkan saja */
+        /* Tapi karena sudah ada di atas, saya komentar saja biar tidak double */
+        /*
         .stats-card {
             background: #ffffff !important;
             color: #000000 !important;
@@ -254,31 +295,7 @@ def load_css():
             margin: 10px 0 !important;
             color: #560000 !important;
         }
-
-        .panel {
-            background-color: #fff !important;
-            border-radius: 10px !important;
-            padding: 20px !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-            margin-bottom: 20px !important;
-        }
-
-        .account-card {
-            background-color: #fff !important;
-            border-radius: 10px !important;
-            padding: 20px !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-            margin-bottom: 20px !important;
-            border-left: 4px solid #560000 !important;
-        }
-
-        .filter-box {
-            background-color: #fff !important;
-            padding: 20px !important;
-            border-radius: 10px !important;
-            box-shadow: 0px 1px 3px rgba(0,0,0,0.1) !important;
-            margin-bottom: 10px !important;
-        }
+        */
 
         /* ===== DASHBOARD STYLES ===== */
         .dashboard-container {
@@ -346,29 +363,6 @@ def load_css():
             border-radius: 8px !important;
             padding: 12px !important;
             margin: 10px 0 !important;
-        }
-
-                /* ===== FIXED SIDEBAR HEADER ===== */
-        section[data-testid="stSidebar"] {
-            display: flex !important;
-            flex-direction: column !important;
-            height: 100vh !important;
-        }
-        
-        section[data-testid="stSidebar"] > div:first-child {
-            flex-shrink: 0 !important;
-        }
-        
-        section[data-testid="stSidebar"] > div:not(:first-child) {
-            flex: 1 !important;
-            overflow-y: auto !important;
-        }
-        
-        .sidebar-title {
-            position: sticky !important;
-            top: 0 !important;
-            background-color: #560000 !important;
-            z-index: 10 !important;
         }
 
         /* ===== ICONS ===== */
