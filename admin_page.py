@@ -304,24 +304,122 @@ class AdminPage:
             """, unsafe_allow_html=True)
 
     # ---------- Data Pasien & Dokter ----------
+    # def _panel_data(self):
+    #     # Load data pasien sebelum menampilkan
+    #     self._load_pasien_data()
+        
+    #     st.markdown("### Manajemen Data Pengguna")
+        
+    #     # Tab untuk jenis user yang berbeda
+    #     tabs = st.tabs(["📋 Semua Pengguna", "➕ Tambah Pengguna Baru"])
+
+    #     # Data dari collection users yang difilter berdasarkan role
+    #     all_users = self._get_all_users()
+    #     pasien_data = [user for user in all_users if user.get('Role') == 'pasien']
+    #     terapis_data = [user for user in all_users if user.get('Role') == 'dokter']
+    #     admin_data = [user for user in all_users if user.get('Role') == 'admin']
+
+    #     with tabs[0]:
+    #         # st.subheader("Daftar Semua Pengguna")
+            
+    #         # Tampilkan statistik
+    #         col1, col2, col3, col4 = st.columns(4)
+    #         with col1:
+    #             st.metric("Total Pengguna", len(all_users))
+    #         with col2:
+    #             st.metric("Pasien", len(pasien_data))
+    #         with col3:
+    #             st.metric("Dokter", len(terapis_data))
+    #         with col4:
+    #             st.metric("Admin", len(admin_data))
+            
+    #         # Filter berdasarkan role
+    #         filter_role = st.selectbox(
+    #             "Filter berdasarkan Role:",
+    #             ["Semua", "Pasien", "Dokter", "Admin"],
+    #             key="filter_role"
+    #         )
+            
+    #         # Filter data berdasarkan pilihan
+    #         if filter_role == "Semua":
+    #             filtered_data = all_users
+    #         elif filter_role == "Pasien":
+    #             filtered_data = pasien_data
+    #         elif filter_role == "Dokter":
+    #             filtered_data = terapis_data
+    #         else:
+    #             filtered_data = admin_data
+            
+    #         if filtered_data:
+    #             # Buat dataframe dengan nomor urut
+    #             df_users = pd.DataFrame(filtered_data)
+    #             df_users.insert(0, 'No', range(1, len(df_users) + 1))
+                
+    #             # Tampilkan kolom yang sesuai
+    #             display_columns = ['No', 'User ID', 'Nama Lengkap', 'Role', 'Jenis Kelamin', 'Tanggal Lahir', 'Tanggal Dibuat']
+    #             df_display = df_users[display_columns]
+                
+    #             st.dataframe(df_display, use_container_width=True, hide_index=True)
+                
+    #         else:
+    #             st.info("📝 Belum ada data pengguna terdaftar")
+
+    #     with tabs[1]:
+    #         # st.subheader("➕ Tambah User Baru")
+            
+    #         with st.form("tambah_user_form"):
+    #             col1, col2 = st.columns(2)
+                
+    #             with col1:
+    #                 role = st.selectbox("Jenis User", ["pasien", "dokter", "admin"])
+    #                 user_id = st.text_input("User ID", placeholder="Masukkan NIK untuk pasien, NIP untuk dokter/admin")
+    #                 nama_lengkap = st.text_input("Nama Lengkap")
+    #                 password = st.text_input("Password", type="password")
+                    
+    #             with col2:
+    #                 tanggal_lahir = st.date_input("Tanggal Lahir", min_value=datetime(1900, 1, 1), max_value=datetime.now(), value=datetime(1990, 1, 1))
+    #                 jenis_kelamin = st.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
+                
+    #             submitted = st.form_submit_button("💾 Tambah User Baru")
+                
+    #             if submitted:
+    #                 if not user_id or not nama_lengkap or not password:
+    #                     st.error("Harap isi semua field yang wajib!")
+    #                 else:
+    #                     user_data = {
+    #                         'user_id': user_id,
+    #                         'nama_lengkap': nama_lengkap,
+    #                         'password': password,
+    #                         'role': role,
+    #                         'tanggal_lahir': tanggal_lahir.strftime("%d-%m-%Y"),
+    #                         'jenis_kelamin': jenis_kelamin,
+    #                         'tanggal_dibuat': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    #                     }
+                        
+    #                     if self._add_new_user(user_data):
+    #                         st.success(f"✅ User {nama_lengkap} berhasil ditambahkan sebagai {role}!")
+    #                         st.balloons()
+                            
+    #                         # Reset form
+    #                         st.rerun()
+
     def _panel_data(self):
         # Load data pasien sebelum menampilkan
         self._load_pasien_data()
         
         st.markdown("### Manajemen Data Pengguna")
         
-        # Tab untuk jenis user yang berbeda
-        tabs = st.tabs(["📋 Semua Pengguna", "➕ Tambah Pengguna Baru"])
-
+        # Tab untuk jenis user yang berbeda (tambah tab kelola)
+        tabs = st.tabs(["📋 Semua Pengguna", "➕ Tambah Pengguna Baru", "✏️ Kelola Pengguna"])
+    
         # Data dari collection users yang difilter berdasarkan role
         all_users = self._get_all_users()
         pasien_data = [user for user in all_users if user.get('Role') == 'pasien']
         terapis_data = [user for user in all_users if user.get('Role') == 'dokter']
         admin_data = [user for user in all_users if user.get('Role') == 'admin']
-
+    
+        # Tab 1: Semua Pengguna
         with tabs[0]:
-            # st.subheader("Daftar Semua Pengguna")
-            
             # Tampilkan statistik
             col1, col2, col3, col4 = st.columns(4)
             with col1:
@@ -360,13 +458,11 @@ class AdminPage:
                 df_display = df_users[display_columns]
                 
                 st.dataframe(df_display, use_container_width=True, hide_index=True)
-                
             else:
                 st.info("📝 Belum ada data pengguna terdaftar")
-
+    
+        # Tab 2: Tambah User Baru
         with tabs[1]:
-            # st.subheader("➕ Tambah User Baru")
-            
             with st.form("tambah_user_form"):
                 col1, col2 = st.columns(2)
                 
@@ -399,10 +495,174 @@ class AdminPage:
                         if self._add_new_user(user_data):
                             st.success(f"✅ User {nama_lengkap} berhasil ditambahkan sebagai {role}!")
                             st.balloons()
-                            
-                            # Reset form
                             st.rerun()
+    
+        # Tab 3: Kelola Pengguna (Edit & Delete)
+        with tabs[2]:
+            st.subheader("Kelola Data Pengguna")
+            
+            # Tampilkan ringkasan data yang tersedia
+            if not all_users:
+                st.warning("Tidak ada data pengguna yang tersedia.")
+                return
+            
+            col1, col2 = st.columns(2)
+            
+            # Kolom kiri: Edit Data
+            with col1:
+                st.markdown("#### ✏️ Edit Data Pengguna")
+                
+                # Buat pilihan untuk selectbox
+                edit_options = []
+                for user in all_users:
+                    display_text = f"{user.get('Nama Lengkap', 'N/A')} ({user.get('User ID', 'N/A')}) - {user.get('Role', 'N/A')}"
+                    edit_options.append((user.get('_id', ''), display_text))
+                
+                if edit_options:
+                    # Tambahkan opsi default
+                    options_with_default = [("", "Pilih Pengguna untuk Diedit")] + edit_options
+                    
+                    selected_option = st.selectbox(
+                        "Pilih pengguna untuk diedit:",
+                        options=[opt[0] for opt in options_with_default],
+                        format_func=lambda x: next((display for id, display in options_with_default if id == x), 'Pilih Pengguna untuk Diedit')
+                    )
+                    
+                    # Tampilkan form edit jika user memilih data
+                    if selected_option and selected_option != "":
+                        selected_user = next((user for user in all_users if user.get('_id') == selected_option), None)
+                        if selected_user:
+                            with st.form("edit_user_form"):
+                                st.markdown(f"**Mengedit: {selected_user.get('Nama Lengkap')}**")
+                                
+                                col_form1, col_form2 = st.columns(2)
+                                
+                                with col_form1:
+                                    new_user_id = st.text_input("User ID", value=selected_user.get('User ID', ''))
+                                    new_nama = st.text_input("Nama Lengkap", value=selected_user.get('Nama Lengkap', ''))
+                                    new_role = st.selectbox(
+                                        "Role", 
+                                        ["pasien", "dokter", "admin"],
+                                        index=["pasien", "dokter", "admin"].index(selected_user.get('Role', 'pasien')) if selected_user.get('Role') in ["pasien", "dokter", "admin"] else 0
+                                    )
+                                    new_password = st.text_input("Password Baru (kosongkan jika tidak diubah)", type="password")
+                                
+                                with col_form2:
+                                    # Parse tanggal lahir
+                                    tgl_lahir_str = selected_user.get('Tanggal Lahir', '01-01-1990')
+                                    try:
+                                        default_tgl = datetime.strptime(tgl_lahir_str, "%d-%m-%Y")
+                                    except:
+                                        default_tgl = datetime(1990, 1, 1)
+                                    
+                                    new_tanggal_lahir = st.date_input("Tanggal Lahir", value=default_tgl)
+                                    new_jenis_kelamin = st.selectbox(
+                                        "Jenis Kelamin",
+                                        ["Laki-laki", "Perempuan"],
+                                        index=0 if selected_user.get('Jenis Kelamin') == "Laki-laki" else 1
+                                    )
+                                
+                                if st.form_submit_button("💾 Update Pengguna"):
+                                    # Siapkan data update
+                                    update_data = {
+                                        'user_id': new_user_id,
+                                        'nama_lengkap': new_nama,
+                                        'role': new_role,
+                                        'tanggal_lahir': new_tanggal_lahir.strftime("%d-%m-%Y"),
+                                        'jenis_kelamin': new_jenis_kelamin
+                                    }
+                                    
+                                    # Tambahkan password jika diisi
+                                    if new_password:
+                                        update_data['password'] = new_password
+                                    
+                                    if self._update_user(selected_user['_id'], update_data):
+                                        st.success(f"✅ Data pengguna {new_nama} berhasil diupdate!")
+                                        st.balloons()
+                                        st.rerun()
+                    else:
+                        st.info("Pilih pengguna di atas untuk mengedit")
+                else:
+                    st.info("Tidak ada data pengguna yang dapat diedit")
+            
+            # Kolom kanan: Hapus Data
+            with col2:
+                st.markdown("#### 🗑️ Hapus Data Pengguna")
+                
+                # Buat pilihan untuk delete
+                delete_options = []
+                for user in all_users:
+                    display_text = f"{user.get('Nama Lengkap', 'N/A')} ({user.get('User ID', 'N/A')}) - {user.get('Role', 'N/A')}"
+                    delete_options.append((user.get('_id', ''), display_text))
+                
+                if delete_options:
+                    # Tambahkan opsi default
+                    delete_options_with_default = [("", "Pilih Pengguna untuk Dihapus")] + delete_options
+                    
+                    selected_delete_option = st.selectbox(
+                        "Pilih pengguna untuk dihapus:",
+                        options=[opt[0] for opt in delete_options_with_default],
+                        key="delete_user_select",
+                        format_func=lambda x: next((display for id, display in delete_options_with_default if id == x), 'Pilih Pengguna untuk Dihapus')
+                    )
+                    
+                    # Tampilkan konfirmasi jika user memilih data
+                    if selected_delete_option and selected_delete_option != "":
+                        selected_user = next((user for user in all_users if user.get('_id') == selected_delete_option), None)
+                        if selected_user:
+                            st.warning(f"⚠️ Anda akan menghapus pengguna: **{selected_user.get('Nama Lengkap')}**")
+                            st.write(f"- User ID: {selected_user.get('User ID')}")
+                            st.write(f"- Role: {selected_user.get('Role')}")
+                            st.write(f"- Jenis Kelamin: {selected_user.get('Jenis Kelamin')}")
+                            st.write(f"- Tanggal Lahir: {selected_user.get('Tanggal Lahir')}")
+                            
+                            # Tambahkan peringatan khusus untuk role admin
+                            if selected_user.get('Role') == 'admin':
+                                st.error("⚠️ **PERINGATAN:** Menghapus akun admin dapat menyebabkan masalah akses!")
+                            
+                            # Konfirmasi penghapusan
+                            col_confirm1, col_confirm2 = st.columns(2)
+                            with col_confirm1:
+                                if st.button("🗑️ Hapus Permanen", type="secondary", use_container_width=True):
+                                    if self._delete_user(selected_user['_id']):
+                                        st.success(f"✅ Pengguna {selected_user.get('Nama Lengkap')} berhasil dihapus!")
+                                        st.session_state.pasien_list_initialized = False  # Reset cache
+                                        st.rerun()
+                            with col_confirm2:
+                                if st.button("❌ Batal", use_container_width=True):
+                                    st.info("Penghapusan dibatalkan")
+                    else:
+                        st.info("Pilih pengguna di atas untuk menghapus")
+                else:
+                    st.info("Tidak ada data pengguna yang dapat dihapus")
 
+    # def _get_all_users(self):
+    #     """Mendapatkan semua data user dari collection users"""
+    #     try:
+    #         client = MongoClient(st.secrets["MONGO_URI"])
+    #         db = client['GaitDB']
+    #         collection = db['users']
+            
+    #         all_users = list(collection.find({}, {'password': 0}))
+            
+    #         data = []
+    #         for user in all_users:
+    #             user_data = {
+    #                 "User ID": user.get('user_id', ''),
+    #                 "Nama Lengkap": user.get('nama_lengkap', ''),
+    #                 "Role": user.get('role', ''),
+    #                 "Tanggal Lahir": user.get('tanggal_lahir', ''),
+    #                 "Jenis Kelamin": user.get('jenis_kelamin', ''),
+    #                 "Tanggal Dibuat": user.get('tanggal_dibuat', '')
+    #             }
+                
+    #             data.append(user_data)
+            
+    #         return data
+    #     except Exception as e:
+    #         st.error(f"Error loading users data: {e}")
+    #         return []
+    
     def _get_all_users(self):
         """Mendapatkan semua data user dari collection users"""
         try:
@@ -415,6 +675,7 @@ class AdminPage:
             data = []
             for user in all_users:
                 user_data = {
+                    "_id": str(user['_id']),  # Tambahkan _id untuk operasi edit/delete
                     "User ID": user.get('user_id', ''),
                     "Nama Lengkap": user.get('nama_lengkap', ''),
                     "Role": user.get('role', ''),
@@ -467,7 +728,52 @@ class AdminPage:
         except Exception as e:
             st.error(f"Error menambahkan user: {e}")
             return False
-        
+
+    def _update_user(self, user_id, update_data):
+        """Update data user berdasarkan _id"""
+        try:
+            from bson import ObjectId
+            
+            client = MongoClient(st.secrets["MONGO_URI"])
+            db = client['GaitDB']
+            collection = db['users']
+            
+            # Hapus password dari update_data jika tidak ingin diupdate
+            if 'password' in update_data and update_data['password']:
+                # Hash password baru
+                hashed_password = bcrypt.hashpw(update_data['password'].encode('utf-8'), bcrypt.gensalt())
+                update_data['password'] = hashed_password.decode('utf-8')
+            else:
+                # Jika password kosong, hapus dari update_data
+                update_data.pop('password', None)
+            
+            result = collection.update_one(
+                {'_id': ObjectId(user_id)},
+                {'$set': update_data}
+            )
+            
+            return result.modified_count > 0
+            
+        except Exception as e:
+            st.error(f"Error updating user: {e}")
+            return False
+    
+    def _delete_user(self, user_id):
+        """Hapus user berdasarkan _id"""
+        try:
+            from bson import ObjectId
+            
+            client = MongoClient(st.secrets["MONGO_URI"])
+            db = client['GaitDB']
+            collection = db['users']
+            
+            result = collection.delete_one({'_id': ObjectId(user_id)})
+            
+            return result.deleted_count > 0
+            
+        except Exception as e:
+            st.error(f"Error deleting user: {e}")
+            return False
 
     # def _show_delete_user_interface(self):
     #     """Menampilkan interface untuk menghapus user"""
