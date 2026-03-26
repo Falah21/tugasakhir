@@ -1,0 +1,11 @@
+matplotlib
+pymongo
+plotly-express
+streamlit
+pandas
+pillow
+openpyxl
+langchain_community
+replicate
+openai
+google-generativeai
