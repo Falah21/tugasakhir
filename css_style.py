@@ -206,9 +206,6 @@ def load_css():
             height: 42px !important;
             font-weight: 600 !important;
             border: none !important;
-            width: 100% !important;
-            margin: 2px 0 !important;
-            padding: 0 15px !important;
         }
         
         /* Hover tombol sidebar */
