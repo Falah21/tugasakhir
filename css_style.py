@@ -206,6 +206,9 @@ def load_css():
             height: 42px !important;
             font-weight: 600 !important;
             border: none !important;
+            width: 100% !important;
+            margin: 2px 0 !important;
+            padding: 0 15px !important;
         }
         
         /* Hover tombol sidebar */
@@ -343,6 +346,29 @@ def load_css():
             border-radius: 8px !important;
             padding: 12px !important;
             margin: 10px 0 !important;
+        }
+
+                /* ===== FIXED SIDEBAR HEADER ===== */
+        section[data-testid="stSidebar"] {
+            display: flex !important;
+            flex-direction: column !important;
+            height: 100vh !important;
+        }
+        
+        section[data-testid="stSidebar"] > div:first-child {
+            flex-shrink: 0 !important;
+        }
+        
+        section[data-testid="stSidebar"] > div:not(:first-child) {
+            flex: 1 !important;
+            overflow-y: auto !important;
+        }
+        
+        .sidebar-title {
+            position: sticky !important;
+            top: 0 !important;
+            background-color: #560000 !important;
+            z-index: 10 !important;
         }
 
         /* ===== ICONS ===== */
