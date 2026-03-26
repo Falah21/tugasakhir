@@ -9,4 +9,4 @@ langchain_community
 replicate
 openai
 google-generativeai
-bcrpyt
+bcrypt
