@@ -92,7 +92,7 @@ class RegisterPage:
                     key="reg_jk"
                 )
             
-            st.markdown("---")
+            # st.markdown("---")
             
             # Submit button
             col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
