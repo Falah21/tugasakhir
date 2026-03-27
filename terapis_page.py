@@ -664,19 +664,19 @@ class TerapisPage:
             total_exams = len(examinations)
             # unique_patients = len(set(exam.get('pasien_id') for exam in examinations if exam.get('pasien_id')))
 
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Total Pemeriksaan", total_exams)
+            # col1, col2 = st.columns(2)
+            # with col1:
+            #     st.metric("Total Pemeriksaan", total_exams)
+            # # with col2:
+            # #     st.metric("Total Pasien Unik", unique_patients)
             # with col2:
-            #     st.metric("Total Pasien Unik", unique_patients)
-            with col2:
-                # Hitung pemeriksaan bulan ini
-                current_month = datetime.now().strftime("%Y-%m")
-                monthly_exams = len([exam for exam in examinations 
-                                if exam.get('upload_date', '').startswith(current_month)])
-                st.metric("Pemeriksaan Bulan Ini", monthly_exams)
+            #     # Hitung pemeriksaan bulan ini
+            #     current_month = datetime.now().strftime("%Y-%m")
+            #     monthly_exams = len([exam for exam in examinations 
+            #                     if exam.get('upload_date', '').startswith(current_month)])
+            #     st.metric("Pemeriksaan Bulan Ini", monthly_exams)
 
-            st.markdown("---")
+            # st.markdown("---")
 
             # Siapkan data untuk tabel
             table_data = []
