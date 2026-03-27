@@ -713,14 +713,14 @@ class TerapisPage:
             
             # Fitur filter
             st.markdown("### Filter Riwayat")
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns(2)
             
             with col1:
                 filter_nik = st.text_input("Filter berdasarkan NIK Pasien:")
             with col2:
                 filter_nama = st.text_input("Filter berdasarkan Nama Pasien:")
-            with col3:
-                filter_tanggal = st.text_input("Filter berdasarkan Tanggal Pemeriksaan (YYYY-MM-DD):")
+            # with col3:
+            #     filter_tanggal = st.text_input("Filter berdasarkan Tanggal Pemeriksaan (YYYY-MM-DD):")
 
             
             # Apply filters
@@ -729,8 +729,8 @@ class TerapisPage:
                 filtered_df = filtered_df[filtered_df['NIK Pasien'].str.contains(filter_nik, case=False, na=False)]
             if filter_nama:
                 filtered_df = filtered_df[filtered_df['Nama Pasien'].str.contains(filter_nama, case=False, na=False)]
-            if filter_tanggal:
-                filtered_df = filtered_df[filtered_df['Tanggal Pemeriksaan'].astype(str).str.contains(filter_tanggal, case=False, na=False)]
+            # if filter_tanggal:
+            #     filtered_df = filtered_df[filtered_df['Tanggal Pemeriksaan'].astype(str).str.contains(filter_tanggal, case=False, na=False)]
                 # Tampilkan tabel
             if not filtered_df.empty:
                 st.dataframe(filtered_df, use_container_width=True)
