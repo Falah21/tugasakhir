@@ -643,11 +643,22 @@ class TerapisPage:
             db = client['GaitDB']
             collection = db['patient_examinations']
             
-            # Ambil semua data pemeriksaan
-            examinations = list(collection.find().sort('upload_date', -1))
+            # Ambil data dokter yang sedang login
+            dokter_id = st.session_state.get('terapis_user_id', None)
+            dokter_nama = st.session_state.get('terapis_nama', None)
+            
+            if not dokter_id:
+                st.error("Data dokter tidak ditemukan. Silakan login kembali.")
+                return
+
+            # Ambil data pemeriksaan hanya untuk dokter yang login
+            # Gunakan filter berdasarkan dokter_id
+            examinations = list(collection.find(
+                {'dokter_id': dokter_id}  # Filter hanya untuk dokter yang login
+            ).sort('upload_date', -1))
             
             if not examinations:
-                st.info("Belum ada riwayat pemeriksaan pasien.")
+                st.info(f"Belum ada riwayat pemeriksaan pasien untuk Dr. {dokter_nama}.")
                 return
             
             total_exams = len(examinations)
@@ -672,8 +683,6 @@ class TerapisPage:
             for exam in examinations:
                 pasien_id = exam.get('pasien_id', 'N/A')
                 nama_pasien = exam.get('nama_pasien', 'N/A')
-                dokter_id = exam.get('dokter_id', 'N/A')
-                dokter_nama = exam.get('dokter_nama', 'N/A')
                 tanggal_pemeriksaan = exam.get('tanggal_pemeriksaan', 'N/A')
                 upload_date = exam.get('upload_date', 'N/A')
                 
@@ -695,8 +704,7 @@ class TerapisPage:
                     'Berat (kg)': f"{berat_badan:.1f}" if isinstance(berat_badan, (int, float)) else berat_badan,
                     'Klasifikasi BMI': bmi_class,
                     'Dokter': dokter_nama,
-                    'File Name': file_name,
-                    'Tanggal Upload': upload_date
+                    'File Name': file_name
                 })
             
             # Tampilkan dalam tabel
@@ -712,7 +720,7 @@ class TerapisPage:
             with col2:
                 filter_nama = st.text_input("Filter berdasarkan Nama Pasien:")
             with col3:
-                filter_dokter = st.text_input("Filter berdasarkan Nama Dokter:")
+                filter_tanggal = st.text_input("Filter berdasarkan Tanggal Pemeriksaan (YYYY-MM-DD):")
 
             
             # Apply filters
@@ -721,9 +729,8 @@ class TerapisPage:
                 filtered_df = filtered_df[filtered_df['NIK Pasien'].str.contains(filter_nik, case=False, na=False)]
             if filter_nama:
                 filtered_df = filtered_df[filtered_df['Nama Pasien'].str.contains(filter_nama, case=False, na=False)]
-            if filter_dokter:
-                filtered_df = filtered_df[filtered_df['Dokter'].astype(str).str.contains(filter_dokter, case=False, na=False)]
-
+            if filter_tanggal:
+                filtered_df = filtered_df[filtered_df['Tanggal Pemeriksaan'].astype(str).str.contains(filter_tanggal, case=False, na=False)]
                 # Tampilkan tabel
             if not filtered_df.empty:
                 st.dataframe(filtered_df, use_container_width=True)
