@@ -64,7 +64,7 @@ class RegisterPage:
         # Header
         st.markdown("<h2>Aplikasi GAIT Clinic</h2>", unsafe_allow_html=True)
         st.markdown("<p class='subtitle'>Form Pendaftaran Pasien Baru</p>", unsafe_allow_html=True)
-        st.markdown("---")
+        # st.markdown("---")
         
         # Form registrasi
         with st.form("register_form", clear_on_submit=True):
@@ -122,7 +122,7 @@ class RegisterPage:
                     st.warning("⚠ Mohon isi semua kolom wajib.")
 
         # Tombol kembali ke login
-        st.markdown("---")
+        # st.markdown("---")
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             if st.button("Kembali ke Halaman Login", use_container_width=True):
