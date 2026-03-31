@@ -410,7 +410,7 @@ class AdminPage:
         st.markdown("### Manajemen Data Pengguna")
         
         # Tab untuk jenis user yang berbeda (tambah tab kelola)
-        tabs = st.tabs(["📋 Semua Pengguna", "➕ Tambah Pengguna Baru", "✏️ Kelola Pengguna"])
+        tabs = st.tabs(["Semua Pengguna", "Tambah Pengguna Baru", "Kelola Pengguna"])
     
         # Data dari collection users yang difilter berdasarkan role
         all_users = self._get_all_users()
@@ -459,7 +459,7 @@ class AdminPage:
                 
                 st.dataframe(df_display, use_container_width=True, hide_index=True)
             else:
-                st.info("📝 Belum ada data pengguna terdaftar")
+                st.info("Belum ada data pengguna terdaftar")
     
         # Tab 2: Tambah User Baru
         with tabs[1]:
@@ -476,7 +476,7 @@ class AdminPage:
                     tanggal_lahir = st.date_input("Tanggal Lahir", min_value=datetime(1900, 1, 1), max_value=datetime.now(), value=datetime(1990, 1, 1))
                     jenis_kelamin = st.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
                 
-                submitted = st.form_submit_button("💾 Tambah User Baru")
+                submitted = st.form_submit_button("Tambah User Baru")
                 
                 if submitted:
                     if not user_id or not nama_lengkap or not password:
@@ -493,7 +493,7 @@ class AdminPage:
                         }
                         
                         if self._add_new_user(user_data):
-                            st.success(f"✅ User {nama_lengkap} berhasil ditambahkan sebagai {role}!")
+                            st.success(f"User {nama_lengkap} berhasil ditambahkan sebagai {role}!")
                             st.balloons()
                             st.rerun()
     
@@ -510,7 +510,7 @@ class AdminPage:
             
             # Kolom kiri: Edit Data
             with col1:
-                st.markdown("#### ✏️ Edit Data Pengguna")
+                st.markdown("#### Edit Data Pengguna")
                 
                 # Buat pilihan untuk selectbox
                 edit_options = []
@@ -562,7 +562,7 @@ class AdminPage:
                                         index=0 if selected_user.get('Jenis Kelamin') == "Laki-laki" else 1
                                     )
                                 
-                                if st.form_submit_button("💾 Update Pengguna"):
+                                if st.form_submit_button("Update Pengguna"):
                                     # Siapkan data update
                                     update_data = {
                                         'user_id': new_user_id,
@@ -577,7 +577,7 @@ class AdminPage:
                                         update_data['password'] = new_password
                                     
                                     if self._update_user(selected_user['_id'], update_data):
-                                        st.success(f"✅ Data pengguna {new_nama} berhasil diupdate!")
+                                        st.success(f"Data pengguna {new_nama} berhasil diupdate!")
                                         st.balloons()
                                         st.rerun()
                     else:
@@ -587,7 +587,7 @@ class AdminPage:
             
             # Kolom kanan: Hapus Data
             with col2:
-                st.markdown("#### 🗑️ Hapus Data Pengguna")
+                st.markdown("#### Hapus Data Pengguna")
                 
                 # Buat pilihan untuk delete
                 delete_options = []
@@ -610,7 +610,7 @@ class AdminPage:
                     if selected_delete_option and selected_delete_option != "":
                         selected_user = next((user for user in all_users if user.get('_id') == selected_delete_option), None)
                         if selected_user:
-                            st.warning(f"⚠️ Anda akan menghapus pengguna: **{selected_user.get('Nama Lengkap')}**")
+                            st.warning(f" Anda akan menghapus pengguna: **{selected_user.get('Nama Lengkap')}**")
                             st.write(f"- User ID: {selected_user.get('User ID')}")
                             st.write(f"- Role: {selected_user.get('Role')}")
                             st.write(f"- Jenis Kelamin: {selected_user.get('Jenis Kelamin')}")
@@ -618,18 +618,18 @@ class AdminPage:
                             
                             # Tambahkan peringatan khusus untuk role admin
                             if selected_user.get('Role') == 'admin':
-                                st.error("⚠️ **PERINGATAN:** Menghapus akun admin dapat menyebabkan masalah akses!")
+                                st.error(" **PERINGATAN:** Menghapus akun admin dapat menyebabkan masalah akses!")
                             
                             # Konfirmasi penghapusan
                             col_confirm1, col_confirm2 = st.columns(2)
                             with col_confirm1:
-                                if st.button("🗑️ Hapus Permanen", type="secondary", use_container_width=True):
+                                if st.button("Hapus Permanen", type="secondary", use_container_width=True):
                                     if self._delete_user(selected_user['_id']):
-                                        st.success(f"✅ Pengguna {selected_user.get('Nama Lengkap')} berhasil dihapus!")
+                                        st.success(f" Pengguna {selected_user.get('Nama Lengkap')} berhasil dihapus!")
                                         st.session_state.pasien_list_initialized = False  # Reset cache
                                         st.rerun()
                             with col_confirm2:
-                                if st.button("❌ Batal", use_container_width=True):
+                                if st.button("Batal", use_container_width=True):
                                     st.info("Penghapusan dibatalkan")
                     else:
                         st.info("Pilih pengguna di atas untuk menghapus")
