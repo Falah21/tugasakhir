@@ -1085,7 +1085,7 @@ class AdminPage:
                     'Klasifikasi BMI': bmi_class,
                     'Dokter': dokter_nama,
                     'File Name': file_name,
-                    'Tanggal Upload': upload_date
+                    # 'Tanggal Upload': upload_date
                 })
             
             df = pd.DataFrame(table_data)
