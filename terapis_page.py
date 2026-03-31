@@ -17,7 +17,7 @@ import google.generativeai as genai
 from css_style import load_css
 import traceback
 import bcrypt
-
+from datetime import datetime
 
 # 🧩 Konfigurasi halaman
 st.set_page_config(page_title="Dashboard GAIT Terapis", layout="wide")
@@ -439,6 +439,8 @@ class TerapisPage:
                                     client = get_mongo_client()
                                     db = client['GaitDB']
                                     collection = db['gait_data']
+                                    data_dict["upload_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                    
                                     collection.insert_one(data_dict)
                                     st.success("Data berhasil disimpan ke database!")
                                     
