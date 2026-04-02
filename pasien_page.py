@@ -560,7 +560,7 @@ class PasienPage:
             return None
             
     def _show_ai_summary_tab(self, ai_summary, selected_date):
-    """Menampilkan tab hasil pemeriksaan AI"""
+        """Menampilkan tab hasil pemeriksaan AI"""
         st.subheader(f"Hasil Analisis AI - {selected_date.strftime('%d %B %Y')}")
         
         # Tampilkan informasi dokter yang memeriksa
