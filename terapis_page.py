@@ -1388,22 +1388,22 @@ class TerapisPage:
     #                     else:
     #                         st.warning("⚠️ Silakan pilih varian terlebih dahulu")
 
-    # def create_default_summaries(self, prompt_type):
-    #     """Membuat default summaries jika AI gagal"""
-    #     return [
-    #         {
-    #             "label": f"Prompt {prompt_type} - Varian 1",
-    #             "value": "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini."
-    #         },
-    #         {
-    #             "label": f"Prompt {prompt_type} - Varian 2", 
-    #             "value": "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini."
-    #         },
-    #         {
-    #             "label": f"Prompt {prompt_type} - Varian 3",
-    #             "value": "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini."
-    #         }
-    #     ]
+    def create_default_summaries(self, prompt_type):
+        """Membuat default summaries jika AI gagal"""
+        return [
+            {
+                "label": f"Prompt {prompt_type} - Variasi 1",
+                "value": "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini."
+            },
+            {
+                "label": f"Prompt {prompt_type} - Variasi 2", 
+                "value": "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini."
+            },
+            {
+                "label": f"Prompt {prompt_type} - Variasi 3",
+                "value": "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini."
+            }
+        ]
         
     def show_ai_summary_tab_simple(self):
         """Menampilkan tab Hasil Ringkasan AI dengan tombol generate manual"""
@@ -1569,12 +1569,12 @@ class TerapisPage:
                 Analisis bersifat deskriptif dan tidak mencakup penetapan diagnosis medis.
                 Hindari spekulasi atau asumsi di luar data yang tersedia. 
     
-                Buat 3 varian ringkasan berdasarkan data diatas:
-                VARIAN 1:
-                VARIAN 2:
-                VARIAN 3:
+                Buat 3 variasi ringkasan berdasarkan data diatas:
+                VARIASI 1:
+                VARIASI 2:
+                VARIASI 3:
     
-                Pisahkan setiap varian dengan "=== VARIAN X ==="
+                Pisahkan setiap variasi dengan "=== VARIASI X ==="
                 """
                 
                 # PROMPT B (TIDAK DIUBAH)
@@ -1599,14 +1599,14 @@ class TerapisPage:
                 - Saran klinis atau intervensi umum berdasarkan temuan
                 - Target perbaikan gait yang diharapkan        
                 
-                Berikan 3 varian laporan berdasarkan data diatas:
+                Berikan 3 variasi laporan berdasarkan data diatas:
                 
-                VARIAN 1:
-                VARIAN 2: 
-                VARIAN 3:
+                VARIASI 1:
+                VARIASI 2: 
+                VARIASI 3:
                 
                 Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
-                Pisahkan setiap varian dengan "=== VARIAN X ==="
+                Pisahkan setiap variasi dengan "=== VARIASI X ==="
                 """
                 
                 # Generate summaries
@@ -1670,7 +1670,7 @@ class TerapisPage:
                 if summaries_a:
                     for i, summary in enumerate(summaries_a, 1):
                         with st.container():
-                            st.markdown(f"#### Varian {i}")
+                            st.markdown(f"#### Variasi {i}")
                             st.markdown(summary['value'])
                             if i < len(summaries_a):
                                 st.markdown("---")
@@ -1683,7 +1683,7 @@ class TerapisPage:
                 if summaries_b:
                     for i, summary in enumerate(summaries_b, 1):
                         with st.container():
-                            st.markdown(f"#### Varian {i}")
+                            st.markdown(f"#### Variasi {i}")
                             st.markdown(summary['value'])
                             if i < len(summaries_b):
                                 st.markdown("---")
@@ -1876,24 +1876,24 @@ class TerapisPage:
         summaries = []
         
         # Split berdasarkan varian
-        varian_patterns = [
-            "=== VARIAN 1 ===",
-            "=== VARIAN 2 ===", 
-            "=== VARIAN 3 ===",
-            "VARIAN 1:",
-            "VARIAN 2:",
-            "VARIAN 3:"
+        variasi_patterns  = [
+            "=== VARIASI 1 ===",
+            "=== VARIASI 2 ===", 
+            "=== VARIASI 3 ===",
+            "VARIASI 1:",
+            "VARIASI 2:",
+            "VARIASI 3:"
         ]
         
         # Cari semua varian
         for i in range(1, 4):
-            varian_text = ""
+            variasi_text = ""
             
             # Cari pattern untuk varian i
             patterns = [
-                f"=== VARIAN {i} ===",
-                f"VARIAN {i}:",
-                f"Varian {i}:",
+                f"=== VARIASI {i} ===",
+                f"VARIASI {i}:",
+                f"Variasi {i}:",
                 f"{i}."
             ]
             
@@ -1906,9 +1906,9 @@ class TerapisPage:
                     end_idx = len(response_text)
                     for j in range(i+1, 4):
                         next_patterns = [
-                            f"=== VARIAN {j} ===",
-                            f"VARIAN {j}:",
-                            f"Varian {j}:",
+                            f"=== VARIASI {j} ===",
+                            f"VARIASI {j}:",
+                            f"Variasi {j}:",
                             f"{j}."
                         ]
                         for next_pattern in next_patterns:
@@ -1918,30 +1918,30 @@ class TerapisPage:
                                     end_idx = pattern_end_idx
                                     break
                     
-                    varian_text = response_text[start_idx:end_idx].strip()
+                    variasi_text = response_text[start_idx:end_idx].strip()
                     break
             
             # Jika tidak ditemukan dengan pattern, coba split dengan nomor
-            if not varian_text and i == 1:
+            if not variasi_text and i == 1:
                 # Fallback: split berdasarkan nomor
                 parts = response_text.split(f"{i}.")
                 if len(parts) > 1:
-                    varian_text = parts[1].strip()
-                    if "2." in varian_text:
-                        varian_text = varian_text.split("2.")[0].strip()
+                    variasi_text = parts[1].strip()
+                    if "2." in variasi_text:
+                        variasi_text = variasi_text.split("2.")[0].strip()
             
-            if varian_text:
+            if variasi_text:
                 summaries.append({
-                    "label": f"Prompt {prompt_type} - Varian {i}",
-                    "value": varian_text
+                    "label": f"Prompt {prompt_type} - Variasi {i}",
+                    "value": variasi_text
                 })
         
         # Jika masih kosong, buat default
         if not summaries:
             for i in range(1, 4):
                 summaries.append({
-                    "label": f"Prompt {prompt_type} - Varian {i}",
-                    "value": f"Ringkasan {prompt_type} - Varian {i} tidak tersedia"
+                    "label": f"Prompt {prompt_type} - Variasi {i}",
+                    "value": f"Ringkasan {prompt_type} - Variasi {i} tidak tersedia"
                 })
         
         return summaries
