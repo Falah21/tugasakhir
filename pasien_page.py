@@ -459,7 +459,7 @@ class PasienPage:
                     st.write(f"**Perbedaan rata-rata sudut pergelangan kaki kanan (Anda vs Normal): {maerankle:.2f}°**")
 
         with tab5:
-            self.show_ai_summary_tab_with_phases()
+            self._show_ai_summary_tab()
 
     def _get_ai_summary_for_examination(self, pasien_id, tanggal_pemeriksaan):
         """Mendapatkan ringkasan AI yang dipilih dokter untuk pemeriksaan tertentu"""
@@ -597,10 +597,6 @@ class PasienPage:
         # Footer
         st.caption(f"Tanggal analisis: {ai_summary.get('timestamp', datetime.now()).strftime('%d %B %Y %H:%M') if ai_summary.get('timestamp') else 'Tidak tersedia'}")
         
-    except Exception as e:
-        st.error(f"Error mengambil ringkasan AI: {e}")
-        return None
-            
     def _dashboard_page(self):
         user_id = st.session_state.get("pasien_user_id")
         
