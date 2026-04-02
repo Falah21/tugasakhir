@@ -515,6 +515,273 @@ class PasienPage:
             # Tampilkan visualisasi
             self._show_dashboard_visualization(kinematic_data)
 
+    # Tambahkan method ini ke dalam class PasienPage
+    
+    def _get_ai_summary_for_examination(self, pasien_id, tanggal_pemeriksaan):
+        """Mendapatkan ringkasan AI untuk pemeriksaan tertentu"""
+        try:
+            client = get_mongo_client()
+            db = client['GaitDB']
+            collection = db['ai_summaries']
+            
+            # Cari ringkasan AI untuk pemeriksaan ini
+            # Kita akan mencari berdasarkan tanggal dan pasien_id
+            # Asumsikan ada field yang menghubungkan ke pemeriksaan
+            ai_summary = collection.find_one({
+                'pasien_id': pasien_id,
+                'tanggal_pemeriksaan': tanggal_pemeriksaan.strftime("%Y-%m-%d"),
+                'is_best_selected': True  # Hanya ambil yang dipilih dokter
+            }, sort=[('timestamp', -1)])  # Ambil yang terbaru
+            
+            return ai_summary
+            
+        except Exception as e:
+            st.error(f"Error mengambil ringkasan AI: {e}")
+            return None
+    
+    def _get_all_ai_summaries_for_patient(self, pasien_id):
+        """Mendapatkan semua ringkasan AI untuk pasien"""
+        try:
+            client = get_mongo_client()
+            db = client['GaitDB']
+            collection = db['ai_summaries']
+            
+            # Cari semua ringkasan AI untuk pasien ini yang sudah dipilih dokter
+            ai_summaries = list(collection.find({
+                'pasien_id': pasien_id,
+                'is_best_selected': True
+            }).sort('tanggal_pemeriksaan', -1))
+            
+            return ai_summaries
+            
+        except Exception as e:
+            st.error(f"Error mengambil riwayat ringkasan AI: {e}")
+            return []
+    
+    def _ai_result_page(self):
+        """Halaman untuk menampilkan hasil ringkasan AI dari dokter"""
+        user_id = st.session_state.get("pasien_user_id")
+        
+        st.markdown("<h1 style='text-align: center; color: #560000;'>Hasil Pemeriksaan AI</h1>", unsafe_allow_html=True)
+        
+        # Dapatkan semua tanggal pemeriksaan untuk pasien ini
+        available_dates = self._get_all_pemeriksaan_dates(user_id)
+        
+        if not available_dates:
+            st.warning("🔍 Belum ada hasil pemeriksaan dari dokter")
+            return
+        
+        # Pilih tanggal pemeriksaan
+        selected_date = st.selectbox(
+            "Pilih Tanggal Pemeriksaan",
+            options=available_dates,
+            format_func=lambda x: x.strftime("%d %B %Y"),
+            key="ai_date_select"
+        )
+        
+        # Dapatkan ringkasan AI untuk tanggal yang dipilih
+        ai_summary = self._get_ai_summary_for_examination(user_id, selected_date)
+        
+        if not ai_summary:
+            st.info(f"ℹ️ Belum ada hasil analisis AI untuk pemeriksaan tanggal {selected_date.strftime('%d %B %Y')}")
+            st.markdown("---")
+            st.markdown("**Apa itu Hasil Pemeriksaan AI?**")
+            st.markdown("""
+            Hasil pemeriksaan AI adalah analisis dari dokter yang dibantu oleh kecerdasan buatan 
+            untuk mengevaluasi pola berjalan (gait) Anda. Analisis ini mencakup:
+            - Perbandingan pola berjalan Anda dengan populasi normal
+            - Identifikasi fase-fase gait yang perlu perhatian
+            - Rekomendasi untuk perbaikan
+            
+            Silakan konsultasikan hasil ini dengan dokter Anda untuk penjelasan lebih lanjut.
+            """)
+            return
+        
+        # Tampilkan informasi pemeriksaan
+        st.markdown(f"### 📋 Hasil Analisis - {selected_date.strftime('%d %B %Y')}")
+        
+        # Tampilkan informasi dokter
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"**Dokter Pemeriksa:** {ai_summary.get('terapis_nama', 'Dokter')}")
+        with col2:
+            st.markdown(f"**Tanggal Analisis:** {ai_summary.get('timestamp', datetime.now()).strftime('%d %B %Y %H:%M') if isinstance(ai_summary.get('timestamp'), datetime) else ai_summary.get('timestamp', 'Tidak diketahui')}")
+        
+        st.markdown("---")
+        
+        # Tampilkan ringkasan MAE keseluruhan
+        mae_overall = ai_summary.get('mae_overall', {})
+        if mae_overall:
+            st.markdown("### 📊 Ringkasan Perbandingan dengan Normal")
+            
+            mae_data = []
+            mae_data.append({
+                'Sendi': 'Pelvis',
+                'Kiri (°)': f"{mae_overall.get('pelvis_left', 0):.2f}",
+                'Kanan (°)': f"{mae_overall.get('pelvis_right', 0):.2f}",
+                'Rata-rata (°)': f"{mae_overall.get('pelvis_avg', 0):.2f}"
+            })
+            mae_data.append({
+                'Sendi': 'Knee',
+                'Kiri (°)': f"{mae_overall.get('knee_left', 0):.2f}",
+                'Kanan (°)': f"{mae_overall.get('knee_right', 0):.2f}",
+                'Rata-rata (°)': f"{mae_overall.get('knee_avg', 0):.2f}"
+            })
+            mae_data.append({
+                'Sendi': 'Hip',
+                'Kiri (°)': f"{mae_overall.get('hip_left', 0):.2f}",
+                'Kanan (°)': f"{mae_overall.get('hip_right', 0):.2f}",
+                'Rata-rata (°)': f"{mae_overall.get('hip_avg', 0):.2f}"
+            })
+            mae_data.append({
+                'Sendi': 'Ankle',
+                'Kiri (°)': f"{mae_overall.get('ankle_left', 0):.2f}",
+                'Kanan (°)': f"{mae_overall.get('ankle_right', 0):.2f}",
+                'Rata-rata (°)': f"{mae_overall.get('ankle_avg', 0):.2f}"
+            })
+            
+            mae_df = pd.DataFrame(mae_data)
+            st.dataframe(mae_df, use_container_width=True, hide_index=True)
+            
+            # Interpretasi sederhana
+            avg_values = [
+                float(mae_overall.get('pelvis_avg', 0)),
+                float(mae_overall.get('knee_avg', 0)),
+                float(mae_overall.get('hip_avg', 0)),
+                float(mae_overall.get('ankle_avg', 0))
+            ]
+            overall_avg = np.mean(avg_values)
+            
+            if overall_avg < 5:
+                st.success(f"✅ **Kesimpulan Umum:** Pola berjalan Anda secara umum mendekati normal (deviasi rata-rata {overall_avg:.2f}°)")
+            elif overall_avg < 10:
+                st.warning(f"⚠️ **Kesimpulan Umum:** Terdapat deviasi moderat pada pola berjalan Anda (deviasi rata-rata {overall_avg:.2f}°)")
+            else:
+                st.error(f"🔴 **Kesimpulan Umum:** Pola berjalan Anda menunjukkan deviasi yang signifikan (deviasi rata-rata {overall_avg:.2f}°)")
+        
+        st.markdown("---")
+        
+        # Tampilkan MAE per fase jika ada
+        mae_phases = ai_summary.get('mae_phases', [])
+        if mae_phases:
+            with st.expander("📊 Detail Perbandingan per Fase Gait", expanded=False):
+                st.markdown("""
+                **Penjelasan Fase Gait:**
+                - **Stance Phase (Fase Tumpuan):** Saat kaki menapak tanah
+                - **Swing Phase (Fase Ayunan):** Saat kaki terangkat dan berayun ke depan
+                """)
+                
+                # Buat tabel per fase
+                phases_data = []
+                for phase in mae_phases:
+                    phases_data.append({
+                        'Fase Gait': phase.get('phase', ''),
+                        'Pelvis Kiri': f"{phase.get('pelvis_left', 0):.2f}°",
+                        'Pelvis Kanan': f"{phase.get('pelvis_right', 0):.2f}°",
+                        'Knee Kiri': f"{phase.get('knee_left', 0):.2f}°",
+                        'Knee Kanan': f"{phase.get('knee_right', 0):.2f}°",
+                        'Hip Kiri': f"{phase.get('hip_left', 0):.2f}°",
+                        'Hip Kanan': f"{phase.get('hip_right', 0):.2f}°",
+                        'Ankle Kiri': f"{phase.get('ankle_left', 0):.2f}°",
+                        'Ankle Kanan': f"{phase.get('ankle_right', 0):.2f}°"
+                    })
+                
+                phases_df = pd.DataFrame(phases_data)
+                st.dataframe(phases_df, use_container_width=True, hide_index=True)
+        
+        st.markdown("---")
+        
+        # Tampilkan konten ringkasan AI yang dipilih dokter
+        st.markdown("### 🤖 Hasil Analisis AI dari Dokter")
+        st.markdown("---")
+        
+        # Tampilkan prompt type dan variant
+        prompt_type = ai_summary.get('prompt_type', 'A')
+        variant = ai_summary.get('variant', '1')
+        st.markdown(f"**Tipe Analisis:** {'Analisis Klinis' if prompt_type == 'A' else 'Laporan Hasil'} - Varian {variant}")
+        st.markdown("---")
+        
+        # Tampilkan konten
+        content = ai_summary.get('content', '')
+        if content:
+            # Gunakan markdown untuk menampilkan konten dengan format yang rapi
+            st.markdown(content)
+        else:
+            st.warning("Konten analisis tidak tersedia")
+        
+        st.markdown("---")
+        st.info("💡 **Catatan:** Hasil analisis ini bersifat informatif. Silakan konsultasikan lebih lanjut dengan dokter Anda untuk rencana terapi yang sesuai.")
+    
+    def _ai_history_page(self):
+        """Halaman untuk melihat riwayat semua hasil AI"""
+        user_id = st.session_state.get("pasien_user_id")
+        
+        st.markdown("<h1 style='text-align: center; color: #560000;'>Riwayat Hasil Pemeriksaan AI</h1>", unsafe_allow_html=True)
+        
+        # Dapatkan semua ringkasan AI untuk pasien ini
+        ai_summaries = self._get_all_ai_summaries_for_patient(user_id)
+        
+        if not ai_summaries:
+            st.info("ℹ️ Belum ada riwayat hasil pemeriksaan AI")
+            return
+        
+        # Tampilkan daftar riwayat
+        st.markdown("### 📜 Daftar Riwayat Pemeriksaan")
+        
+        for summary in ai_summaries:
+            tanggal = summary.get('tanggal_pemeriksaan', 'Tanggal tidak diketahui')
+            prompt_type = summary.get('prompt_type', 'A')
+            variant = summary.get('variant', '1')
+            dokter = summary.get('terapis_nama', 'Dokter')
+            timestamp = summary.get('timestamp')
+            
+            if isinstance(timestamp, datetime):
+                tgl_analisis = timestamp.strftime('%d %B %Y %H:%M')
+            else:
+                tgl_analisis = str(timestamp)
+            
+            with st.expander(f"📅 Pemeriksaan: {tanggal} - {dokter}", expanded=False):
+                st.markdown(f"**Tanggal Analisis:** {tgl_analisis}")
+                st.markdown(f"**Tipe Analisis:** {'Analisis Klinis' if prompt_type == 'A' else 'Laporan Hasil'} - Varian {variant}")
+                
+                # Tampilkan ringkasan MAE
+                mae_overall = summary.get('mae_overall', {})
+                if mae_overall:
+                    st.markdown("**Ringkasan Singkat:**")
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Pelvis", f"{mae_overall.get('pelvis_avg', 0):.1f}°")
+                    with col2:
+                        st.metric("Knee", f"{mae_overall.get('knee_avg', 0):.1f}°")
+                    with col3:
+                        st.metric("Hip", f"{mae_overall.get('hip_avg', 0):.1f}°")
+                    with col4:
+                        st.metric("Ankle", f"{mae_overall.get('ankle_avg', 0):.1f}°")
+                
+                # Tombol untuk lihat detail
+                if st.button(f"Lihat Detail Lengkap", key=f"view_{tanggal}_{variant}"):
+                    st.session_state['selected_ai_detail'] = summary
+                    st.session_state['show_ai_detail'] = True
+                    st.rerun()
+        
+        # Tampilkan detail jika dipilih
+        if st.session_state.get('show_ai_detail', False):
+            st.markdown("---")
+            st.markdown("### 📋 Detail Lengkap Hasil Pemeriksaan")
+            
+            detail = st.session_state.get('selected_ai_detail', {})
+            if detail:
+                if st.button("← Kembali ke Daftar", key="back_to_list"):
+                    st.session_state['show_ai_detail'] = False
+                    st.session_state['selected_ai_detail'] = None
+                    st.rerun()
+                
+                st.markdown(f"**Tanggal Pemeriksaan:** {detail.get('tanggal_pemeriksaan', 'Tidak diketahui')}")
+                st.markdown(f"**Dokter:** {detail.get('terapis_nama', 'Dokter')}")
+                st.markdown(f"**Tipe Analisis:** {'Analisis Klinis' if detail.get('prompt_type') == 'A' else 'Laporan Hasil'} - Varian {detail.get('variant', '1')}")
+                st.markdown("---")
+                st.markdown(detail.get('content', 'Konten tidak tersedia'))
+
     def _profile_page(self):
         user_id = st.session_state.get("pasien_user_id")
         
@@ -548,6 +815,11 @@ class PasienPage:
 
     def run(self):
         st.markdown(load_css(), unsafe_allow_html=True)
+        
+        # Inisialisasi session state untuk AI detail
+        st.session_state.setdefault('show_ai_detail', False)
+        st.session_state.setdefault('selected_ai_detail', None)
+        
         if st.session_state.get("show_register", False):
             self.register_page.show()
             return
@@ -556,14 +828,11 @@ class PasienPage:
             # Kalau belum login, tampilkan form login
             user_id, password, submit = login_form_pasien()
             if submit:
-                # # Debug: lihat apa yang dimasukkan
-                # st.write(f"Debug - Input user_id: '{user_id}'")
-                # st.write(f"Debug - session_state pasien_auth keys: {list(st.session_state['pasien_auth'].keys())}")
                 auth_result = self._authenticate_pasien(user_id, password)
                
                 if auth_result:
                     st.session_state.pasien_logged_in = True
-                    st.session_state.pasien_user_id = auth_result['user_id']  # Simpan sebagai user_id
+                    st.session_state.pasien_user_id = auth_result['user_id']
                     st.session_state.pasien_nama = auth_result['nama_lengkap']
                     st.session_state.pasien_menu = "Dashboard"
                     st.success("Login berhasil!")
@@ -571,25 +840,35 @@ class PasienPage:
                 else:
                     st.error("NIK atau password salah!")
             return
-
+    
         # ========== SIDEBAR MENU PASIEN ==========
         pasien_nama = st.session_state.get('pasien_nama', 'Pasien')
         st.sidebar.markdown(f"<p class='sidebar-title'>Selamat Datang<br> {pasien_nama}</p>", unsafe_allow_html=True)
         st.sidebar.markdown(f"<p class='sidebar-title'>Menu</p>", unsafe_allow_html=True)
         
-        menu_list = ["Dashboard", "Profile", "Logout"]
-
+        # Menu untuk pasien - TAMBAHKAN menu Hasil AI
+        menu_list = ["Dashboard", "Hasil Pemeriksaan AI", "Riwayat AI", "Profile", "Logout"]
+    
         for menu in menu_list:
             if st.sidebar.button(
                 menu, 
-                use_container_width=True, type="primary"
-                                 if st.session_state.pasien_menu == menu
-                                 else "secondary"):
+                use_container_width=True, 
+                type="primary" if st.session_state.pasien_menu == menu else "secondary"
+            ):
                 st.session_state.pasien_menu = menu
+                # Reset detail view saat pindah menu
+                if menu != "Riwayat AI":
+                    st.session_state['show_ai_detail'] = False
+                    st.session_state['selected_ai_detail'] = None
                 st.rerun()
         
+        # Route ke halaman yang sesuai
         if st.session_state.pasien_menu == "Dashboard":
             self._dashboard_page()
+        elif st.session_state.pasien_menu == "Hasil Pemeriksaan AI":
+            self._ai_result_page()
+        elif st.session_state.pasien_menu == "Riwayat AI":
+            self._ai_history_page()
         elif st.session_state.pasien_menu == "Profile":
             self._profile_page()
         elif st.session_state.pasien_menu == "Logout":
@@ -598,4 +877,6 @@ class PasienPage:
             st.session_state.pasien_nama = None
             st.session_state.show_register = False
             st.session_state.role = None
+            st.session_state['show_ai_detail'] = False
+            st.session_state['selected_ai_detail'] = None
             st.rerun()
