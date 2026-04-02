@@ -1723,12 +1723,17 @@ class TerapisPage:
             client = get_mongo_client()
             db = client['GaitDB']
             collection = db['ai_summaries']
+
+            pasien_id = st.session_state.get('current_pasien_id', None)
+            tanggal_pemeriksaan = st.session_state.get('current_tanggal_pemeriksaan', None)
             
             # Data yang akan disimpan
             summary_data = {
                 'timestamp': datetime.now(),
-                'terapis_user_id': st.session_state.get('terapis_user_id'),
-                'terapis_nama': st.session_state.get('terapis_nama'),
+                'dokter_id': st.session_state.get('terapis_user_id'),
+                'dokter_nama': st.session_state.get('terapis_nama'),
+                'pasien_id': pasien_id,
+                'tanggal_pemeriksaan': tanggal_pemeriksaan,
                 'prompt_type': prompt_type,
                 'variant': variant,
                 'content': content,
