@@ -335,25 +335,25 @@ class TerapisPage:
         
         return mae_per_phase
 
-    def display_mae_per_phase(self, mae_phases, joint_name):
-        """Menampilkan MAE per fase dalam format yang rapi tanpa level keparahan"""
-        with st.expander(f"Detail MAE per Fase - {joint_name}"):
-            # Buat dataframe untuk tampilan
-            phase_data = []
-            for phase, mae in mae_phases.items():
-                phase_data.append({
-                    'Fase Gait': phase,
-                    'MAE (°)': f"{mae:.2f}"
-                })
+    # def display_mae_per_phase(self, mae_phases, joint_name):
+    #     """Menampilkan MAE per fase dalam format yang rapi tanpa level keparahan"""
+    #     with st.expander(f"Detail MAE per Fase - {joint_name}"):
+    #         # Buat dataframe untuk tampilan
+    #         phase_data = []
+    #         for phase, mae in mae_phases.items():
+    #             phase_data.append({
+    #                 'Fase Gait': phase,
+    #                 'MAE (°)': f"{mae:.2f}"
+    #             })
             
-            df_phases = pd.DataFrame(phase_data)
-            st.dataframe(df_phases, use_container_width=True, hide_index=True)
+    #         df_phases = pd.DataFrame(phase_data)
+    #         st.dataframe(df_phases, use_container_width=True, hide_index=True)
             
-            # Tampilkan fase dengan MAE tertinggi
-            if mae_phases:
-                max_phase = max(mae_phases, key=mae_phases.get)
-                max_mae = mae_phases[max_phase]
-                st.info(f"**Fase dengan deviasi terbesar:** {max_phase} (MAE = {max_mae:.2f}°)")
+    #         # Tampilkan fase dengan MAE tertinggi
+    #         if mae_phases:
+    #             max_phase = max(mae_phases, key=mae_phases.get)
+    #             max_mae = mae_phases[max_phase]
+    #             st.info(f"**Fase dengan deviasi terbesar:** {max_phase} (MAE = {max_mae:.2f}°)")
 
     def calculate_bounds_from_normal_data(self, filtered_df):
         """Menghitung upper bound dan lower bound dari data normal"""
@@ -879,8 +879,8 @@ class TerapisPage:
 
         if has_patient_data:
             try:
-                with st.spinner("Memuat data dan membuat visualisasi..."):
-                    self.process_dashboard_with_patient()
+                # with st.spinner("Memuat data dan membuat visualisasi..."):
+                self.process_dashboard_with_patient()
             except Exception as e:
                 st.error(f"Error dalam memproses dashboard: {e}")
         else:
@@ -1194,12 +1194,12 @@ class TerapisPage:
             with col1:
                 st.plotly_chart(fig1, use_container_width=True)
                 st.write(f"**MAE Keseluruhan Left Pelvis: {maelpelvis:.2f}°**")
-                self.display_mae_per_phase(mae_pelvis_left_phases, "Left Pelvis")
+                # self.display_mae_per_phase(mae_pelvis_left_phases, "Left Pelvis")
                 
             with col2:
                 st.plotly_chart(fig2, use_container_width=True)
                 st.write(f"**MAE Keseluruhan Right Pelvis: {maerpelvis:.2f}°**")
-                self.display_mae_per_phase(mae_pelvis_right_phases, "Right Pelvis")
+                # self.display_mae_per_phase(mae_pelvis_right_phases, "Right Pelvis")
                 
         with tab2:
             tab2.subheader("KNEE")
@@ -1209,11 +1209,11 @@ class TerapisPage:
             with col1:
                 st.plotly_chart(fig3, use_container_width=True)
                 st.write(f"**MAE Keseluruhan Left Knee: {maelknee:.2f}°**")
-                self.display_mae_per_phase(mae_knee_left_phases, "Left Knee")
+                # self.display_mae_per_phase(mae_knee_left_phases, "Left Knee")
             with col2:
                 st.plotly_chart(fig4, use_container_width=True)
                 st.write(f"**MAE Keseluruhan Right Knee: {maerknee:.2f}°**")
-                self.display_mae_per_phase(mae_knee_right_phases, "Right Knee")
+                # self.display_mae_per_phase(mae_knee_right_phases, "Right Knee")
 
         with tab3:
             tab3.subheader("HIP")
@@ -1223,11 +1223,11 @@ class TerapisPage:
             with col1:
                 st.plotly_chart(fig5, use_container_width=True)
                 st.write(f"**MAE Keseluruhan Left Hip: {maelhip:.2f}°**")
-                self.display_mae_per_phase(mae_hip_left_phases, "Left Hip")
+                # self.display_mae_per_phase(mae_hip_left_phases, "Left Hip")
             with col2:
                 st.plotly_chart(fig6, use_container_width=True)
                 st.write(f"**MAE Keseluruhan Right Hip: {maerhip:.2f}°**")
-                self.display_mae_per_phase(mae_hip_right_phases, "Right Hip")
+                # self.display_mae_per_phase(mae_hip_right_phases, "Right Hip")
 
         with tab4:
             tab4.subheader("ANKLE")
@@ -1237,11 +1237,11 @@ class TerapisPage:
             with col1:
                 st.plotly_chart(fig7, use_container_width=True)
                 st.write(f"**MAE Keseluruhan Left Ankle: {maelankle:.2f}°**")
-                self.display_mae_per_phase(mae_ankle_left_phases, "Left Ankle")
+                # self.display_mae_per_phase(mae_ankle_left_phases, "Left Ankle")
             with col2:
                 st.plotly_chart(fig8, use_container_width=True)
                 st.write(f"**MAE Keseluruhan Right Ankle: {maerankle:.2f}°**")
-                self.display_mae_per_phase(mae_ankle_right_phases, "Right Ankle")
+                # self.display_mae_per_phase(mae_ankle_right_phases, "Right Ankle")
 
         with tab5:
             self.show_ai_summary_tab_with_phases()
@@ -1308,38 +1308,89 @@ class TerapisPage:
         
         # Tampilkan tabel MAE
         st.markdown("### Ringkasan MAE Keseluruhan")
-        mae_overall_df = pd.DataFrame([
-                {'Joint': 'Pelvis Kiri', 'MAE (°)': f"{st.session_state.mae_pelvis_left:.2f}"},
-                {'Joint': 'Pelvis Kanan', 'MAE (°)': f"{st.session_state.mae_pelvis_right:.2f}"},
-                {'Joint': 'Knee Kiri', 'MAE (°)': f"{st.session_state.mae_knee_left:.2f}"},
-                {'Joint': 'Knee Kanan', 'MAE (°)': f"{st.session_state.mae_knee_right:.2f}"},
-                {'Joint': 'Hip Kiri', 'MAE (°)': f"{st.session_state.mae_hip_left:.2f}"},
-                {'Joint': 'Hip Kanan', 'MAE (°)': f"{st.session_state.mae_hip_right:.2f}"},
-                {'Joint': 'Ankle Kiri', 'MAE (°)': f"{st.session_state.mae_ankle_left:.2f}"},
-                {'Joint': 'Ankle Kanan', 'MAE (°)': f"{st.session_state.mae_ankle_right:.2f}"}])
+        mae_overall_data = []
+        # Pelvis
+        pelvis_left = st.session_state.mae_pelvis_left
+        pelvis_right = st.session_state.mae_pelvis_right
+        pelvis_avg = (pelvis_left + pelvis_right) / 2
+        mae_overall_data.append({
+            'Joint': 'Pelvis',
+            'Kiri (°)': f"{pelvis_left:.2f}",
+            'Kanan (°)': f"{pelvis_right:.2f}",
+            'Rata-rata (°)': f"{pelvis_avg:.2f}"
+        })
+        
+        # Knee
+        knee_left = st.session_state.mae_knee_left
+        knee_right = st.session_state.mae_knee_right
+        knee_avg = (knee_left + knee_right) / 2
+        mae_overall_data.append({
+            'Joint': 'Knee',
+            'Kiri (°)': f"{knee_left:.2f}",
+            'Kanan (°)': f"{knee_right:.2f}",
+            'Rata-rata (°)': f"{knee_avg:.2f}"
+        })
+        
+        # Hip
+        hip_left = st.session_state.mae_hip_left
+        hip_right = st.session_state.mae_hip_right
+        hip_avg = (hip_left + hip_right) / 2
+        mae_overall_data.append({
+            'Joint': 'Hip',
+            'Kiri (°)': f"{hip_left:.2f}",
+            'Kanan (°)': f"{hip_right:.2f}",
+            'Rata-rata (°)': f"{hip_avg:.2f}"
+        })
+        
+        # Ankle
+        ankle_left = st.session_state.mae_ankle_left
+        ankle_right = st.session_state.mae_ankle_right
+        ankle_avg = (ankle_left + ankle_right) / 2
+        mae_overall_data.append({
+            'Joint': 'Ankle',
+            'Kiri (°)': f"{ankle_left:.2f}",
+            'Kanan (°)': f"{ankle_right:.2f}",
+            'Rata-rata (°)': f"{ankle_avg:.2f}"
+        })
+        
+        mae_overall_df = pd.DataFrame(mae_overall_data)
         st.dataframe(mae_overall_df, use_container_width=True, hide_index=True)
-
-        # Tampilkan MAE per fase untuk setiap joint
+        
+        # ===== TABEL MAE PER FASE GAIT =====
         st.markdown("### Detail MAE per Fase Gait")
-        # Buat tabs untuk setiap joint
-        joint_tabs = st.tabs(["Pelvis Kiri", "Pelvis Kanan", "Knee Kiri", "Knee Kanan", "Hip Kiri", "Hip Kanan", "Ankle Kiri", "Ankle Kanan"])
-        
-        joint_phases_list = [
-            (joint_tabs[0], "Pelvis Kiri", st.session_state.mae_pelvis_left_phases),
-            (joint_tabs[1], "Pelvis Kanan", st.session_state.mae_pelvis_right_phases),
-            (joint_tabs[2], "Knee Kiri", st.session_state.mae_knee_left_phases),
-            (joint_tabs[3], "Knee Kanan", st.session_state.mae_knee_right_phases),
-            (joint_tabs[4], "Hip Kiri", st.session_state.mae_hip_left_phases),
-            (joint_tabs[5], "Hip Kanan", st.session_state.mae_hip_right_phases),
-            (joint_tabs[6], "Ankle Kiri", st.session_state.mae_ankle_left_phases),
-            (joint_tabs[7], "Ankle Kanan", st.session_state.mae_ankle_right_phases)
+        # Urutan fase gait
+        phases_order = [
+            'Initial Contact (0-2%)',
+            'Loading Response (2-10%)',
+            'Mid-Stance (10-30%)',
+            'Terminal Stance (30-50%)',
+            'Pre-Swing (50-60%)',
+            'Initial Swing (60-73%)',
+            'Mid-Swing (73-87%)',
+            'Terminal Swing (87-100%)'
         ]
-        for tab, joint_name, mae_phases in joint_phases_list:
-            with tab:
-                st.subheader(joint_name)
-                self.display_mae_per_phase(mae_phases, joint_name)
         
-        # Cek apakah sudah ada hasil yang disimpan
+        # Buat data untuk tabel per fase
+        mae_phases_data = []
+        
+        for phase in phases_order:
+            row_data = {
+                'Fase Gait': phase,
+                'Pelvis Kiri (°)': f"{st.session_state.mae_pelvis_left_phases.get(phase, 0):.2f}",
+                'Pelvis Kanan (°)': f"{st.session_state.mae_pelvis_right_phases.get(phase, 0):.2f}",
+                'Knee Kiri (°)': f"{st.session_state.mae_knee_left_phases.get(phase, 0):.2f}",
+                'Knee Kanan (°)': f"{st.session_state.mae_knee_right_phases.get(phase, 0):.2f}",
+                'Hip Kiri (°)': f"{st.session_state.mae_hip_left_phases.get(phase, 0):.2f}",
+                'Hip Kanan (°)': f"{st.session_state.mae_hip_right_phases.get(phase, 0):.2f}",
+                'Ankle Kiri (°)': f"{st.session_state.mae_ankle_left_phases.get(phase, 0):.2f}",
+                'Ankle Kanan (°)': f"{st.session_state.mae_ankle_right_phases.get(phase, 0):.2f}"
+            }
+            mae_phases_data.append(row_data)
+        
+        mae_phases_df = pd.DataFrame(mae_phases_data)
+        st.dataframe(mae_phases_df, use_container_width=True, hide_index=True)
+       
+        # ===== TOMBOL GENERATE AI =====
         patient_saved_key = f'saved_summary_content_{current_patient_key}'
         patient_ai_generated_key = f'ai_summaries_generated_{current_patient_key}'
         
@@ -1398,55 +1449,25 @@ class TerapisPage:
                     st.session_state.mae_ankle_left,
                     st.session_state.mae_ankle_right]
                 overall_mae = np.mean(all_mae_values)
-                
-                # Siapkan data MAE keseluruhan
+
                 mae_summary = f"""
-                    MAE KESELURUHAN (Rata-rata seluruh siklus gait 0-100%):
-                    - Pelvis Kiri: {st.session_state.mae_pelvis_left:.2f}°
-                    - Pelvis Kanan: {st.session_state.mae_pelvis_right:.2f}°
-                    - Knee Kiri: {st.session_state.mae_knee_left:.2f}°
-                    - Knee Kanan: {st.session_state.mae_knee_right:.2f}°
-                    - Hip Kiri: {st.session_state.mae_hip_left:.2f}°
-                    - Hip Kanan: {st.session_state.mae_hip_right:.2f}°
-                    - Ankle Kiri: {st.session_state.mae_ankle_left:.2f}°
-                    - Ankle Kanan: {st.session_state.mae_ankle_right:.2f}°
-                    Rata-rata Keseluruhan: {overall_mae:.2f}°
-                    """
-                # Siapkan data MAE per fase
+                MAE KESELURUHAN (Rata-rata seluruh siklus gait 0-100%):
+                - Pelvis Kiri: {st.session_state.mae_pelvis_left:.2f}°, Pelvis Kanan: {st.session_state.mae_pelvis_right:.2f}°, Rata-rata: {(st.session_state.mae_pelvis_left + st.session_state.mae_pelvis_right)/2:.2f}°
+                - Knee Kiri: {st.session_state.mae_knee_left:.2f}°, Knee Kanan: {st.session_state.mae_knee_right:.2f}°, Rata-rata: {(st.session_state.mae_knee_left + st.session_state.mae_knee_right)/2:.2f}°
+                - Hip Kiri: {st.session_state.mae_hip_left:.2f}°, Hip Kanan: {st.session_state.mae_hip_right:.2f}°, Rata-rata: {(st.session_state.mae_hip_left + st.session_state.mae_hip_right)/2:.2f}°
+                - Ankle Kiri: {st.session_state.mae_ankle_left:.2f}°, Ankle Kanan: {st.session_state.mae_ankle_right:.2f}°, Rata-rata: {(st.session_state.mae_ankle_left + st.session_state.mae_ankle_right)/2:.2f}°
+                Rata-rata Keseluruhan Semua Sendi: {overall_mae:.2f}°
+                """
+                
+                # Siapkan data MAE per fase untuk prompt
                 mae_phases_summary = "\nMAE PER FASE GAIT:\n"
-                phases_order = [
-                    'Initial Contact (0-2%)',
-                    'Loading Response (2-10%)',
-                    'Mid-Stance (10-30%)',
-                    'Terminal Stance (30-50%)',
-                    'Pre-Swing (50-60%)',
-                    'Initial Swing (60-73%)',
-                    'Mid-Swing (73-87%)',
-                    'Terminal Swing (87-100%)'
-                ]
                 
                 for phase in phases_order:
                     mae_phases_summary += f"\n{phase}:\n"
-                    
-                    # Pelvis
-                    left_pelvis_phase = st.session_state.mae_pelvis_left_phases.get(phase, 0)
-                    right_pelvis_phase = st.session_state.mae_pelvis_right_phases.get(phase, 0)
-                    mae_phases_summary += f"  - Pelvis Kiri: {left_pelvis_phase:.2f}°, Pelvis Kanan: {right_pelvis_phase:.2f}°\n"
-                    
-                    # Knee
-                    left_knee_phase = st.session_state.mae_knee_left_phases.get(phase, 0)
-                    right_knee_phase = st.session_state.mae_knee_right_phases.get(phase, 0)
-                    mae_phases_summary += f"  - Knee Kiri: {left_knee_phase:.2f}°, Knee Kanan: {right_knee_phase:.2f}°\n"
-                    
-                    # Hip
-                    left_hip_phase = st.session_state.mae_hip_left_phases.get(phase, 0)
-                    right_hip_phase = st.session_state.mae_hip_right_phases.get(phase, 0)
-                    mae_phases_summary += f"  - Hip Kiri: {left_hip_phase:.2f}°, Hip Kanan: {right_hip_phase:.2f}°\n"
-                    
-                    # Ankle
-                    left_ankle_phase = st.session_state.mae_ankle_left_phases.get(phase, 0)
-                    right_ankle_phase = st.session_state.mae_ankle_right_phases.get(phase, 0)
-                    mae_phases_summary += f"  - Ankle Kiri: {left_ankle_phase:.2f}°, Ankle Kanan: {right_ankle_phase:.2f}°\n"
+                    mae_phases_summary += f"  - Pelvis Kiri: {st.session_state.mae_pelvis_left_phases.get(phase, 0):.2f}°, Pelvis Kanan: {st.session_state.mae_pelvis_right_phases.get(phase, 0):.2f}°\n"
+                    mae_phases_summary += f"  - Knee Kiri: {st.session_state.mae_knee_left_phases.get(phase, 0):.2f}°, Knee Kanan: {st.session_state.mae_knee_right_phases.get(phase, 0):.2f}°\n"
+                    mae_phases_summary += f"  - Hip Kiri: {st.session_state.mae_hip_left_phases.get(phase, 0):.2f}°, Hip Kanan: {st.session_state.mae_hip_right_phases.get(phase, 0):.2f}°\n"
+                    mae_phases_summary += f"  - Ankle Kiri: {st.session_state.mae_ankle_left_phases.get(phase, 0):.2f}°, Ankle Kanan: {st.session_state.mae_ankle_right_phases.get(phase, 0):.2f}°\n"
                 
                 # Siapkan data bounds
                 bounds_summary = "\nBATAS NORMAL (Upper Bound dan Lower Bound):\n"
@@ -1480,23 +1501,23 @@ class TerapisPage:
                 
                 INSTRUKSI:
                 Lakukan analisis secara objektif, profesional, dan berbasis data yang diberikan.
-                a. Evaluasi apakah parameter gait pasien berada di dalam atau di luar rentang nilai gait normal berdasarkan upper bound dan lower bound.
-                b. Interpretasikan nilai MAE sebagai ukuran rata-rata deviasi parameter gait pasien terhadap nilai gait normal.
-                c. Identifikasi fase gait mana yang memiliki MAE tertinggi untuk setiap sendi dan setiap fase.
+                a. Interpretasikan nilai MAE sebagai ukuran rata-rata deviasi parameter gait pasien terhadap nilai gait normal.
+                b. Identifikasi fase gait mana yang memiliki MAE tertinggi untuk setiap sendi dan setiap fase.
+                c. Bandingkan hasil antara sisi kanan dan kiri untuk setiap sendi dan setiap fase.
                 
                 Gunakan bahasa medis yang jelas, sistematis, dan mudah dipahami oleh tenaga kesehatan.
                 Analisis bersifat deskriptif dan tidak mencakup penetapan diagnosis medis.
                 Hindari spekulasi atau asumsi di luar data yang tersedia. 
     
                 Buat 3 variasi ringkasan berdasarkan data diatas:
-                VARIASI 1: 
-                VARIASI 2:
-                VARIASI 3:
+                VARIASI 1: Analisis singkat dan padat (2-3 paragraf)
+                VARIASI 2: Analisis terstruktur dengan sub-bagian per sendi dan per fase
+                VARIASI 3: Analisis berfokus pada rekomendasi klinis
     
                 Pisahkan setiap variasi dengan "=== VARIASI X ==="
                 """
                 
-                # PROMPT B (TIDAK DIUBAH)
+                # PROMPT B
                 prompt_b = f"""
                 Buat laporan hasil gait analysis berdasarkan data berikut:
                 
@@ -1506,7 +1527,6 @@ class TerapisPage:
                 INSTRUKSI:
                 Struktur laporan hasil mengikuti format berikut:
                 a. HASIL PEMERIKSAAN
-                    - Evaluasi apakah parameter gait pasien berada di dalam atau di luar rentang nilai gait normal berdasarkan upper bound dan lower bound.
                     - Sajikan nilai Mean Absolute Error (MAE) dalam bentuk poin untuk setiap sendi utama.
                     - Soroti nilai MAE tertinggi dan terendah dari setiap sendi.
                 b. INTERPRETASI KLINIS
@@ -1520,9 +1540,9 @@ class TerapisPage:
                 
                 Berikan 3 variasi laporan berdasarkan data diatas:
                 
-                VARIASI 1:
-                VARIASI 2: 
-                VARIASI 3:
+                VARIASI 1: Laporan dengan fokus pada temuan utama
+                VARIASI 2: Laporan klinis lengkap dengan detail per sendi dan fase gait
+                VARIASI 3: Laporan dengan tambahan pada rekomendasi terapi
                 
                 Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
                 Pisahkan setiap variasi dengan "=== VARIASI X ==="
