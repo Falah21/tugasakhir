@@ -840,6 +840,7 @@ class TerapisPage:
             
         st.markdown(f"**Total Records:** {len(filtered_df)}")
 
+        st.session_state.filtered_normal_df = filtered_df
         # Gunakan data pasien dari session state
         norm_kinematics_df = st.session_state.norm_kinematics_df
 
@@ -2149,7 +2150,8 @@ class TerapisPage:
             st.error(f"There is no data with gender {gender} classified as {classbmi}.")
         else:
             st.markdown(f"**Total Records:** {len(filtered_df)}")
-            
+
+            st.session_state.filtered_normal_df = filtered_df
             # Tampilkan grafik normal saja (tanpa data pasien)
             self.show_normal_charts_only(filtered_df)
             
