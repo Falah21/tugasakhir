@@ -1816,33 +1816,33 @@ class TerapisPage:
         return bounds
                             
     def save_selected_summary_with_bounds(self, prompt_type, variant, content, mae_data, bounds_data):
-    """Simpan ringkasan yang dipilih ke database dengan bounds data"""
-    try:
-        client = get_mongo_client()
-        db = client['GaitDB']
-        collection = db['ai_summaries']
-        
-        # Data yang akan disimpan
-        summary_data = {
-            'timestamp': datetime.now(),
-            'terapis_user_id': st.session_state.get('terapis_user_id'),
-            'terapis_nama': st.session_state.get('terapis_nama'),
-            'prompt_type': prompt_type,
-            'variant': variant,
-            'content': content,
-            'mae_data': mae_data,
-            'bounds_data': bounds_data,
-            'is_best_selected': True
-        }
-        
-        # Simpan ke database
-        result = collection.insert_one(summary_data)
-        
-        return True
-        
-    except Exception as e:
-        st.error(f"Error menyimpan ringkasan: {e}")
-        return False
+    # """Simpan ringkasan yang dipilih ke database dengan bounds data"""
+        try:
+            client = get_mongo_client()
+            db = client['GaitDB']
+            collection = db['ai_summaries']
+            
+            # Data yang akan disimpan
+            summary_data = {
+                'timestamp': datetime.now(),
+                'terapis_user_id': st.session_state.get('terapis_user_id'),
+                'terapis_nama': st.session_state.get('terapis_nama'),
+                'prompt_type': prompt_type,
+                'variant': variant,
+                'content': content,
+                'mae_data': mae_data,
+                'bounds_data': bounds_data,
+                'is_best_selected': True
+            }
+            
+            # Simpan ke database
+            result = collection.insert_one(summary_data)
+            
+            return True
+            
+        except Exception as e:
+            st.error(f"Error menyimpan ringkasan: {e}")
+            return False
                         
     def reset_ai_summary_session_state(self):
         """Reset semua session state terkait AI summary untuk pasien baru"""
