@@ -52,44 +52,9 @@ class PasienPage:
         st.session_state.setdefault("pasien_logged_in", False)
         st.session_state.setdefault("pasien_user_id", None)
         st.session_state.setdefault("pasien_menu", "Dashboard")
-        # st.session_state.setdefault("pasien_nama", "Pasien") 
-        
-        # Load data dari database saat inisialisasi
-        # self._load_pasien_data_from_db()
 
         # Instance RegisterPage
         self.register_page = RegisterPage()
-
-    # def _load_pasien_data_from_db(self):
-    #     try:
-    #         client = get_mongo_client()
-    #         db = client['GaitDB']
-    #         collection = db['users']
-            
-    #         # Ambil semua data pasien
-    #         pasien_data = list(collection.find({'role': 'pasien'}))
-
-    #         st.session_state["pasien_auth"] = {}
-    #         st.session_state["pasien_list"] = []
-            
-    #         # Update session state dengan data dari database
-    #         for pasien in pasien_data:
-    #             user_id = pasien.get('user_id')
-    #             password = pasien.get('password')
-    #             if user_id and password:
-    #                 st.session_state["pasien_auth"][user_id] = password
-
-    #                 st.session_state["pasien_list"].append({
-    #                     "User ID": user_id,
-    #                     "Nama Lengkap": pasien.get('nama_lengkap', ''),
-    #                     "Tanggal Lahir": pasien.get('tanggal_lahir', ''),
-    #                     "Jenis Kelamin": pasien.get('jenis_kelamin', ''),
-    #                     "Role": pasien.get('role', ''),
-    #                     "Tanggal Dibuat": pasien.get('tanggal_dibuat', '')
-    #                 })
-                    
-    #     except Exception as e:
-    #         st.error(f"Error loading patient data: {e}")
 
     def _authenticate_pasien(self, user_id, password):
         """Autentikasi pasien dari database"""
@@ -195,6 +160,27 @@ class PasienPage:
             st.error(f"Error mengambil data normal: {e}")
             return None
 
+    def _get_ai_summary_for_examination(self, pasien_id, tanggal_pemeriksaan):
+        """Mendapatkan ringkasan AI yang dipilih dokter untuk pemeriksaan tertentu"""
+        try:
+            client = get_mongo_client()
+            db = client['GaitDB']
+            collection = db['ai_summaries']
+            
+            # Cari ringkasan AI berdasarkan pasien_id dan tanggal pemeriksaan
+            # is_best_selected = True berarti ini hasil yang dipilih dokter
+            ai_summary = collection.find_one({
+                'pasien_id': pasien_id,
+                'tanggal_pemeriksaan': tanggal_pemeriksaan.strftime("%Y-%m-%d"),
+                'is_best_selected': True
+            })
+            
+            return ai_summary
+            
+        except Exception as e:
+            st.error(f"Error mengambil ringkasan AI: {e}")
+            return None
+
     def _create_joint_figure(self, data, title, color, patient_data=None):
         """Membuat figure untuk joint tertentu"""
         fig = go.Figure()
@@ -211,7 +197,7 @@ class PasienPage:
         ))
         
         # Data pasien jika ada
-        if patient_data is not None:
+        if patient_data is not None and len(patient_data) > 0:
             fig.add_trace(go.Scatter(
                 x=data["%cycle"], 
                 y=patient_data, 
@@ -362,8 +348,124 @@ class PasienPage:
             'patient_data': patient_data
         }
 
-    def _show_dashboard_visualization(self, kinematic_data):
-        """Menampilkan visualisasi dashboard"""
+    def _show_ai_summary_tab(self, ai_summary, selected_date):
+        """Menampilkan tab hasil pemeriksaan AI"""
+        st.subheader(f"Hasil Analisis AI - {selected_date.strftime('%d %B %Y')}")
+        
+        # Tampilkan informasi dokter yang memeriksa
+        dokter_nama = ai_summary.get('terapis_nama', 'Dokter')
+        st.caption(f"Diproses oleh: Dr. {dokter_nama}")
+        
+        # Tampilkan prompt type dan variant
+        prompt_type = ai_summary.get('prompt_type', 'A')
+        variant = ai_summary.get('variant', '1')
+        st.caption(f"Jenis Analisis: Prompt {prompt_type} - Varian {variant}")
+        
+        st.markdown("---")
+        
+        # Tampilkan ringkasan AI
+        content = ai_summary.get('content', '')
+        if content:
+            st.markdown("### 📋 Hasil Analisis")
+            st.markdown(content)
+        else:
+            st.warning("Konten ringkasan tidak tersedia.")
+        
+        st.markdown("---")
+        
+        # Tampilkan data MAE jika ada (opsional, bisa di-expand)
+        mae_overall = ai_summary.get('mae_overall', {})
+        mae_phases = ai_summary.get('mae_phases', [])
+        
+        if mae_overall or mae_phases:
+            with st.expander("📊 Lihat Data MAE (Mean Absolute Error)"):
+                # Tabel MAE Keseluruhan
+                if mae_overall:
+                    st.markdown("#### MAE Keseluruhan")
+                    mae_overall_data = []
+                    
+                    # Pelvis
+                    pelvis_left = mae_overall.get('pelvis_left', 0)
+                    pelvis_right = mae_overall.get('pelvis_right', 0)
+                    pelvis_avg = mae_overall.get('pelvis_avg', (pelvis_left + pelvis_right) / 2)
+                    mae_overall_data.append({
+                        'Joint': 'Pelvis',
+                        'Kiri (°)': f"{pelvis_left:.2f}",
+                        'Kanan (°)': f"{pelvis_right:.2f}",
+                        'Rata-rata (°)': f"{pelvis_avg:.2f}"
+                    })
+                    
+                    # Knee
+                    knee_left = mae_overall.get('knee_left', 0)
+                    knee_right = mae_overall.get('knee_right', 0)
+                    knee_avg = mae_overall.get('knee_avg', (knee_left + knee_right) / 2)
+                    mae_overall_data.append({
+                        'Joint': 'Knee',
+                        'Kiri (°)': f"{knee_left:.2f}",
+                        'Kanan (°)': f"{knee_right:.2f}",
+                        'Rata-rata (°)': f"{knee_avg:.2f}"
+                    })
+                    
+                    # Hip
+                    hip_left = mae_overall.get('hip_left', 0)
+                    hip_right = mae_overall.get('hip_right', 0)
+                    hip_avg = mae_overall.get('hip_avg', (hip_left + hip_right) / 2)
+                    mae_overall_data.append({
+                        'Joint': 'Hip',
+                        'Kiri (°)': f"{hip_left:.2f}",
+                        'Kanan (°)': f"{hip_right:.2f}",
+                        'Rata-rata (°)': f"{hip_avg:.2f}"
+                    })
+                    
+                    # Ankle
+                    ankle_left = mae_overall.get('ankle_left', 0)
+                    ankle_right = mae_overall.get('ankle_right', 0)
+                    ankle_avg = mae_overall.get('ankle_avg', (ankle_left + ankle_right) / 2)
+                    mae_overall_data.append({
+                        'Joint': 'Ankle',
+                        'Kiri (°)': f"{ankle_left:.2f}",
+                        'Kanan (°)': f"{ankle_right:.2f}",
+                        'Rata-rata (°)': f"{ankle_avg:.2f}"
+                    })
+                    
+                    st.dataframe(pd.DataFrame(mae_overall_data), use_container_width=True, hide_index=True)
+                
+                # Tabel MAE per Fase
+                if mae_phases:
+                    st.markdown("#### MAE per Fase Gait")
+                    
+                    mae_phases_data = []
+                    for phase_data in mae_phases:
+                        phase = phase_data.get('phase', '')
+                        if phase:
+                            row = {
+                                'Fase Gait': phase,
+                                'Pelvis Kiri (°)': f"{phase_data.get('pelvis_left', 0):.2f}",
+                                'Pelvis Kanan (°)': f"{phase_data.get('pelvis_right', 0):.2f}",
+                                'Knee Kiri (°)': f"{phase_data.get('knee_left', 0):.2f}",
+                                'Knee Kanan (°)': f"{phase_data.get('knee_right', 0):.2f}",
+                                'Hip Kiri (°)': f"{phase_data.get('hip_left', 0):.2f}",
+                                'Hip Kanan (°)': f"{phase_data.get('hip_right', 0):.2f}",
+                                'Ankle Kiri (°)': f"{phase_data.get('ankle_left', 0):.2f}",
+                                'Ankle Kanan (°)': f"{phase_data.get('ankle_right', 0):.2f}"
+                            }
+                            mae_phases_data.append(row)
+                    
+                    if mae_phases_data:
+                        st.dataframe(pd.DataFrame(mae_phases_data), use_container_width=True, hide_index=True)
+        
+        # Footer
+        timestamp = ai_summary.get('timestamp')
+        if timestamp:
+            if isinstance(timestamp, datetime):
+                st.caption(f"Tanggal analisis: {timestamp.strftime('%d %B %Y %H:%M')}")
+            else:
+                st.caption(f"Tanggal analisis: {timestamp}")
+        else:
+            st.caption("Tanggal analisis: Tidak tersedia")
+
+    def _show_dashboard_visualization(self, kinematic_data, ai_summary, selected_date):
+        """Menampilkan visualisasi dashboard dengan tab hasil AI"""
         # Buat visualisasi untuk setiap joint
         fig1 = self._create_joint_figure(kinematic_data['lpelvis'], "Left Pelvis", 'orange', 
                                        kinematic_data['patient_data'].get('l_pelvis'))
@@ -459,146 +561,39 @@ class PasienPage:
                     st.write(f"**Perbedaan rata-rata sudut pergelangan kaki kanan (Anda vs Normal): {maerankle:.2f}°**")
 
         with tab5:
-            self._show_ai_summary_tab()
-
-    def _get_ai_summary_for_examination(self, pasien_id, tanggal_pemeriksaan):
-        """Mendapatkan ringkasan AI yang dipilih dokter untuk pemeriksaan tertentu"""
-        try:
-            client = get_mongo_client()
-            db = client['GaitDB']
-            collection = db['ai_summaries']
-            
-            # Cari ringkasan AI berdasarkan pasien_id dan tanggal pemeriksaan
-            # is_best_selected = True berarti ini hasil yang dipilih dokter
-            ai_summary = collection.find_one({
-                'pasien_id': pasien_id,
-                'tanggal_pemeriksaan': tanggal_pemeriksaan.strftime("%Y-%m-%d"),
-                'is_best_selected': True
-            })
-            
-            return ai_summary
-
-    def _show_ai_summary_tab(self, ai_summary, selected_date):
-        """Menampilkan tab hasil pemeriksaan AI"""
-        st.subheader(f"Hasil Analisis AI - {selected_date.strftime('%d %B %Y')}")
-        
-        # Tampilkan informasi dokter yang memeriksa
-        dokter_nama = ai_summary.get('terapis_nama', 'Dokter')
-        st.caption(f"Diproses oleh: Dr. {dokter_nama}")
-        
-        # Tampilkan prompt type dan variant
-        prompt_type = ai_summary.get('prompt_type', 'A')
-        variant = ai_summary.get('variant', '1')
-        st.caption(f"Jenis Analisis: Prompt {prompt_type} - Varian {variant}")
-        
-        st.markdown("---")
-        
-        # Tampilkan ringkasan AI
-        content = ai_summary.get('content', '')
-        if content:
-            st.markdown("### 📋 Hasil Analisis")
-            st.markdown(content)
-        else:
-            st.warning("Konten ringkasan tidak tersedia.")
-        
-        st.markdown("---")
-        
-        # Tampilkan data MAE jika ada (opsional, bisa di-expand)
-        mae_overall = ai_summary.get('mae_overall', {})
-        mae_phases = ai_summary.get('mae_phases', [])
-        
-        if mae_overall or mae_phases:
-            with st.expander("📊 Lihat Data MAE (Mean Absolute Error)"):
-                # Tabel MAE Keseluruhan
-                if mae_overall:
-                    st.markdown("#### MAE Keseluruhan")
-                    mae_overall_data = []
-                    
-                    # Pelvis
-                    pelvis_left = mae_overall.get('pelvis_left', 0)
-                    pelvis_right = mae_overall.get('pelvis_right', 0)
-                    pelvis_avg = mae_overall.get('pelvis_avg', (pelvis_left + pelvis_right) / 2)
-                    mae_overall_data.append({
-                        'Joint': 'Pelvis',
-                        'Kiri (°)': f"{pelvis_left:.2f}",
-                        'Kanan (°)': f"{pelvis_right:.2f}",
-                        'Rata-rata (°)': f"{pelvis_avg:.2f}"
-                    })
-                    
-                    # Knee
-                    knee_left = mae_overall.get('knee_left', 0)
-                    knee_right = mae_overall.get('knee_right', 0)
-                    knee_avg = mae_overall.get('knee_avg', (knee_left + knee_right) / 2)
-                    mae_overall_data.append({
-                        'Joint': 'Knee',
-                        'Kiri (°)': f"{knee_left:.2f}",
-                        'Kanan (°)': f"{knee_right:.2f}",
-                        'Rata-rata (°)': f"{knee_avg:.2f}"
-                    })
-                    
-                    # Hip
-                    hip_left = mae_overall.get('hip_left', 0)
-                    hip_right = mae_overall.get('hip_right', 0)
-                    hip_avg = mae_overall.get('hip_avg', (hip_left + hip_right) / 2)
-                    mae_overall_data.append({
-                        'Joint': 'Hip',
-                        'Kiri (°)': f"{hip_left:.2f}",
-                        'Kanan (°)': f"{hip_right:.2f}",
-                        'Rata-rata (°)': f"{hip_avg:.2f}"
-                    })
-                    
-                    # Ankle
-                    ankle_left = mae_overall.get('ankle_left', 0)
-                    ankle_right = mae_overall.get('ankle_right', 0)
-                    ankle_avg = mae_overall.get('ankle_avg', (ankle_left + ankle_right) / 2)
-                    mae_overall_data.append({
-                        'Joint': 'Ankle',
-                        'Kiri (°)': f"{ankle_left:.2f}",
-                        'Kanan (°)': f"{ankle_right:.2f}",
-                        'Rata-rata (°)': f"{ankle_avg:.2f}"
-                    })
-                    
-                    st.dataframe(pd.DataFrame(mae_overall_data), use_container_width=True, hide_index=True)
-                
-                # Tabel MAE per Fase
-                if mae_phases:
-                    st.markdown("#### MAE per Fase Gait")
-                    phases_order = [
-                        'Initial Contact (0-2%)',
-                        'Loading Response (2-10%)',
-                        'Mid-Stance (10-30%)',
-                        'Terminal Stance (30-50%)',
-                        'Pre-Swing (50-60%)',
-                        'Initial Swing (60-73%)',
-                        'Mid-Swing (73-87%)',
-                        'Terminal Swing (87-100%)'
-                    ]
-                    
-                    mae_phases_data = []
-                    for phase_data in mae_phases:
-                        phase = phase_data.get('phase', '')
-                        if phase:
-                            row = {
-                                'Fase Gait': phase,
-                                'Pelvis Kiri (°)': f"{phase_data.get('pelvis_left', 0):.2f}",
-                                'Pelvis Kanan (°)': f"{phase_data.get('pelvis_right', 0):.2f}",
-                                'Knee Kiri (°)': f"{phase_data.get('knee_left', 0):.2f}",
-                                'Knee Kanan (°)': f"{phase_data.get('knee_right', 0):.2f}",
-                                'Hip Kiri (°)': f"{phase_data.get('hip_left', 0):.2f}",
-                                'Hip Kanan (°)': f"{phase_data.get('hip_right', 0):.2f}",
-                                'Ankle Kiri (°)': f"{phase_data.get('ankle_left', 0):.2f}",
-                                'Ankle Kanan (°)': f"{phase_data.get('ankle_right', 0):.2f}"
-                            }
-                            mae_phases_data.append(row)
-                    
-                    if mae_phases_data:
-                        st.dataframe(pd.DataFrame(mae_phases_data), use_container_width=True, hide_index=True)
-        
-        # Footer
-        st.caption(f"Tanggal analisis: {ai_summary.get('timestamp', datetime.now()).strftime('%d %B %Y %H:%M') if ai_summary.get('timestamp') else 'Tidak tersedia'}")
+            if ai_summary:
+                self._show_ai_summary_tab(ai_summary, selected_date)
+            else:
+                st.info("📝 Belum ada hasil pemeriksaan AI dari dokter untuk tanggal ini.")
+                st.caption("Silakan tunggu dokter memberikan analisis hasil pemeriksaan Anda.")
         
     def _dashboard_page(self):
         user_id = st.session_state.get("pasien_user_id")
+        
+        # Load pasien_list dari database
+        try:
+            client = get_mongo_client()
+            db = client['GaitDB']
+            collection = db['users']
+            
+            # Ambil semua data pasien
+            pasien_data = list(collection.find({'role': 'pasien'}))
+
+            st.session_state["pasien_list"] = []
+            
+            # Update session state dengan data dari database
+            for pasien in pasien_data:
+                st.session_state["pasien_list"].append({
+                    "User ID": pasien.get('user_id'),
+                    "Nama Lengkap": pasien.get('nama_lengkap', ''),
+                    "Tanggal Lahir": pasien.get('tanggal_lahir', ''),
+                    "Jenis Kelamin": pasien.get('jenis_kelamin', ''),
+                    "Role": pasien.get('role', ''),
+                    "Tanggal Dibuat": pasien.get('tanggal_dibuat', '')
+                })
+                    
+        except Exception as e:
+            st.error(f"Error loading patient data: {e}")
         
         # Gunakan pencarian berdasarkan User ID
         profil = None
@@ -627,7 +622,6 @@ class PasienPage:
         )
         
         # Dapatkan data pemeriksaan untuk tanggal yang dipilih
-        # PERBAIKAN: gunakan user_id, bukan nik
         pemeriksaan = self._get_pemeriksaan_data(user_id, selected_date)
         
         if not pemeriksaan:
@@ -640,8 +634,10 @@ class PasienPage:
             st.error("❌ Data normal belum tersedia. Silakan hubungi administrator.")
             return
         
+        # Dapatkan ringkasan AI untuk pemeriksaan ini
+        ai_summary = self._get_ai_summary_for_examination(user_id, selected_date)
+        
         # Tampilkan informasi pemeriksaan
-        patient_info = pemeriksaan.get('patient_info', {})
         st.markdown(f"### Hasil Pemeriksaan - {selected_date.strftime('%d %B %Y')}")
         
         # Proses data untuk visualisasi
@@ -651,11 +647,36 @@ class PasienPage:
                 pemeriksaan.get('gait_data', {}).get('Norm Kinematics', {})
             )
             
-            # Tampilkan visualisasi
-            self._show_dashboard_visualization(kinematic_data)
+            # Tampilkan visualisasi dengan tab AI
+            self._show_dashboard_visualization(kinematic_data, ai_summary, selected_date)
 
     def _profile_page(self):
         user_id = st.session_state.get("pasien_user_id")
+        
+        # Load pasien_list dari database
+        try:
+            client = get_mongo_client()
+            db = client['GaitDB']
+            collection = db['users']
+            
+            # Ambil semua data pasien
+            pasien_data = list(collection.find({'role': 'pasien'}))
+
+            st.session_state["pasien_list"] = []
+            
+            # Update session state dengan data dari database
+            for pasien in pasien_data:
+                st.session_state["pasien_list"].append({
+                    "User ID": pasien.get('user_id'),
+                    "Nama Lengkap": pasien.get('nama_lengkap', ''),
+                    "Tanggal Lahir": pasien.get('tanggal_lahir', ''),
+                    "Jenis Kelamin": pasien.get('jenis_kelamin', ''),
+                    "Role": pasien.get('role', ''),
+                    "Tanggal Dibuat": pasien.get('tanggal_dibuat', '')
+                })
+                    
+        except Exception as e:
+            st.error(f"Error loading patient data: {e}")
         
         # Gunakan pencarian berdasarkan User ID
         profil = None
@@ -667,7 +688,6 @@ class PasienPage:
         st.markdown("<h1 style='text-align: center; color: #560000;'>Profil Pasien</h1>", unsafe_allow_html=True)
         
         if profil:
-            # st.markdown("<div class='account-card'>", unsafe_allow_html=True)
             st.subheader("Data Profil")
             
             col1, col2 = st.columns(2)
@@ -681,7 +701,6 @@ class PasienPage:
                 st.markdown(f"**Jenis Kelamin:** {profil['Jenis Kelamin']}")
                 st.markdown(f"**Role:** {profil['Role']}")
                 st.markdown(f"**Tanggal Pendaftaran:** {profil['Tanggal Dibuat']}")
-            # st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.warning("Data profil tidak ditemukan")
 
@@ -695,14 +714,11 @@ class PasienPage:
             # Kalau belum login, tampilkan form login
             user_id, password, submit = login_form_pasien()
             if submit:
-                # # Debug: lihat apa yang dimasukkan
-                # st.write(f"Debug - Input user_id: '{user_id}'")
-                # st.write(f"Debug - session_state pasien_auth keys: {list(st.session_state['pasien_auth'].keys())}")
                 auth_result = self._authenticate_pasien(user_id, password)
                
                 if auth_result:
                     st.session_state.pasien_logged_in = True
-                    st.session_state.pasien_user_id = auth_result['user_id']  # Simpan sebagai user_id
+                    st.session_state.pasien_user_id = auth_result['user_id']
                     st.session_state.pasien_nama = auth_result['nama_lengkap']
                     st.session_state.pasien_menu = "Dashboard"
                     st.success("Login berhasil!")
