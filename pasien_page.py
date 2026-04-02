@@ -383,7 +383,7 @@ class PasienPage:
                                        kinematic_data['patient_data'].get('r_ankle'))
 
         # Tampilkan dalam tabs
-        tab1, tab2, tab3, tab4 = st.tabs(["PELVIS", "KNEE", "HIP", "ANKLE"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["PELVIS", "KNEE", "HIP", "ANKLE", "HASIL PEMERIKSAAN AI"])
 
         with tab1:
             st.subheader("PELVIS")
@@ -456,87 +456,10 @@ class PasienPage:
             with col2:
                 st.plotly_chart(fig8, use_container_width=True)
                 if kinematic_data['patient_data'].get('r_ankle'):
-                    st.write(f"**Perbedaan rata-rata sudut pergelangan kaki kanan (Anda vs Normal): {maerankle:.2f}°**") 
-                    
-    def _dashboard_page(self):
-        user_id = st.session_state.get("pasien_user_id")
-        
-        # Gunakan pencarian berdasarkan User ID
-        profil = None
-        for p in st.session_state["pasien_list"]:
-            if p["User ID"] == user_id:
-                profil = p
-                break
+                    st.write(f"**Perbedaan rata-rata sudut pergelangan kaki kanan (Anda vs Normal): {maerankle:.2f}°**")
 
-        if profil:
-            st.session_state.pasien_nama = profil["Nama Lengkap"]
-         
-        st.markdown("<h1 style='text-align: center; color: #560000;'>Dashboard Pemeriksaan GAIT</h1>", unsafe_allow_html=True)
-        
-        # Dapatkan semua tanggal pemeriksaan untuk pasien ini
-        available_dates = self._get_all_pemeriksaan_dates(user_id)
-        
-        if not available_dates:
-            st.warning("Silahkan periksa dulu ke dokter agar dashboard pemeriksaan GAIT anda muncul")
-            return
-        
-        # Pilih tanggal pemeriksaan
-        selected_date = st.selectbox(
-            "Pilih Tanggal Pemeriksaan",
-            options=available_dates,
-            format_func=lambda x: x.strftime("%d %B %Y")
-        )
-        
-        # Dapatkan data pemeriksaan untuk tanggal yang dipilih
-        # PERBAIKAN: gunakan user_id, bukan nik
-        pemeriksaan = self._get_pemeriksaan_data(user_id, selected_date)
-        
-        if not pemeriksaan:
-            st.warning(f"Tidak ada data pemeriksaan untuk tanggal {selected_date.strftime('%d %B %Y')}")
-            return
-        
-        # Dapatkan data normal
-        normal_data = self._get_normal_data()
-        if normal_data is None:
-            st.error("Data normal belum tersedia. Silakan hubungi administrator.")
-            return
-
-        # Dapatkan ringkasan AI untuk pemeriksaan ini
-        ai_summary = self._get_ai_summary_for_examination(user_id, selected_date)
-        
-        # Tampilkan informasi pemeriksaan
-        # patient_info = pemeriksaan.get('patient_info', {})
-        st.markdown(f"### Hasil Pemeriksaan - {selected_date.strftime('%d %B %Y')}")
-
-         # Buat tabs untuk visualisasi dan hasil AI
-        tab1, tab2 = st.tabs(["Visualisasi Gait", "Hasil Pemeriksaan AI"])
-        with tab1:
-            # Proses data untuk visualisasi
-            with st.spinner("Memuat visualisasi data..."):
-                kinematic_data = self._process_kinematic_data(
-                    normal_data, 
-                    pemeriksaan.get('gait_data', {}).get('Norm Kinematics', {})
-                )
-                
-                # Tampilkan visualisasi
-                self._show_dashboard_visualization(kinematic_data)
-        
-        with tab2:
-            if ai_summary:
-                self._show_ai_summary_tab(ai_summary, selected_date)
-            else:
-                st.info("Belum ada hasil pemeriksaan AI dari dokter untuk tanggal ini.")
-                st.caption("Silakan tunggu dokter memberikan analisis hasil pemeriksaan Anda.")
-        
-        # # Proses data untuk visualisasi
-        # with st.spinner("Memuat visualisasi data..."):
-        #     kinematic_data = self._process_kinematic_data(
-        #         normal_data, 
-        #         pemeriksaan.get('gait_data', {}).get('Norm Kinematics', {})
-        #     )
-            
-        #     # Tampilkan visualisasi
-        #     self._show_dashboard_visualization(kinematic_data)
+        with tab5:
+            self.show_ai_summary_tab_with_phases()
 
     def _get_ai_summary_for_examination(self, pasien_id, tanggal_pemeriksaan):
         """Mendapatkan ringkasan AI yang dipilih dokter untuk pemeriksaan tertentu"""
@@ -554,11 +477,7 @@ class PasienPage:
             })
             
             return ai_summary
-            
-        except Exception as e:
-            st.error(f"Error mengambil ringkasan AI: {e}")
-            return None
-            
+
     def _show_ai_summary_tab(self, ai_summary, selected_date):
         """Menampilkan tab hasil pemeriksaan AI"""
         st.subheader(f"Hasil Analisis AI - {selected_date.strftime('%d %B %Y')}")
@@ -677,7 +596,68 @@ class PasienPage:
         
         # Footer
         st.caption(f"Tanggal analisis: {ai_summary.get('timestamp', datetime.now()).strftime('%d %B %Y %H:%M') if ai_summary.get('timestamp') else 'Tidak tersedia'}")
+        
+    except Exception as e:
+        st.error(f"Error mengambil ringkasan AI: {e}")
+        return None
             
+    def _dashboard_page(self):
+        user_id = st.session_state.get("pasien_user_id")
+        
+        # Gunakan pencarian berdasarkan User ID
+        profil = None
+        for p in st.session_state["pasien_list"]:
+            if p["User ID"] == user_id:
+                profil = p
+                break
+
+        if profil:
+            st.session_state.pasien_nama = profil["Nama Lengkap"]
+         
+        st.markdown("<h1 style='text-align: center; color: #560000;'>Dashboard Pemeriksaan GAIT</h1>", unsafe_allow_html=True)
+        
+        # Dapatkan semua tanggal pemeriksaan untuk pasien ini
+        available_dates = self._get_all_pemeriksaan_dates(user_id)
+        
+        if not available_dates:
+            st.warning("🔍 Silahkan periksa dulu ke dokter agar dashboard pemeriksaan GAIT anda muncul")
+            return
+        
+        # Pilih tanggal pemeriksaan
+        selected_date = st.selectbox(
+            "Pilih Tanggal Pemeriksaan",
+            options=available_dates,
+            format_func=lambda x: x.strftime("%d %B %Y")
+        )
+        
+        # Dapatkan data pemeriksaan untuk tanggal yang dipilih
+        # PERBAIKAN: gunakan user_id, bukan nik
+        pemeriksaan = self._get_pemeriksaan_data(user_id, selected_date)
+        
+        if not pemeriksaan:
+            st.warning(f"❌ Tidak ada data pemeriksaan untuk tanggal {selected_date.strftime('%d %B %Y')}")
+            return
+        
+        # Dapatkan data normal
+        normal_data = self._get_normal_data()
+        if normal_data is None:
+            st.error("❌ Data normal belum tersedia. Silakan hubungi administrator.")
+            return
+        
+        # Tampilkan informasi pemeriksaan
+        patient_info = pemeriksaan.get('patient_info', {})
+        st.markdown(f"### Hasil Pemeriksaan - {selected_date.strftime('%d %B %Y')}")
+        
+        # Proses data untuk visualisasi
+        with st.spinner("Memuat visualisasi data..."):
+            kinematic_data = self._process_kinematic_data(
+                normal_data, 
+                pemeriksaan.get('gait_data', {}).get('Norm Kinematics', {})
+            )
+            
+            # Tampilkan visualisasi
+            self._show_dashboard_visualization(kinematic_data)
+
     def _profile_page(self):
         user_id = st.session_state.get("pasien_user_id")
         
