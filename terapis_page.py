@@ -1056,8 +1056,8 @@ class TerapisPage:
                 st.write(f"**Mean difference in right ankle angle (Patient vs Normal): {maerankle:.2f}°**")
 
         with tab5:
-            tab5.subheader("HASIL RINGKASAN AI")
-            tab5.write('Hasil Pemeriksaan ini akan diambil salah satu')
+            # tab5.subheader("HASIL RINGKASAN AI")
+            # tab5.write('Hasil Pemeriksaan ini akan diambil salah satu')
             # col1, col2 = tab5.columns(2)
             # with col1:
             #     st.write("Prompt A")
@@ -1406,8 +1406,8 @@ class TerapisPage:
     #     ]
         
     def show_ai_summary_tab_simple(self):
-        """Menampilkan tab Hasil Ringkasan AI sederhana berdasarkan MAE"""
-        st.subheader("📋 HASIL RINGKASAN AI")
+        """Menampilkan tab Hasil Ringkasan AI dengan tombol generate manual"""
+        st.subheader("HASIL RINGKASAN AI")
         
         # Cek apakah semua MAE sudah tersedia
         required_mae = [
@@ -1420,312 +1420,430 @@ class TerapisPage:
         missing_mae = [mae for mae in required_mae if mae not in st.session_state]
         
         if missing_mae:
-            st.warning("⚠️ Data MAE belum tersedia. Silakan tunggu proses perhitungan selesai.")
-            st.info("👉 Sistem sedang memproses data...")
+            st.warning("Data MAE belum tersedia. Silakan tunggu proses perhitungan selesai.")
+            st.info("Sistem sedang memproses data...")
             self.reset_ai_summary_session_state()
             return
-
+    
         # INISIALISASI: Pastikan current_patient_key ada di session state
         if 'current_patient_key' not in st.session_state:
             st.session_state.current_patient_key = f"patient_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
         current_patient_key = st.session_state.current_patient_key
         
+        # Ambil data upper bound dan lower bound dari filtered_df yang disimpan
+        if 'filtered_normal_df' not in st.session_state:
+            st.warning("Data normal tidak tersedia. Silakan upload data normal terlebih dahulu.")
+            return
+        
+        filtered_df = st.session_state.filtered_normal_df
+        
+        # Hitung upper bound dan lower bound untuk setiap joint
+        bounds_data = self.calculate_bounds_from_normal_data(filtered_df)
+        
         # Tampilkan tabel MAE
-        st.markdown("### 📊 Nilai MAE (Mean Absolute Error)")
+        st.markdown("### Nilai MAE (Mean Absolute Error)")
         
         mae_data = []
         joints = [
-            ('Pelvis', 'mae_pelvis_left', 'mae_pelvis_right'),
-            ('Knee', 'mae_knee_left', 'mae_knee_right'),
-            ('Hip', 'mae_hip_left', 'mae_hip_right'),
-            ('Ankle', 'mae_ankle_left', 'mae_ankle_right')
+            ('Pelvis', 'mae_pelvis_left', 'mae_pelvis_right', 'LPelvisAngles_X', 'RPelvisAngles_X'),
+            ('Knee', 'mae_knee_left', 'mae_knee_right', 'LKneeAngles_X', 'RKneeAngles_X'),
+            ('Hip', 'mae_hip_left', 'mae_hip_right', 'LHipAngles_X', 'RHipAngles_X'),
+            ('Ankle', 'mae_ankle_left', 'mae_ankle_right', 'LAnkleAngles_X', 'RAnkleAngles_X')
         ]
         
-        for joint_name, left_key, right_key in joints:
+        for joint_name, left_key, right_key, left_data_key, right_data_key in joints:
             left_mae = st.session_state[left_key]
             right_mae = st.session_state[right_key]
             avg_mae = (left_mae + right_mae) / 2
+            
+            # Ambil bounds untuk ditampilkan di tabel
+            left_bounds = bounds_data.get(left_data_key, {'upper': 0, 'lower': 0})
+            right_bounds = bounds_data.get(right_data_key, {'upper': 0, 'lower': 0})
             
             mae_data.append({
                 'Joint': joint_name,
                 'Kiri (°)': f"{left_mae:.2f}",
                 'Kanan (°)': f"{right_mae:.2f}",
-                'Rata-rata (°)': f"{avg_mae:.2f}"
+                'Rata-rata (°)': f"{avg_mae:.2f}",
+                'Upper Bound Kiri': f"{left_bounds['upper']:.2f}°",
+                'Lower Bound Kiri': f"{left_bounds['lower']:.2f}°",
+                'Upper Bound Kanan': f"{right_bounds['upper']:.2f}°",
+                'Lower Bound Kanan': f"{right_bounds['lower']:.2f}°"
             })
         
         mae_df = pd.DataFrame(mae_data)
         st.dataframe(mae_df, use_container_width=True, hide_index=True)
         
-        patient_saved_key = f'saved_summary_content_{current_patient_key}'
-
+        # ===== TOMBOL GENERATE AI =====
+        st.markdown("---")
+        
         # Cek apakah sudah ada hasil yang disimpan
+        patient_saved_key = f'saved_summary_content_{current_patient_key}'
+        patient_ai_generated_key = f'ai_summaries_generated_{current_patient_key}'
+        
+        # Jika sudah ada hasil yang disimpan, tampilkan dan beri opsi generate ulang
         if patient_saved_key in st.session_state and st.session_state[patient_saved_key]:
-            st.markdown("---")
             st.markdown("### Hasil Terbaik yang Telah Disimpan")
             st.info(st.session_state[patient_saved_key])
             st.markdown("---")
+            
+            # Tombol untuk generate ulang
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("🔄 Generate Ringkasan Baru", use_container_width=True, type="secondary"):
+                    # Hapus semua data AI untuk pasien ini
+                    if patient_saved_key in st.session_state:
+                        del st.session_state[patient_saved_key]
+                    if patient_ai_generated_key in st.session_state:
+                        del st.session_state[patient_ai_generated_key]
+                    if f'summaries_a_{current_patient_key}' in st.session_state:
+                        del st.session_state[f'summaries_a_{current_patient_key}']
+                    if f'summaries_b_{current_patient_key}' in st.session_state:
+                        del st.session_state[f'summaries_b_{current_patient_key}']
+                    if f'selected_summary_label_{current_patient_key}' in st.session_state:
+                        del st.session_state[f'selected_summary_label_{current_patient_key}']
+                    if f'selected_summary_content_{current_patient_key}' in st.session_state:
+                        del st.session_state[f'selected_summary_content_{current_patient_key}']
+                    st.rerun()
             return  # Hentikan eksekusi, hanya tampilkan hasil yang disimpan
         
-        # Generate AI summaries
-        if gemini_model is None:
-            st.warning("⚠️ Fitur AI tidak tersedia karena API key Gemini tidak dikonfigurasi.")
-            return
-        
-        # Hitung overall MAE
-        all_mae_values = []
-        for _, left_key, right_key in joints:
-            all_mae_values.append(st.session_state[left_key])
-            all_mae_values.append(st.session_state[right_key])
-        
-        overall_mae = np.mean(all_mae_values)
-        
-        # Siapkan data untuk AI
-        mae_summary = ""
-        for joint_name, left_key, right_key in joints:
-            left_val = st.session_state[left_key]
-            right_val = st.session_state[right_key]
-            mae_summary += f"- {joint_name}: Kiri={left_val:.2f}°, Kanan={right_val:.2f}°\n"
-        
-        # PROMPT A: Analisis Klinis
-        prompt_a = f"""
-        Anda adalah seorang fisioterapis klinis dan ahli biomekanika yang berpengalaman dalam analisis gait. 
-        Anda memahami konsep gait cycle, joint kinematics, serta evaluasi parameter gait berdasarkan rentang 
-        nilai normal (upper bound dan lower bound) dan nilai Mean Absolute Error (MAE).         
-        
-        DATA MAE:
-        {mae_summary}
-        Rata-rata Keseluruhan: {overall_mae:.2f}°
-        
-        INSTRUKSI:
-        Lakukan analisis secara objektif, profesional, dan berbasis data yang diberikan.
-        a. Evaluasi apakah parameter gait pasien berada di dalam atau di luar rentang nilai gait normal berdasarkan upper bound dan lower bound.
-        b. Interpretasikan nilai MAE sebagai ukuran rata-rata deviasi parameter gait pasien terhadap nilai gait normal.
-        
-        Gunakan bahasa medis yang jelas, sistematis, dan mudah dipahami oleh tenaga kesehatan.
-        Analisis bersifat deskriptif dan tidak mencakup penetapan diagnosis medis.
-        Hindari spekulasi atau asumsi di luar data yang tersedia. 
-
-        Buat 3 varian ringkasan berdasarkan data diatas:
-        VARIAN 1:
-        VARIAN 2:
-        VARIAN 3:
-
-        Pisahkan setiap varian dengan "=== VARIAN X ==="
-        """
-        
-        # PROMPT B:
-        prompt_b = f"""
-        Buat laporan hasil gait analysis berdasarkan data berikut:
-        
-        DATA MAE:
-        {mae_summary}
-        Rata-rata Keseluruhan MAE: {overall_mae:.2f}°
-        
-        INSTRUKSI:
-        Struktur laporan hasil mengikuti format berikut:
-        a. HASIL PEMERIKSAAN
-        - Evaluasi apakah parameter gait pasien berada di dalam atau di luar rentang nilai gait normal berdasarkan upper bound dan lower bound.
-        - Sajikan nilai Mean Absolute Error (MAE) dalam bentuk poin untuk setiap sendi utama.
-        - Soroti nilai MAE tertinggi dan terendah dari setiap sendi.
-        b. INTERPRETASI KLINIS
-        - Jelaskan makna klinis dari posisi parameter gait terhadap rentang nilai normal.
-        - Interpretasikan nilai MAE sebagai tingkat deviasi rata-rata terhadap gait normal.
-        - Bandingkan hasil antara sisi kanan dan kiri berdasarkan data yang tersedia.
-        c. REKOMENDASI
-        - Saran klinis atau intervensi umum berdasarkan temuan
-        - Target perbaikan gait yang diharapkan        
-        
-        Berikan 3 varian laporan berdasarkan data diatas:
-        
-        VARIAN 1:
-        VARIAN 2: 
-        VARIAN 3:
-        
-        Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
-        Pisahkan setiap varian dengan "=== VARIAN X ==="
-        """
-
-        # Generate summaries hanya sekali UNTUK PASIEN INI
-        patient_ai_key = f'ai_summaries_generated_{current_patient_key}'
-        
-        if patient_ai_key not in st.session_state:
-            # Generate summaries
-            summaries_a = []
-            summaries_b = []
+        # Jika belum ada hasil AI yang digenerate, tampilkan tombol generate
+        if patient_ai_generated_key not in st.session_state:
+            st.markdown("### Generate Ringkasan AI")
+            st.info("Klik tombol di bawah untuk menghasilkan ringkasan AI berdasarkan data MAE dan batas normal (Upper/Lower Bound) yang telah dihitung.")
             
-            try:
-                # Generate Prompt A
-                with st.spinner("🧠 Membuat ringkasan Prompt A..."):
-                    response_a = gemini_model.generate_content(prompt_a)
-                    if response_a.text:
-                        summaries_a = self.parse_ai_response_dropdown(response_a.text, "A")
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                generate_button = st.button("Generate Ringkasan AI", use_container_width=True, type="primary")
+            
+            if not generate_button:
+                st.stop()  # Hentikan eksekusi sampai tombol ditekan
+            
+            # Jika tombol ditekan, generate summaries
+            if generate_button:
+                if gemini_model is None:
+                    st.error("Fitur AI tidak tersedia karena API key Gemini tidak dikonfigurasi.")
+                    return
                 
-                # Generate Prompt B
-                with st.spinner("🧠 Membuat ringkasan Prompt B..."):
-                    response_b = gemini_model.generate_content(prompt_b)
-                    if response_b.text:
-                        summaries_b = self.parse_ai_response_dropdown(response_b.text, "B")
-                        
-            except Exception as e:
-                st.error(f"Error generating AI summaries: {e}")
-                summaries_a = [
-                    {"label": "Prompt A - Varian 1", "value": "Error: Tidak dapat menghasilkan ringkasan"},
-                    {"label": "Prompt A - Varian 2", "value": "Error: Tidak dapat menghasilkan ringkasan"},
-                    {"label": "Prompt A - Varian 3", "value": "Error: Tidak dapat menghasilkan ringkasan"}
-                ]
-                summaries_b = [
-                    {"label": "Prompt B - Varian 1", "value": "Error: Tidak dapat menghasilkan ringkasan"},
-                    {"label": "Prompt B - Varian 2", "value": "Error: Tidak dapat menghasilkan ringkasan"},
-                    {"label": "Prompt B - Varian 3", "value": "Error: Tidak dapat menghasilkan ringkasan"}
-                ]
-            
-            # Simpan ke session state DENGAN KUNCI PASIEN
-            st.session_state[f'summaries_a_{current_patient_key}'] = summaries_a
-            st.session_state[f'summaries_b_{current_patient_key}'] = summaries_b
-            st.session_state[patient_ai_key] = True
-            
-            # Inisialisasi selected summary untuk pasien ini
-            if f'selected_summary_label_{current_patient_key}' not in st.session_state:
-                if summaries_a:
-                    st.session_state[f'selected_summary_label_{current_patient_key}'] = summaries_a[0]['label']
-                    st.session_state[f'selected_summary_content_{current_patient_key}'] = summaries_a[0]['value']
-                elif summaries_b:
-                    st.session_state[f'selected_summary_label_{current_patient_key}'] = summaries_b[0]['label']
-                    st.session_state[f'selected_summary_content_{current_patient_key}'] = summaries_b[0]['value']
-                else:
-                    st.session_state[f'selected_summary_label_{current_patient_key}'] = None
-                    st.session_state[f'selected_summary_content_{current_patient_key}'] = None
+                # Hitung overall MAE
+                all_mae_values = []
+                for _, left_key, right_key, _, _ in joints:
+                    all_mae_values.append(st.session_state[left_key])
+                    all_mae_values.append(st.session_state[right_key])
+                
+                overall_mae = np.mean(all_mae_values)
+                
+                # Siapkan data untuk AI dengan Upper dan Lower Bound
+                mae_summary = ""
+                for joint_name, left_key, right_key, left_data_key, right_data_key in joints:
+                    left_val = st.session_state[left_key]
+                    right_val = st.session_state[right_key]
+                    
+                    # Ambil bounds untuk joint ini
+                    left_bounds = bounds_data.get(left_data_key, {'upper': 0, 'lower': 0})
+                    right_bounds = bounds_data.get(right_data_key, {'upper': 0, 'lower': 0})
+                    
+                    mae_summary += f"""- {joint_name}: Kiri={left_val:.2f}°, Kanan={right_val:.2f}°
+       * Batas Normal (Upper Bound - Lower Bound):
+         - Kiri: Upper={left_bounds['upper']:.2f}°, Lower={left_bounds['lower']:.2f}°
+         - Kanan: Upper={right_bounds['upper']:.2f}°, Lower={right_bounds['lower']:.2f}°
+    """
+                
+                # PROMPT A (TIDAK DIUBAH)
+                prompt_a = f"""
+                Anda adalah seorang fisioterapis klinis dan ahli biomekanika yang berpengalaman dalam analisis gait. 
+                Anda memahami konsep gait cycle, joint kinematics, serta evaluasi parameter gait berdasarkan rentang 
+                nilai normal (upper bound dan lower bound) dan nilai Mean Absolute Error (MAE).         
+                
+                DATA MAE:
+                {mae_summary}
+                Rata-rata Keseluruhan: {overall_mae:.2f}°
+                
+                INSTRUKSI:
+                Lakukan analisis secara objektif, profesional, dan berbasis data yang diberikan.
+                a. Evaluasi apakah parameter gait pasien berada di dalam atau di luar rentang nilai gait normal berdasarkan upper bound dan lower bound.
+                b. Interpretasikan nilai MAE sebagai ukuran rata-rata deviasi parameter gait pasien terhadap nilai gait normal.
+                
+                Gunakan bahasa medis yang jelas, sistematis, dan mudah dipahami oleh tenaga kesehatan.
+                Analisis bersifat deskriptif dan tidak mencakup penetapan diagnosis medis.
+                Hindari spekulasi atau asumsi di luar data yang tersedia. 
+    
+                Buat 3 varian ringkasan berdasarkan data diatas:
+                VARIAN 1:
+                VARIAN 2:
+                VARIAN 3:
+    
+                Pisahkan setiap varian dengan "=== VARIAN X ==="
+                """
+                
+                # PROMPT B (TIDAK DIUBAH)
+                prompt_b = f"""
+                Buat laporan hasil gait analysis berdasarkan data berikut:
+                
+                DATA MAE:
+                {mae_summary}
+                Rata-rata Keseluruhan MAE: {overall_mae:.2f}°
+                
+                INSTRUKSI:
+                Struktur laporan hasil mengikuti format berikut:
+                a. HASIL PEMERIKSAAN
+                - Evaluasi apakah parameter gait pasien berada di dalam atau di luar rentang nilai gait normal berdasarkan upper bound dan lower bound.
+                - Sajikan nilai Mean Absolute Error (MAE) dalam bentuk poin untuk setiap sendi utama.
+                - Soroti nilai MAE tertinggi dan terendah dari setiap sendi.
+                b. INTERPRETASI KLINIS
+                - Jelaskan makna klinis dari posisi parameter gait terhadap rentang nilai normal.
+                - Interpretasikan nilai MAE sebagai tingkat deviasi rata-rata terhadap gait normal.
+                - Bandingkan hasil antara sisi kanan dan kiri berdasarkan data yang tersedia.
+                c. REKOMENDASI
+                - Saran klinis atau intervensi umum berdasarkan temuan
+                - Target perbaikan gait yang diharapkan        
+                
+                Berikan 3 varian laporan berdasarkan data diatas:
+                
+                VARIAN 1:
+                VARIAN 2: 
+                VARIAN 3:
+                
+                Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
+                Pisahkan setiap varian dengan "=== VARIAN X ==="
+                """
+                
+                # Generate summaries
+                summaries_a = []
+                summaries_b = []
+                
+                try:
+                    with st.spinner("Membuat ringkasan Prompt A..."):
+                        response_a = gemini_model.generate_content(prompt_a)
+                        if response_a.text:
+                            summaries_a = self.parse_ai_response_dropdown(response_a.text, "A")
+                        else:
+                            summaries_a = self.create_default_summaries("A")
+                    
+                    with st.spinner("Membuat ringkasan Prompt B..."):
+                        response_b = gemini_model.generate_content(prompt_b)
+                        if response_b.text:
+                            summaries_b = self.parse_ai_response_dropdown(response_b.text, "B")
+                        else:
+                            summaries_b = self.create_default_summaries("B")
+                            
+                except Exception as e:
+                    st.error(f"Error generating AI summaries: {e}")
+                    summaries_a = self.create_default_summaries("A")
+                    summaries_b = self.create_default_summaries("B")
+                
+                # Simpan ke session state
+                st.session_state[f'summaries_a_{current_patient_key}'] = summaries_a
+                st.session_state[f'summaries_b_{current_patient_key}'] = summaries_b
+                st.session_state[patient_ai_generated_key] = True
+                
+                # Inisialisasi selected summary
+                if f'selected_summary_label_{current_patient_key}' not in st.session_state:
+                    if summaries_a:
+                        st.session_state[f'selected_summary_label_{current_patient_key}'] = summaries_a[0]['label']
+                        st.session_state[f'selected_summary_content_{current_patient_key}'] = summaries_a[0]['value']
+                    elif summaries_b:
+                        st.session_state[f'selected_summary_label_{current_patient_key}'] = summaries_b[0]['label']
+                        st.session_state[f'selected_summary_content_{current_patient_key}'] = summaries_b[0]['value']
+                    else:
+                        st.session_state[f'selected_summary_label_{current_patient_key}'] = None
+                        st.session_state[f'selected_summary_content_{current_patient_key}'] = None
+                
+                st.rerun()
+        
+        # Jika sudah digenerate, tampilkan hasilnya
         else:
-            # Gunakan dari session state untuk pasien ini
+            # Ambil summaries dari session state
             summaries_a = st.session_state.get(f'summaries_a_{current_patient_key}', [])
             summaries_b = st.session_state.get(f'summaries_b_{current_patient_key}', [])
-        
-        # Tampilkan dalam 2 kolom dengan varian dalam kotak terpisah
-        st.markdown("---")
-        st.markdown("## Hasil Prompt")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("### Hasil Prompt A")
             
-            if summaries_a:
-                # Tampilkan setiap varian dalam kotak terpisah
-                for i, summary in enumerate(summaries_a, 1):
-                    with st.container():
-                        st.markdown(f"#### Varian {i}")
-                        st.markdown(summary['value'])
-                        if i < 3:  # Hanya tambah garis pemisah antar varian
-                            st.markdown("---")
-            else:
-                st.info("Tidak ada ringkasan yang dihasilkan")
-        
-        with col2:
-            st.markdown("### Hasil Prompt B")
+            # Tampilkan dalam 2 kolom
+            st.markdown("---")
+            st.markdown("## Hasil Prompt")
             
-            if summaries_b:
-                # Tampilkan setiap varian dalam kotak terpisah
-                for i, summary in enumerate(summaries_b, 1):
-                    with st.container():
-                        st.markdown(f"#### Varian {i}")
-                        st.markdown(summary['value'])
-                        if i < 3:  # Hanya tambah garis pemisah antar varian
-                            st.markdown("---")
-            else:
-                st.info("Tidak ada ringkasan yang dihasilkan")
-        
-        # Dropdown untuk memilih hasil terbaik di tengah bawah
-        st.markdown("---")
-        
-        # Buat daftar opsi untuk dropdown
-        all_summaries = summaries_a + summaries_b
-        dropdown_options = [summary["label"] for summary in all_summaries]
-        
-        # Container untuk dropdown di tengah
-        with st.container():
-            # Buat 3 kolom untuk menempatkan dropdown di tengah
-            col_left, col_center, col_right = st.columns([1, 2, 1])
+            col1, col2 = st.columns(2)
             
-            with col_center:
-                st.markdown("### Pilih Hasil Terbaik")
+            with col1:
+                st.markdown("### Hasil Prompt A (Analisis Klinis)")
                 
-                # Gunakan callback untuk update session_state
-                def on_dropdown_change():
-                    # Ambil konten yang dipilih
-                    selected_label = st.session_state.best_summary_dropdown
-                    selected_content = next((s["value"] for s in all_summaries if s["label"] == selected_label), "")
+                if summaries_a:
+                    for i, summary in enumerate(summaries_a, 1):
+                        with st.container():
+                            st.markdown(f"#### Varian {i}")
+                            st.markdown(summary['value'])
+                            if i < len(summaries_a):
+                                st.markdown("---")
+                else:
+                    st.info("Tidak ada ringkasan yang dihasilkan")
+            
+            with col2:
+                st.markdown("### Hasil Prompt B (Laporan Hasil)")
+                
+                if summaries_b:
+                    for i, summary in enumerate(summaries_b, 1):
+                        with st.container():
+                            st.markdown(f"#### Varian {i}")
+                            st.markdown(summary['value'])
+                            if i < len(summaries_b):
+                                st.markdown("---")
+                else:
+                    st.info("Tidak ada ringkasan yang dihasilkan")
+            
+            # Dropdown untuk memilih hasil terbaik
+            st.markdown("---")
+            
+            all_summaries = summaries_a + summaries_b
+            dropdown_options = [summary["label"] for summary in all_summaries]
+            
+            with st.container():
+                col_left, col_center, col_right = st.columns([1, 2, 1])
+                
+                with col_center:
+                    st.markdown("### Pilih Hasil Terbaik")
                     
-                    # Update session state UNTUK PASIEN INI
-                    st.session_state[f'selected_summary_label_{current_patient_key}'] = selected_label
-                    st.session_state[f'selected_summary_content_{current_patient_key}'] = selected_content
-                
-                # Inisialisasi nilai dropdown untuk pasien ini
-                selected_label_key = f'selected_summary_label_{current_patient_key}'
-                current_index = 0
-                if selected_label_key in st.session_state and st.session_state[selected_label_key] in dropdown_options:
-                    current_index = dropdown_options.index(st.session_state[selected_label_key])
-                
-                selected_label = st.selectbox(
-                    "Pilih varian terbaik:",
-                    options=dropdown_options,
-                    index=current_index,
-                    label_visibility="collapsed",  # Sembunyikan label
-                    key="best_summary_dropdown",
-                    on_change=on_dropdown_change
-                )
-                
-                # Tampilkan konten yang dipilih untuk pasien ini
-                selected_content_key = f'selected_summary_content_{current_patient_key}'
-                if selected_content_key in st.session_state and st.session_state[selected_content_key]:
-                    st.markdown("**Konten yang dipilih:**")
-                    st.info(st.session_state[selected_content_key])
-                
-                # Tombol simpan
-                if st.button("💾 Simpan Hasil Terpilih", use_container_width=True, key="save_best_summary"):
-                    if selected_label_key in st.session_state and st.session_state[selected_label_key]:
-                        # Parse prompt type dan variant dari label
-                        parts = st.session_state[selected_label_key].split(" - ")
-                        if len(parts) == 2:
-                            prompt_type = parts[0].replace("Prompt ", "")
-                            variant = parts[1].replace("Varian ", "")
-                            
-                            selected_content = st.session_state[selected_content_key]
-                            
-                            if selected_content:
-                                # Simpan ke database
-                                success = self.save_selected_summary_simple(
-                                    prompt_type=prompt_type,
-                                    variant=variant,
-                                    content=selected_content,
-                                    mae_data=mae_df.to_dict('records')
-                                )
+                    def on_dropdown_change():
+                        selected_label = st.session_state.best_summary_dropdown
+                        selected_content = next((s["value"] for s in all_summaries if s["label"] == selected_label), "")
+                        st.session_state[f'selected_summary_label_{current_patient_key}'] = selected_label
+                        st.session_state[f'selected_summary_content_{current_patient_key}'] = selected_content
+                    
+                    selected_label_key = f'selected_summary_label_{current_patient_key}'
+                    current_index = 0
+                    if selected_label_key in st.session_state and st.session_state[selected_label_key] in dropdown_options:
+                        current_index = dropdown_options.index(st.session_state[selected_label_key])
+                    
+                    selected_label = st.selectbox(
+                        "Pilih varian terbaik:",
+                        options=dropdown_options,
+                        index=current_index,
+                        label_visibility="collapsed",
+                        key="best_summary_dropdown",
+                        on_change=on_dropdown_change
+                    )
+                    
+                    selected_content_key = f'selected_summary_content_{current_patient_key}'
+                    if selected_content_key in st.session_state and st.session_state[selected_content_key]:
+                        st.markdown("**📌 Konten yang dipilih:**")
+                        st.info(st.session_state[selected_content_key])
+                    
+                    # Tombol simpan
+                    if st.button("Simpan Hasil Terpilih", use_container_width=True, type="primary", key="save_selected"):
+                        if selected_label_key in st.session_state and st.session_state[selected_label_key]:
+                            parts = st.session_state[selected_label_key].split(" - ")
+                            if len(parts) == 2:
+                                prompt_type = parts[0].replace("Prompt ", "")
+                                variant = parts[1].replace("Varian ", "")
                                 
-                                if success:
-                                    # Simpan konten yang dipilih ke session state UNTUK PASIEN INI
-                                    st.session_state[patient_saved_key] = selected_content
+                                selected_content = st.session_state[selected_content_key]
+                                
+                                if selected_content:
+                                    # Siapkan mae_data dengan bounds untuk disimpan
+                                    mae_data_with_bounds = []
+                                    for joint_name, left_key, right_key, left_data_key, right_data_key in joints:
+                                        left_bounds = bounds_data.get(left_data_key, {'upper': 0, 'lower': 0})
+                                        right_bounds = bounds_data.get(right_data_key, {'upper': 0, 'lower': 0})
+                                        
+                                        mae_data_with_bounds.append({
+                                            'Joint': joint_name,
+                                            'Kiri (°)': st.session_state[left_key],
+                                            'Kanan (°)': st.session_state[right_key],
+                                            'Upper_Bound_Kiri': left_bounds['upper'],
+                                            'Lower_Bound_Kiri': left_bounds['lower'],
+                                            'Upper_Bound_Kanan': right_bounds['upper'],
+                                            'Lower_Bound_Kanan': right_bounds['lower']
+                                        })
                                     
-                                    # Clear flags untuk reset tampilan varian untuk pasien ini
-                                    if patient_ai_key in st.session_state:
-                                        del st.session_state[patient_ai_key]
-                                    if f'summaries_a_{current_patient_key}' in st.session_state:
-                                        del st.session_state[f'summaries_a_{current_patient_key}']
-                                    if f'summaries_b_{current_patient_key}' in st.session_state:
-                                        del st.session_state[f'summaries_b_{current_patient_key}']
+                                    success = self.save_selected_summary_with_bounds(
+                                        prompt_type=prompt_type,
+                                        variant=variant,
+                                        content=selected_content,
+                                        mae_data=mae_data_with_bounds,
+                                        bounds_data=bounds_data
+                                    )
                                     
-                                    # Tampilkan pesan sukses
-                                    st.success(f"Hasil terpilih ({st.session_state[selected_label_key]}) berhasil disimpan!")
-                                    
-                                    # Rerun untuk menampilkan hasil yang disimpan
-                                    st.rerun()
+                                    if success:
+                                        st.session_state[patient_saved_key] = selected_content
+                                        st.success(f"Hasil terpilih ({st.session_state[selected_label_key]}) berhasil disimpan!")
+                                        st.rerun()
+                                    else:
+                                        st.error("Gagal menyimpan ke database")
                                 else:
-                                    st.error("Gagal menyimpan ke database")
+                                    st.error("Tidak dapat menemukan konten yang dipilih")
                             else:
-                                st.error("Tidak dapat menemukan konten yang dipilih")
+                                st.error("Format label tidak valid")
                         else:
-                            st.error("Format label tidak valid")
-                    else:
-                        st.warning("Silakan pilih varian terlebih dahulu")
+                            st.warning("Silakan pilih varian terlebih dahulu")
+
+    def calculate_bounds_from_normal_data(self, filtered_df):
+        """Menghitung upper bound dan lower bound dari data normal"""
+        bounds = {}
+        
+        # Daftar joint yang akan dihitung bounds-nya
+        joints = {
+            'LPelvisAngles_X': [],
+            'RPelvisAngles_X': [],
+            'LHipAngles_X': [],
+            'RHipAngles_X': [],
+            'LKneeAngles_X': [],
+            'RKneeAngles_X': [],
+            'LAnkleAngles_X': [],
+            'RAnkleAngles_X': []
+        }
+        
+        for joint in joints.keys():
+            if joint in filtered_df.columns:
+                # Ambil semua nilai untuk joint ini (setiap baris adalah list of 101 values)
+                joint_values = pd.DataFrame(filtered_df[joint].tolist())
+                
+                # Hitung mean dan std untuk setiap %cycle
+                mean_values = joint_values.mean(axis=0).values
+                std_values = joint_values.std(axis=0).values
+                
+                # Upper bound = mean + 2*std (95% confidence interval)
+                # Lower bound = mean - 2*std
+                upper_bound = mean_values + (2 * std_values)
+                lower_bound = mean_values - (2 * std_values)
+                
+                bounds[joint] = {
+                    'upper': np.mean(upper_bound),  # Rata-rata upper bound sepanjang gait cycle
+                    'lower': np.mean(lower_bound),  # Rata-rata lower bound sepanjang gait cycle
+                    'upper_by_cycle': upper_bound.tolist(),
+                    'lower_by_cycle': lower_bound.tolist(),
+                    'mean_by_cycle': mean_values.tolist()
+                }
+        
+        return bounds
+                            
+    def save_selected_summary_with_bounds(self, prompt_type, variant, content, mae_data, bounds_data):
+    """Simpan ringkasan yang dipilih ke database dengan bounds data"""
+    try:
+        client = get_mongo_client()
+        db = client['GaitDB']
+        collection = db['ai_summaries']
+        
+        # Data yang akan disimpan
+        summary_data = {
+            'timestamp': datetime.now(),
+            'terapis_user_id': st.session_state.get('terapis_user_id'),
+            'terapis_nama': st.session_state.get('terapis_nama'),
+            'prompt_type': prompt_type,
+            'variant': variant,
+            'content': content,
+            'mae_data': mae_data,
+            'bounds_data': bounds_data,
+            'is_best_selected': True
+        }
+        
+        # Simpan ke database
+        result = collection.insert_one(summary_data)
+        
+        return True
+        
+    except Exception as e:
+        st.error(f"Error menyimpan ringkasan: {e}")
+        return False
+                        
     def reset_ai_summary_session_state(self):
         """Reset semua session state terkait AI summary untuk pasien baru"""
         # Reset semua kunci yang berkaitan dengan AI summary
