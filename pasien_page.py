@@ -105,13 +105,6 @@ class PasienPage:
                     "Tanggal Dibuat": pasien.get('tanggal_dibuat')
                 })
             
-            # Update profil pasien yang sedang login
-            if st.session_state.get("pasien_user_id"):
-                for p in st.session_state["pasien_list"]:
-                    if p["User ID"] == st.session_state.pasien_user_id:
-                        st.session_state.pasien_nama = p["Nama Lengkap"]
-                        break
-            
             st.success("Data berhasil direfresh!")
             st.rerun()
             
@@ -615,11 +608,8 @@ class PasienPage:
          
         st.markdown("<h1 style='text-align: center; color: #560000;'>Dashboard Pemeriksaan GAIT</h1>", unsafe_allow_html=True)
 
-            # Tambahkan tombol refresh di atas
-        col1, col2, col3 = st.columns([6, 1, 1])
-        with col2:
-            if st.button("🔄 Refresh", use_container_width=True):
-                self._refresh_data()
+        if st.button("🔄 Refresh Data", key="refresh_dashboard"):
+            self._refresh_data()
                 
         # Dapatkan semua tanggal pemeriksaan untuk pasien ini
         available_dates = self._get_all_pemeriksaan_dates(user_id)
