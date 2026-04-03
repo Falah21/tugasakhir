@@ -442,6 +442,9 @@ class PasienPage:
                 st.plotly_chart(fig8, use_container_width=True)
                 if kinematic_data['patient_data'].get('r_ankle'):
                     st.write(f"**Perbedaan rata-rata sudut pergelangan kaki kanan (Anda vs Normal): {maerankle:.2f}°**")
+        with tab5:
+            self._show_ai_summaries_tab()
+                
 
     def _show_ai_summaries_tab(self, pasien_id, tanggal_pemeriksaan):
         """Menampilkan ringkasan AI dari dokter di tab HASIL PEMERIKSAAN"""
