@@ -443,7 +443,7 @@ class PasienPage:
                 if kinematic_data['patient_data'].get('r_ankle'):
                     st.write(f"**Perbedaan rata-rata sudut pergelangan kaki kanan (Anda vs Normal): {maerankle:.2f}°**")
         with tab5:
-            self._show_ai_summaries_tab()
+            self._get_ai_summaries()
                 
 
     def _show_ai_summaries_tab(self, pasien_id, tanggal_pemeriksaan):
