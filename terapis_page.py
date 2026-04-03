@@ -1738,7 +1738,7 @@ class TerapisPage:
             tanggal_pemeriksaan = st.session_state.get('current_tanggal_pemeriksaan', None)
 
             if not pasien_id and 'norm_kinematics_df' in st.session_state:
-                 st.warning("Data pasien tidak ditemukan di session state. Pastikan data pasien sudah diupload.")
+                st.warning("Data pasien tidak ditemukan di session state. Pastikan data pasien sudah diupload.")
                 return False
             
             # Data yang akan disimpan
