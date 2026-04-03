@@ -576,7 +576,8 @@ class TerapisPage:
                             st.error("Gagal memproses data yang diupload.")
                             
                     except Exception as e:
-                        st.error(f"Error dalam memproses file: {e}")        
+                        st.error(f"Error dalam memproses file: {e}")     
+                        
     def input_data_gait_pasien(self):
         st.subheader("Input Pemeriksaan Pasien")
         
@@ -718,8 +719,8 @@ class TerapisPage:
                             'norm_kinematics': rows
                         }
 
-                        st.session_state.current_pasien_id = pasien_user_id
-                        st.session_state.current_tanggal_pemeriksaan = tanggal.strftime("%Y-%m-%d")
+                        # st.session_state.current_pasien_id = pasien_user_id
+                        # st.session_state.current_tanggal_pemeriksaan = tanggal.strftime("%Y-%m-%d")
                         
                         # Simpan ke MongoDB
                         client = get_mongo_client()
@@ -1693,29 +1694,32 @@ class TerapisPage:
                                             'ankle_left': st.session_state.mae_ankle_left_phases.get(phase, 0),
                                             'ankle_right': st.session_state.mae_ankle_right_phases.get(phase, 0)
                                             })
-                                    
-                                    success = self.save_selected_summary_with_phases(
-                                        prompt_type=prompt_type,
-                                        variant=variant,
-                                        content=selected_content,
-                                        mae_overall={
-                                            'pelvis_left': st.session_state.mae_pelvis_left,
-                                            'pelvis_right': st.session_state.mae_pelvis_right,
-                                            'knee_left': st.session_state.mae_knee_left,
-                                            'knee_right': st.session_state.mae_knee_right,
-                                            'hip_left': st.session_state.mae_hip_left,
-                                            'hip_right': st.session_state.mae_hip_right,
-                                            'ankle_left': st.session_state.mae_ankle_left,
-                                            'ankle_right': st.session_state.mae_ankle_right},
-                                        mae_phases=mae_data_for_save,
-                                        bounds_data=bounds_data)
-                                    
-                                    if success:
-                                        st.session_state[patient_saved_key] = selected_content
-                                        st.success(f"Hasil terpilih ({st.session_state[selected_label_key]}) berhasil disimpan!")
-                                        st.rerun()
+                                    if st.session_state.get('current_pasien_id') is None:
+                                        st.error("Data pasien tidak lengkap. Silakan pilih pasien terlebih dahulu di menu Input Pemeriksaan Pasien.")
                                     else:
-                                        st.error("Gagal menyimpan ke database")
+                                        success = self.save_selected_summary_with_phases(
+                                            prompt_type=prompt_type,
+                                            variant=variant,
+                                            content=selected_content,
+                                            mae_overall={
+                                                'pelvis_left': st.session_state.mae_pelvis_left,
+                                                'pelvis_right': st.session_state.mae_pelvis_right,
+                                                'knee_left': st.session_state.mae_knee_left,
+                                                'knee_right': st.session_state.mae_knee_right,
+                                                'hip_left': st.session_state.mae_hip_left,
+                                                'hip_right': st.session_state.mae_hip_right,
+                                                'ankle_left': st.session_state.mae_ankle_left,
+                                                'ankle_right': st.session_state.mae_ankle_right},
+                                            mae_phases=mae_data_for_save,
+                                            bounds_data=bounds_data
+                                        )
+                                    
+                                        if success:
+                                            st.session_state[patient_saved_key] = selected_content
+                                            st.success(f"Hasil terpilih ({st.session_state[selected_label_key]}) berhasil disimpan!")
+                                            st.rerun()
+                                        else:
+                                            st.error("Gagal menyimpan ke database")
                                 else:
                                     st.error("Tidak dapat menemukan konten yang dipilih")
                             else:
@@ -1733,6 +1737,11 @@ class TerapisPage:
             pasien_id = st.session_state.get('current_pasien_id', None)
             nama_pasien = st.session_state.get('current_nama_pasien', None)
             tanggal_pemeriksaan = st.session_state.get('current_tanggal_pemeriksaan', None)
+
+            # Debug: print untuk memastikan data ada
+            print(f"DEBUG - pasien_id: {pasien_id}")
+            print(f"DEBUG - nama_pasien: {nama_pasien}")
+            print(f"DEBUG - tanggal_pemeriksaan: {tanggal_pemeriksaan}")
             
             # Data yang akan disimpan
             summary_data = {
