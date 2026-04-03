@@ -85,6 +85,38 @@ class PasienPage:
         except Exception as e:
             st.error(f"Authentication error: {e}")
             return None
+
+    def _refresh_data(self):
+        """Refresh data pasien dan pemeriksaan dari database"""
+        try:
+            # Refresh data pasien
+            client = get_mongo_client()
+            db = client['GaitDB']
+            collection = db['users']
+            pasien_data = list(collection.find({'role': 'pasien'}))
+            st.session_state["pasien_list"] = []
+            for pasien in pasien_data:
+                st.session_state["pasien_list"].append({
+                    "User ID": pasien.get('user_id'),
+                    "Nama Lengkap": pasien.get('nama_lengkap'),
+                    "Tanggal Lahir": pasien.get('tanggal_lahir'),
+                    "Jenis Kelamin": pasien.get('jenis_kelamin'),
+                    "Role": pasien.get('role'),
+                    "Tanggal Dibuat": pasien.get('tanggal_dibuat')
+                })
+            
+            # Update profil pasien yang sedang login
+            if st.session_state.get("pasien_user_id"):
+                for p in st.session_state["pasien_list"]:
+                    if p["User ID"] == st.session_state.pasien_user_id:
+                        st.session_state.pasien_nama = p["Nama Lengkap"]
+                        break
+            
+            st.success("Data berhasil direfresh!")
+            st.rerun()
+            
+        except Exception as e:
+            st.error(f"Error refreshing data: {e}")
         
     def _get_pemeriksaan_data(self, pasien_id, tanggal):
         """Fungsi untuk mendapatkan data pemeriksaan berdasarkan user_id dan tanggal dari database"""
@@ -582,7 +614,13 @@ class PasienPage:
             st.session_state.pasien_nama = profil["Nama Lengkap"]
          
         st.markdown("<h1 style='text-align: center; color: #560000;'>Dashboard Pemeriksaan GAIT</h1>", unsafe_allow_html=True)
-        
+
+            # Tambahkan tombol refresh di atas
+        col1, col2, col3 = st.columns([6, 1, 1])
+        with col2:
+            if st.button("🔄 Refresh", use_container_width=True):
+                self._refresh_data()
+                
         # Dapatkan semua tanggal pemeriksaan untuk pasien ini
         available_dates = self._get_all_pemeriksaan_dates(user_id)
         
