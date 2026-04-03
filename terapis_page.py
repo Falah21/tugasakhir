@@ -1826,8 +1826,11 @@ class TerapisPage:
             # Data yang akan disimpan
             summary_data = {
                 'timestamp': datetime.now(),
-                'terapis_user_id': st.session_state.get('terapis_user_id'),
-                'terapis_nama': st.session_state.get('terapis_nama'),
+                'dokter_id': st.session_state.get('terapis_user_id'),
+                'dokter_nama': st.session_state.get('terapis_nama'),
+                'pasien_id': pasien_user_id,
+                'nama_pasien': nama_pasien,
+                'tanggal_pemeriksaan': tanggal.strftime("%Y-%m-%d"),
                 'prompt_type': prompt_type,
                 'variant': variant,
                 'content': content,
@@ -1947,28 +1950,28 @@ class TerapisPage:
         
         return summaries
 
-    def save_selected_summary_simple(self, prompt_type, variant, content, mae_data):
-        """Simpan ringkasan yang dipilih ke database"""
-        try:
-            client = get_mongo_client()
-            db = client['GaitDB']
-            collection = db['ai_summaries']
+    # def save_selected_summary_simple(self, prompt_type, variant, content, mae_data):
+    #     """Simpan ringkasan yang dipilih ke database"""
+    #     try:
+    #         client = get_mongo_client()
+    #         db = client['GaitDB']
+    #         collection = db['ai_summaries']
             
-            # Data yang akan disimpan
-            summary_data = {
-                'timestamp': datetime.now(),
-                'terapis_username': st.session_state.get('terapis_username'),
-                'prompt_type': prompt_type,
-                'variant': variant,
-                'content': content,
-                'mae_data': mae_data,
-                'is_best_selected': True  # Tandai sebagai hasil terbaik yang dipilih
-            }
+    #         # Data yang akan disimpan
+    #         summary_data = {
+    #             'timestamp': datetime.now(),
+    #             'terapis_username': st.session_state.get('terapis_username'),
+    #             'prompt_type': prompt_type,
+    #             'variant': variant,
+    #             'content': content,
+    #             'mae_data': mae_data,
+    #             'is_best_selected': True  # Tandai sebagai hasil terbaik yang dipilih
+    #         }
             
-            # Simpan ke database
-            result = collection.insert_one(summary_data)
+    #         # Simpan ke database
+    #         result = collection.insert_one(summary_data)
             
-            return True
+    #         return True
             
         except Exception as e:
             st.error(f"Error menyimpan ringkasan: {e}")
