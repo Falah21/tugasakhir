@@ -1732,7 +1732,7 @@ class TerapisPage:
                 'timestamp': datetime.now(),
                 'dokter_id': st.session_state.get('terapis_user_id'),
                 'dokter_nama': st.session_state.get('terapis_nama'),
-                'pasien_id': pasien_user_id,
+                'pasien_id': pasien_id,
                 'nama_pasien': nama_pasien,
                 'tanggal_pemeriksaan': tanggal_pemeriksaan,
                 'prompt_type': prompt_type,
