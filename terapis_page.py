@@ -719,6 +719,11 @@ class TerapisPage:
                         client = get_mongo_client()
                         db = client['GaitDB']
                         collection = db['patient_examinations']
+
+                        st.session_state.current_pasien_id = pasien_user_id
+                        st.session_state.current_nama_pasien = nama_pasien
+                        st.session_state.current_tanggal_pemeriksaan = tanggal.strftime("%Y-%m-%d")
+                        st.session_state.current_patient_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y%m%d_%H%M%S')}"
                         
                         # Cek apakah sudah ada pemeriksaan untuk pasien di tanggal yang sama
                         existing_exam = collection.find_one({
@@ -738,6 +743,10 @@ class TerapisPage:
                             # Insert data baru
                             result = collection.insert_one(examination_data)
                             st.success(f"Data gait pasien dengan NIK {pasien_user_id} berhasil disimpan!")
+                            
+                            # Reset AI summary session state untuk pasien baru
+                            self.reset_ai_summary_session_state_except_current()
+                            st.session_state.current_patient_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y%m%d_%H%M%S')}"
                                             
                         # st.info(f"File: {uploaded_file.name}")
                         # st.info(f"Pasien: {nama_pasien} (NIK: {pasien_user_id})")
@@ -1725,7 +1734,12 @@ class TerapisPage:
             collection = db['ai_summaries']
 
             pasien_id = st.session_state.get('current_pasien_id', None)
+            nama_pasien = st.session_state.get('current_nama_pasien', None)
             tanggal_pemeriksaan = st.session_state.get('current_tanggal_pemeriksaan', None)
+
+            if not pasien_id and 'norm_kinematics_df' in st.session_state:
+                 st.warning("Data pasien tidak ditemukan di session state. Pastikan data pasien sudah diupload.")
+                return False
             
             # Data yang akan disimpan
             summary_data = {
@@ -1950,6 +1964,32 @@ class TerapisPage:
         except Exception as e:
             st.error(f"Error menyimpan ringkasan: {e}")
             return False
+
+    def reset_ai_summary_session_state_except_current(self):
+        """Reset session state AI summary untuk pasien baru (tanpa menghapus current_patient_key)"""
+        # Hapus semua kunci yang berkaitan dengan AI summary
+        keys_to_reset = [
+            'ai_summaries_generated',
+            'summaries_a',
+            'summaries_b',
+            'selected_summary_label',
+            'selected_summary_content',
+            'saved_summary_content'
+        ]
+        
+        # Reset kunci utama
+        for key in keys_to_reset:
+            if key in st.session_state:
+                del st.session_state[key]
+        
+        # Hapus juga kunci yang mengandung pattern lama
+        import re
+        if 'current_patient_key' in st.session_state:
+            current_key = st.session_state.current_patient_key
+            # Hapus semua kunci yang mengandung pattern selain current_key
+            for key in list(st.session_state.keys()):
+                if ('patient_' in key or 'summaries_' in key) and key != 'current_patient_key':
+                    del st.session_state[key]
 
     def create_pelvis_figure(self, data, title, color):
         fig = go.Figure()
