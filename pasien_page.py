@@ -347,8 +347,8 @@ class PasienPage:
             'patient_data': patient_data
         }
 
-    def _show_dashboard_visualization(self, kinematic_data):
-        """Menampilkan visualisasi dashboard"""
+    def _show_dashboard_visualization(self, kinematic_data, pasien_id=None, tanggal_pemeriksaan=None):
+        """Menampilkan visualisasi dashboard dengan 5 tabs"""
         # Buat visualisasi untuk setiap joint
         fig1 = self._create_joint_figure(kinematic_data['lpelvis'], "Left Pelvis", 'orange', 
                                        kinematic_data['patient_data'].get('l_pelvis'))
@@ -366,10 +366,10 @@ class PasienPage:
                                        kinematic_data['patient_data'].get('l_ankle'))
         fig8 = self._create_joint_figure(kinematic_data['rankle'], "Right Ankle", 'darkblue', 
                                        kinematic_data['patient_data'].get('r_ankle'))
-
+    
         # Tampilkan dalam tabs - SEKARANG DENGAN 5 TAB
         tab1, tab2, tab3, tab4, tab5 = st.tabs(["PELVIS", "KNEE", "HIP", "ANKLE", "HASIL PEMERIKSAAN"])
-
+    
         with tab1:
             st.subheader("PELVIS")
             st.write('Pelvis (dalam bahasa Indonesia: panggul) adalah struktur tulang yang berbentuk cekungan di bawah perut, di antara tulang pinggul, dan di atas paha.')
@@ -406,7 +406,7 @@ class PasienPage:
                 st.plotly_chart(fig4, use_container_width=True)
                 if kinematic_data['patient_data'].get('r_knee'):
                     st.write(f"**Perbedaan rata-rata sudut lutut kanan (Anda vs Normal): {maerknee:.2f}°**")
-
+    
         with tab3:
             st.subheader("HIP")
             st.write('Hip (dalam bahasa Indonesia: pinggul) adalah bagian tubuh yang terletak di bawah perut, menghubungkan tubuh bagian atas dengan kaki.')
@@ -424,7 +424,7 @@ class PasienPage:
                 st.plotly_chart(fig6, use_container_width=True)
                 if kinematic_data['patient_data'].get('r_hip'):
                     st.write(f"**Perbedaan rata-rata sudut pinggul kanan (Anda vs Normal): {maerhip:.2f}°**")
-
+    
         with tab4:
             st.subheader("ANKLE")
             st.write('Ankle (dalam bahasa Indonesia: pergelangan kaki) adalah sendi yang terletak di antara kaki bagian bawah (tulang tibia dan fibula) dan bagian atas kaki (tulang talus).')
@@ -442,6 +442,10 @@ class PasienPage:
                 st.plotly_chart(fig8, use_container_width=True)
                 if kinematic_data['patient_data'].get('r_ankle'):
                     st.write(f"**Perbedaan rata-rata sudut pergelangan kaki kanan (Anda vs Normal): {maerankle:.2f}°**")
+    
+        with tab5:
+            # PANGGIL METHOD UNTUK MENAMPILKAN HASIL PEMERIKSAAN
+            self._show_ai_summaries_tab(pasien_id, tanggal_pemeriksaan)
 
     def _show_ai_summaries_tab(self, pasien_id, tanggal_pemeriksaan):
         """Menampilkan ringkasan AI dari dokter di tab HASIL PEMERIKSAAN"""
@@ -547,13 +551,33 @@ class PasienPage:
     def _dashboard_page(self):
         user_id = st.session_state.get("pasien_user_id")
         
+        # Load pasien list dari database jika belum ada
+        if not st.session_state.get("pasien_list"):
+            try:
+                client = get_mongo_client()
+                db = client['GaitDB']
+                collection = db['users']
+                pasien_data = list(collection.find({'role': 'pasien'}))
+                st.session_state["pasien_list"] = []
+                for pasien in pasien_data:
+                    st.session_state["pasien_list"].append({
+                        "User ID": pasien.get('user_id'),
+                        "Nama Lengkap": pasien.get('nama_lengkap'),
+                        "Tanggal Lahir": pasien.get('tanggal_lahir'),
+                        "Jenis Kelamin": pasien.get('jenis_kelamin'),
+                        "Role": pasien.get('role'),
+                        "Tanggal Dibuat": pasien.get('tanggal_dibuat')
+                    })
+            except Exception as e:
+                st.error(f"Error loading patient data: {e}")
+        
         # Gunakan pencarian berdasarkan User ID
         profil = None
         for p in st.session_state["pasien_list"]:
             if p["User ID"] == user_id:
                 profil = p
                 break
-
+    
         if profil:
             st.session_state.pasien_nama = profil["Nama Lengkap"]
          
@@ -596,15 +620,12 @@ class PasienPage:
                 pemeriksaan.get('gait_data', {}).get('Norm Kinematics', {})
             )
             
-            # Tampilkan visualisasi (sekarang dengan 5 tabs)
-            self._show_dashboard_visualization(kinematic_data)
-            
-            # Tampilkan ringkasan AI dari dokter (di tab HASIL PEMERIKSAAN)
-            # Ringkasan AI sudah ditampilkan di dalam _show_dashboard_visualization melalui tab5
-            # Kita perlu memanggil method untuk mengisi tab5
-            # Karena _show_dashboard_visualization sudah membuat tab5, kita perlu mengisi kontennya
-            # Pendekatan: buat ulang tabs di sini atau modifikasi _show_dashboard_visualization
-            pass
+            # Tampilkan visualisasi dengan 5 tabs (kirimkan pasien_id dan tanggal)
+            self._show_dashboard_visualization(
+                kinematic_data, 
+                pasien_id=user_id, 
+                tanggal_pemeriksaan=selected_date.strftime("%Y-%m-%d")
+            )
 
     def _profile_page(self):
         user_id = st.session_state.get("pasien_user_id")
