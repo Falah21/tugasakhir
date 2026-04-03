@@ -1973,9 +1973,9 @@ class TerapisPage:
             
     #         return True
             
-        except Exception as e:
-            st.error(f"Error menyimpan ringkasan: {e}")
-            return False
+        # except Exception as e:
+        #     st.error(f"Error menyimpan ringkasan: {e}")
+        #     return False
 
     def create_pelvis_figure(self, data, title, color):
         fig = go.Figure()
