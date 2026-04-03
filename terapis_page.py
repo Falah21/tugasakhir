@@ -620,11 +620,14 @@ class TerapisPage:
                 if len(parts) == 2:
                     pasien_user_id = parts[0].strip()
                     nama_pasien = parts[1].strip()
+                    st.session_state.current_pasien_id = pasien_user_id
+                    st.session_state.current_nama_pasien = nama_pasien
                     # st.success(f"**Pasien Terpilih:** {nama_pasien} (User ID: {pasien_user_id})")
             except Exception as e:
                 st.error(f"Error memproses data pasien: {e}")        
         # Input tanggal pemeriksaan
         tanggal = st.date_input("Tanggal Pemeriksaan")
+        st.session_state.current_tanggal_pemeriksaan = tanggal.strftime("%Y-%m-%d")
 
         col1, col2 = st.columns(2)
         with col1:
@@ -714,6 +717,9 @@ class TerapisPage:
                             'gait_data': processed_data,
                             'norm_kinematics': rows
                         }
+
+                        st.session_state.current_pasien_id = pasien_user_id
+                        st.session_state.current_tanggal_pemeriksaan = tanggal.strftime("%Y-%m-%d")
                         
                         # Simpan ke MongoDB
                         client = get_mongo_client()
@@ -1723,8 +1729,9 @@ class TerapisPage:
             client = get_mongo_client()
             db = client['GaitDB']
             collection = db['ai_summaries']
-
+            
             pasien_id = st.session_state.get('current_pasien_id', None)
+            nama_pasien = st.session_state.get('current_nama_pasien', None)
             tanggal_pemeriksaan = st.session_state.get('current_tanggal_pemeriksaan', None)
             
             # Data yang akan disimpan
@@ -1733,6 +1740,7 @@ class TerapisPage:
                 'dokter_id': st.session_state.get('terapis_user_id'),
                 'dokter_nama': st.session_state.get('terapis_nama'),
                 'pasien_id': pasien_id,
+                'pasien_nama': nama_pasien,
                 'tanggal_pemeriksaan': tanggal_pemeriksaan,
                 'prompt_type': prompt_type,
                 'variant': variant,
@@ -1745,6 +1753,7 @@ class TerapisPage:
             
             # Simpan ke database
             result = collection.insert_one(summary_data)
+            st.success(f"Ringkasan AI berhasil disimpan untuk pasien {nama_pasien} (ID: {pasien_id}) pada tanggal {tanggal_pemeriksaan}")
             
             return True
             
@@ -1949,6 +1958,17 @@ class TerapisPage:
         except Exception as e:
             st.error(f"Error menyimpan ringkasan: {e}")
             return False
+
+    def reset_patient_session_state(self):
+        """Reset session state pasien saat memulai pemeriksaan baru"""
+        if 'current_pasien_id' in st.session_state:
+            del st.session_state.current_pasien_id
+        if 'current_nama_pasien' in st.session_state:
+            del st.session_state.current_nama_pasien
+        if 'current_tanggal_pemeriksaan' in st.session_state:
+            del st.session_state.current_tanggal_pemeriksaan
+        if 'current_patient_key' in st.session_state:
+            del st.session_state.current_patient_key
 
     def create_pelvis_figure(self, data, title, color):
         fig = go.Figure()
