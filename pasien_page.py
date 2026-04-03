@@ -445,26 +445,26 @@ class PasienPage:
 
     def _show_ai_summaries_tab(self, pasien_id, tanggal_pemeriksaan):
         """Menampilkan ringkasan AI dari dokter di tab HASIL PEMERIKSAAN"""
-        st.subheader("📋 HASIL PEMERIKSAAN DOKTER")
+        st.subheader(" HASIL PEMERIKSAAN DOKTER")
         st.write("Berikut adalah hasil analisis dan rekomendasi dari dokter berdasarkan data pemeriksaan GAIT Anda:")
         
         # Ambil ringkasan AI dari database
         ai_summaries = self._get_ai_summaries(pasien_id, tanggal_pemeriksaan)
         
         if not ai_summaries:
-            st.info("ℹ️ Belum ada hasil pemeriksaan dari dokter untuk tanggal ini. Silakan tunggu atau konsultasikan dengan dokter Anda.")
+            st.info("Belum ada hasil pemeriksaan dari dokter untuk tanggal ini. Silakan tunggu atau konsultasikan dengan dokter Anda.")
             return
         
         # Tampilkan ringkasan AI
         for i, summary in enumerate(ai_summaries, 1):
             with st.container():
                 # Header dengan informasi dokter
-                st.markdown(f"### 📝 Hasil Pemeriksaan #{i}")
+                st.markdown(f"### Hasil Pemeriksaan #{i}")
                 
                 # Informasi dokter
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.markdown(f"**👨‍⚕️ Dokter:** {summary.get('dokter_nama', 'Tidak diketahui')}")
+                    st.markdown(f"Dokter: {summary.get('dokter_nama', 'Tidak diketahui')}")
                 with col2:
                     tgl = summary.get('timestamp')
                     if tgl:
@@ -472,22 +472,22 @@ class PasienPage:
                             tgl_str = tgl.strftime("%d %B %Y, %H:%M")
                         else:
                             tgl_str = str(tgl)
-                        st.markdown(f"**📅 Tanggal Analisis:** {tgl_str}")
+                        st.markdown(f"**Tanggal Analisis:** {tgl_str}")
                 
                 st.markdown("---")
                 
-                # Tampilkan prompt type yang digunakan
-                prompt_type = summary.get('prompt_type', '')
-                variant = summary.get('variant', '')
+                # # Tampilkan prompt type yang digunakan
+                # prompt_type = summary.get('prompt_type', '')
+                # variant = summary.get('variant', '')
                 
-                if prompt_type == 'A':
-                    st.markdown("**🔍 Jenis Analisis:** Analisis Klinis Gait")
-                elif prompt_type == 'B':
-                    st.markdown("**📊 Jenis Analisis:** Laporan Hasil Pemeriksaan")
-                else:
-                    st.markdown(f"**📋 Jenis Analisis:** {prompt_type}")
+                # if prompt_type == 'A':
+                #     st.markdown("**🔍 Jenis Analisis:** Analisis Klinis Gait")
+                # elif prompt_type == 'B':
+                #     st.markdown("**📊 Jenis Analisis:** Laporan Hasil Pemeriksaan")
+                # else:
+                #     st.markdown(f"**📋 Jenis Analisis:** {prompt_type}")
                 
-                st.markdown("---")
+                # st.markdown("---")
                 
                 # Tampilkan konten ringkasan
                 content = summary.get('content', 'Konten tidak tersedia')
