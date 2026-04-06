@@ -71,7 +71,7 @@ class RegisterPage:
             col1, col2 = st.columns(2)
             
             with col1:
-                user_id = st.text_input("NIK", max_chars=20, key="reg_nik", 
+                user_id = st.text_input("NIK", max_chars=16, key="reg_nik", 
                                       placeholder="Masukkan NIK anda")
                 nama_lengkap = st.text_input("Nama Lengkap", key="reg_nama",
                                            placeholder="Masukkan nama lengkap")
