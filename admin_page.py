@@ -17,7 +17,7 @@ def login_form(role_label: str = "Admin"):
         st.rerun()
 
     # Konten login
-    st.markdown("<h2>Sistem Dashboard Pemeriksaan Gait</h2>", unsafe_allow_html=True)
+    st.markdown("<h2>Sistem Dashboard Gait Analysis</h2>", unsafe_allow_html=True)
     st.markdown("<p class='subtitle'>Selamat Datang di Sistem Dashboard Pemeriksaan Gait</p>", unsafe_allow_html=True)
     # st.markdown("<hr class='custom'>", unsafe_allow_html=True)
     st.markdown("---")
