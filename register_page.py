@@ -62,8 +62,8 @@ class RegisterPage:
         st.markdown(load_css(), unsafe_allow_html=True)
         
         # Header
-        st.markdown("<h2>Aplikasi GAIT Clinic</h2>", unsafe_allow_html=True)
-        st.markdown("<p class='subtitle'>Form Pendaftaran Pasien Baru</p>", unsafe_allow_html=True)
+        st.markdown("<h2>Sistem Dashboard Gait Analysis</h2>", unsafe_allow_html=True)
+        st.markdown("<p class='subtitle'>Silahkan isi form pendaftaran pasien dibawah ini dengan benar</p>", unsafe_allow_html=True)
         # st.markdown("---")
         
         # Form registrasi
