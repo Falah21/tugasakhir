@@ -28,8 +28,8 @@ def login_form_pasien(role_label: str = "Pasien"):
         st.rerun()
 
     # Page Login
-    st.markdown("<h2>Aplikasi GAIT Clinic</h2>", unsafe_allow_html=True)
-    st.markdown("<p class='subtitle'>Selamat Datang di Sistem Dashboard Pemeriksaan GAIT</p>", unsafe_allow_html=True)
+    st.markdown("<h2>Sistem Dashboard Gait Analysis</h2>", unsafe_allow_html=True)
+    st.markdown("<p class='subtitle'>Selamat Datang di Sistem Dashboard Pemeriksaan Gait</p>", unsafe_allow_html=True)
     # st.markdown("---")
     st.subheader(f"Login - {role_label}")
     user_id = st.text_input("NIK", placeholder="Masukkan NIK anda")
