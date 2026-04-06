@@ -20,7 +20,7 @@ import bcrypt
 from datetime import datetime
 
 # 🧩 Konfigurasi halaman
-st.set_page_config(page_title="Dashboard GAIT Terapis", layout="wide")
+# st.set_page_config(page_title="Dashboard GAIT Terapis", layout="wide")
 # st.set_page_config(page_title="Dashboard GAIT Terapis", layout="wide", initial_sidebar_state="expanded")
 
 # ====== KONFIGURASI GEMINI AI ======
@@ -43,8 +43,8 @@ def login_form(role_label: str = "Dokter"):
         st.rerun()
 
     # Konten login
-    st.markdown("<h2>Aplikasi GAIT Clinic</h2>", unsafe_allow_html=True)
-    st.markdown("<p class='subtitle'>Selamat Datang di Sistem Dashboard Pemeriksaan GAIT</p>", unsafe_allow_html=True)
+    st.markdown("<h2>Sistem Dashboard Gait Analysis</h2>", unsafe_allow_html=True)
+    st.markdown("<p class='subtitle'>Selamat Datang di Sistem Dashboard Pemeriksaan Gait</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     st.subheader(f"Login - {role_label}")
