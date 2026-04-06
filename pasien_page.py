@@ -610,7 +610,7 @@ class PasienPage:
         available_dates = self._get_all_pemeriksaan_dates(user_id)
         
         if not available_dates:
-            st.warning("🔍 Silahkan periksa dulu ke dokter agar dashboard pemeriksaan GAIT anda muncul")
+            st.warning("Silakan lakukan pemeriksaan terlebih dahulu dengan dokter agar dashboard pemeriksaan Gait Anda dapat ditampilkan.")
             return
         
         # Pilih tanggal pemeriksaan
@@ -624,13 +624,13 @@ class PasienPage:
         pemeriksaan = self._get_pemeriksaan_data(user_id, selected_date)
         
         if not pemeriksaan:
-            st.warning(f"❌ Tidak ada data pemeriksaan untuk tanggal {selected_date.strftime('%d %B %Y')}")
+            st.warning(f"Tidak ada data pemeriksaan untuk tanggal {selected_date.strftime('%d %B %Y')}")
             return
         
         # Dapatkan data normal
         normal_data = self._get_normal_data()
         if normal_data is None:
-            st.error("❌ Data normal belum tersedia. Silakan hubungi administrator.")
+            st.error("Data normal belum tersedia. Silakan hubungi administrator.")
             return
         
         # Tampilkan informasi pemeriksaan
@@ -665,14 +665,12 @@ class PasienPage:
         if profil:
             st.subheader("Data Profil")
             
-            col1, col2 = st.columns(2)
+            col1 = st.columns(1)
             
             with col1:
                 st.markdown(f"**NIK:** {profil['User ID']}")
                 st.markdown(f"**Nama Lengkap:** {profil['Nama Lengkap']}")
                 st.markdown(f"**Tanggal Lahir:** {profil['Tanggal Lahir']}")
-                
-            with col2:
                 st.markdown(f"**Jenis Kelamin:** {profil['Jenis Kelamin']}")
                 st.markdown(f"**Role:** {profil['Role']}")
                 st.markdown(f"**Tanggal Pendaftaran:** {profil['Tanggal Dibuat']}")
