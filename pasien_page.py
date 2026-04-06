@@ -601,7 +601,7 @@ class PasienPage:
         if profil:
             st.session_state.pasien_nama = profil["Nama Lengkap"]
          
-        st.markdown("<h1 style='text-align: center; color: #560000;'>Dashboard Pemeriksaan GAIT</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center; color: #560000;'>Dashboard Pemeriksaan Gait</h1>", unsafe_allow_html=True)
 
         if st.button("🔄 Refresh Data", key="refresh_dashboard"):
             self._refresh_data()
