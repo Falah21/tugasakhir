@@ -394,5 +394,44 @@ def load_css():
         .p-3 { padding: 1rem !important; }
         .p-4 { padding: 1.5rem !important; }
         .p-5 { padding: 2rem !important; }
+
+        /* ===== RESPONSIVE BUTTON GRID (HALAMAN ROLE) ===== */
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            justify-items: center;
+            margin-top: 20px;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        /* tombol di grid */
+        .button-grid div[data-testid="stButton"] > button {
+            width: 100%;
+            max-width: 260px;
+            height: 100px;
+            border-radius: 14px;
+            font-size: clamp(14px, 1.5vw, 18px);
+            font-weight: 600;
+            box-shadow: 0px 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        /* hover lebih smooth */
+        .button-grid div[data-testid="stButton"] > button:hover {
+            transform: translateY(-3px) scale(1.03);
+        }
+        
+        /* mobile fix */
+        @media (max-width: 768px) {
+            .button-grid {
+                grid-template-columns: 1fr;
+            }
+        
+            .button-grid div[data-testid="stButton"] > button {
+                height: 85px;
+            }
+        }
     </style>
     """
