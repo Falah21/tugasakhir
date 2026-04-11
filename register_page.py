@@ -81,7 +81,7 @@ class RegisterPage:
                     "Tanggal Lahir", 
                     min_value=date(1900, 1, 1), 
                     max_value=date.today(),
-                    value=date(1990, 1, 1),
+                    value=None,
                     key="reg_ttl"
                 )
                 jenis_kelamin = st.selectbox(
@@ -108,6 +108,8 @@ class RegisterPage:
                     # Validasi nama lengkap
                     if any(char.isdigit() for char in nama_lengkap):
                         errors.append("Nama lengkap harus berupa huruf dan tidak boleh mengandung angka.")
+                    if not tanggal_lahir:
+                        errors.append("Tanggal lahir wajib diisi.")
                      # CEK ADA ERROR ATAU TIDAK
                     if errors:
                         for err in errors:
