@@ -111,7 +111,7 @@ def main():
     st.markdown("<p class='subtitle'>Selamat Datang di Sistem Dashboard Pemeriksaan Gait</p>", unsafe_allow_html=True)
     st.markdown("<p class='section-title'>Silahkan Pilih Role Terlebih Dahulu</p>", unsafe_allow_html=True)
 
-    Tombol responsif di tengah
+    # Tombol responsif di tengah
     st.markdown("<div class='button-wrapper'>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 1, 1])
 
