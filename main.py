@@ -175,13 +175,13 @@ def main():
     col1, col2, col3 = st.columns(3, gap="large")
 
     with col1:
-        if st.button("Admin"):
+        if st.button("Admin", key="btn_admin", use_container_width=True):
             go_to("admin")
     with col2:
-        if st.button("Dokter"):
+        if st.button("Dokter", key="btn_dokter", use_container_width=True):
             go_to("terapis")
     with col3:
-        if st.button("Pasien"):
+        if st.button("Pasien", key="btn_pasien", use_container_width=True):
             go_to("pasien")
         
     st.markdown("</div>", unsafe_allow_html=True)
