@@ -101,9 +101,23 @@ class RegisterPage:
             
             if submitted:
                 if user_id and nama_lengkap and password:
+                    # Validasi user_id
+                    if not user_id.isdigit():
+                        st.error("NIK harus berupa angka (tidak boleh huruf).")
+                        return
+                    # Validasi nama lengkap
+                    if any(char.isdigit() for char in nama_lengkap):
+                        st.error("Nama lengkap harus berupa huruf dan tidak boleh mengandung angka.")
+                        return
+                    
+                    # Validasi nik harus 16
+                    if len(user_id) != 16:
+                        st.error("NIK harus terdiri dari 16 digit.")
+                        return
+                        
                     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
                     registration_data = {
-                        "user_id": user_id,
+                        "user_id": int(user_id),
                         "nama_lengkap": nama_lengkap,
                         "password": hashed_password.decode('utf-8'),  # simpan hash
                         "role": "pasien",
