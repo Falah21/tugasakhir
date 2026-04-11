@@ -58,7 +58,6 @@ class RegisterPage:
             return False
     
     def show(self):
-        """Menampilkan halaman registrasi"""
         st.markdown(load_css(), unsafe_allow_html=True)
         
         # Header
@@ -67,16 +66,13 @@ class RegisterPage:
         # st.markdown("---")
         
         # Form registrasi
-        with st.form("register_form", clear_on_submit=True):
+        with st.form("register_form", clear_on_submit=False):
             col1, col2 = st.columns(2)
             
             with col1:
-                user_id = st.text_input("NIK", max_chars=16, key="reg_nik", 
-                                      placeholder="Masukkan NIK anda")
-                nama_lengkap = st.text_input("Nama Lengkap", key="reg_nama",
-                                           placeholder="Masukkan nama lengkap")
-                password = st.text_input("Password", type="password", key="reg_password",
-                                       placeholder="Buat password")
+                user_id = st.text_input("NIK", max_chars=16, key="reg_nik", placeholder="Masukkan NIK anda")
+                nama_lengkap = st.text_input("Nama Lengkap", key="reg_nama", placeholder="Masukkan nama lengkap")
+                password = st.text_input("Password", type="password", key="reg_password", placeholder="Buat password")
                 
             with col2:
                 tanggal_lahir = st.date_input(
@@ -92,7 +88,6 @@ class RegisterPage:
                     key="reg_jk"
                 )
             
-            # st.markdown("---")
             
             # Submit button
             col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
@@ -101,18 +96,20 @@ class RegisterPage:
             
             if submitted:
                 if user_id and nama_lengkap and password:
+                    errors = []
                     # Validasi user_id
                     if not user_id.isdigit():
-                        st.error("NIK harus berupa angka (tidak boleh huruf).")
-                        return
-                    # Validasi nama lengkap
-                    if any(char.isdigit() for char in nama_lengkap):
-                        st.error("Nama lengkap harus berupa huruf dan tidak boleh mengandung angka.")
-                        return
-                    
+                        errors.append("NIK harus berupa angka (tidak boleh huruf).")
                     # Validasi nik harus 16
                     if len(user_id) != 16:
-                        st.error("NIK harus terdiri dari 16 digit.")
+                        errors.append("NIK harus terdiri dari 16 digit.")                        
+                    # Validasi nama lengkap
+                    if any(char.isdigit() for char in nama_lengkap):
+                        errors.append("Nama lengkap harus berupa huruf dan tidak boleh mengandung angka.")
+                     # CEK ADA ERROR ATAU TIDAK
+                    if errors:
+                        for err in errors:
+                            st.error(err)
                         return
                         
                     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
@@ -129,6 +126,7 @@ class RegisterPage:
                     if self._save_registration_to_db(registration_data):
                         st.success("Pendaftaran berhasil! Silakan login.")
                         st.balloons()
+                        time.sleep(2)
                         # Kembali ke halaman login setelah 2 detik
                         st.session_state.show_register = False
                         st.rerun()
