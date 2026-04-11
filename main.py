@@ -111,34 +111,34 @@ def main():
     st.markdown("<p class='subtitle'>Selamat Datang di Sistem Dashboard Pemeriksaan Gait</p>", unsafe_allow_html=True)
     st.markdown("<p class='section-title'>Silahkan Pilih Role Terlebih Dahulu</p>", unsafe_allow_html=True)
 
-    # Tombol responsif di tengah
-    # st.markdown("<div class='button-wrapper'>", unsafe_allow_html=True)
-    # col1, col2, col3 = st.columns([1, 1, 1])
+    Tombol responsif di tengah
+    st.markdown("<div class='button-wrapper'>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 1, 1])
 
-    # with col1:
-    #     if st.button("Admin"):
-    #         go_to("admin")
-    # with col2:
-    #     if st.button("Dokter"):
-    #         go_to("terapis")
-    # with col3:
-    #     if st.button("Pasien"):
-    #         go_to("pasien")
+    with col1:
+        if st.button("Admin"):
+            go_to("admin")
+    with col2:
+        if st.button("Dokter"):
+            go_to("terapis")
+    with col3:
+        if st.button("Pasien"):
+            go_to("pasien")
         
-    # st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("<div class='button-grid'>", unsafe_allow_html=True)
-
-    if st.button("Admin"):
-        go_to("admin")
-    
-    if st.button("Dokter"):
-        go_to("terapis")
-    
-    if st.button("Pasien"):
-        go_to("pasien")
-    
     st.markdown("</div>", unsafe_allow_html=True)
+
+    # st.markdown("<div class='button-grid'>", unsafe_allow_html=True)
+
+    # if st.button("Admin"):
+    #     go_to("admin")
+    
+    # if st.button("Dokter"):
+    #     go_to("terapis")
+    
+    # if st.button("Pasien"):
+    #     go_to("pasien")
+    
+    # st.markdown("</div>", unsafe_allow_html=True)
 
 # Routing role
 if st.session_state.role == "admin":
