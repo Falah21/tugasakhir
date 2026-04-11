@@ -22,6 +22,10 @@ def get_mongo_client():
 def login_form_pasien(role_label: str = "Pasien"):
     st.markdown(load_css(), unsafe_allow_html=True)
 
+    if st.session_state.get("register_success"):
+        st.success("Pendaftaran berhasil! Silakan login.")
+        st.session_state.register_success = False
+
     # Tombol kembali
     if st.button("Kembali", key="back_button"):
         st.session_state.role = None
