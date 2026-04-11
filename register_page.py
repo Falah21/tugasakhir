@@ -18,7 +18,7 @@ class RegisterPage:
     def __init__(self):
         # Inisialisasi session state untuk register
         st.session_state.setdefault("show_register", False)
-        st.session_state.setdefault("register_success", False)
+        # st.session_state.setdefault("register_success", False)
     
     def _save_registration_to_db(self, data):
         """Menyimpan data registrasi ke database MongoDB collection users"""
@@ -125,8 +125,10 @@ class RegisterPage:
                     }
                     
                     if self._save_registration_to_db(registration_data):
+                        st.success("Pendaftaran berhasil! Mengarahkan ke halaman login...")
                         # st.success("Pendaftaran berhasil! Silakan login.")
-                        st.session_state.register_success = True
+                        # st.session_state.register_success = True
+                        time.sleep(2)
                         st.session_state.show_register = False
                         st.rerun()
                 else:
