@@ -510,11 +510,11 @@ class TerapisPage:
                 jenis_kelamin = st.selectbox("Jenis Kelamin", ["Pilih Jenis Kelamin", "L", "P"], key="gender_normal").strip().upper()
                 # st.text_input("Masukkan Jenis Kelamin (L/P):", key="gender_normal").strip().upper()
 
-            if st.button("Proses Data Normal", key="process_normal"):
+            if st.button("Proses Data Baseline", key="process_normal"):
                 if usia == 0 or jenis_kelamin == "":
                     st.warning("Harap masukkan usia dan jenis kelamin sebelum memproses file.")
                 elif jenis_kelamin not in ['L', 'P']:
-                    st.warning("Jenis kelamin harus 'L' (Laki-laki) atau 'P' (Perempuan).")
+                    st.warning("Jenis kelamin harus diisi.")
                 else:
                     try:
                         content = uploaded_file.read()
