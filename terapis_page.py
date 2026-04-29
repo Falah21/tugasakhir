@@ -652,7 +652,7 @@ class TerapisPage:
             st.info(f"**BMI:** {bmi:.2f} ({bmi_class})")
 
         # Upload file data GAIT pasien
-        st.markdown("---")
+        # st.markdown("---")
         # st.markdown("### Upload Data Gait Pasien")
         uploaded_file = st.file_uploader("Upload file data gait pasien (Format .xlsx)", type=["xlsx"])
         
