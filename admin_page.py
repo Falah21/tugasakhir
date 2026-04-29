@@ -783,7 +783,7 @@ class AdminPage:
                     '_id': {'$ne': ObjectId(user_id)}  # Cari user dengan user_id sama tapi bukan dirinya sendiri
                 })
                 if existing_user:
-                    st.error(f"User ID '{update_data['user_id']}' sudah terdaftar! Gunakan ID yang berbeda.")
+                    st.error(f"User ID'{update_data['user_id']}' sudah terdaftar! Silahkan gunakan ID lain.")
                     return False
                     
             # Hapus password dari update_data jika tidak ingin diupdate
