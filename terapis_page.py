@@ -653,7 +653,7 @@ class TerapisPage:
 
         # Upload file data GAIT pasien
         st.markdown("---")
-        st.markdown("### Upload Data Gait Pasien")
+        # st.markdown("### Upload Data Gait Pasien")
         uploaded_file = st.file_uploader("Upload file data gait pasien (Format .xlsx)", type=["xlsx"])
         
         if uploaded_file is not None:
