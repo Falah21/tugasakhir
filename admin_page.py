@@ -470,11 +470,11 @@ class AdminPage:
                     role = st.selectbox("Jenis User", ["pasien", "dokter", "admin"])
                     user_id = st.text_input("User ID", placeholder="Masukkan NIK untuk pasien, NIP untuk dokter/admin")
                     nama_lengkap = st.text_input("Nama Lengkap", placeholder="Masukkan nama lengkap")
-                    password = st.text_input("Password", type="password", placeholder="Masukkan password")
                     
                 with col2:
                     tanggal_lahir = st.date_input("Tanggal Lahir", min_value=datetime(1900, 1, 1), max_value=datetime.now(), value=None)
                     jenis_kelamin = st.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
+                    password = st.text_input("Password", type="password", placeholder="Masukkan password")
                 
                 submitted = st.form_submit_button("Tambah User Baru")
                 
