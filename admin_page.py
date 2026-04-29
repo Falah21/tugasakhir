@@ -564,8 +564,7 @@ class AdminPage:
                                         ["pasien", "dokter", "admin"],
                                         index=["pasien", "dokter", "admin"].index(selected_user.get('Role', 'pasien')) if selected_user.get('Role') in ["pasien", "dokter", "admin"] else 0
                                     )
-                                    new_password = st.text_input("Password Baru (kosongkan jika tidak diubah)", type="password")
-                                
+                                                
                                 with col_form2:
                                     # Parse tanggal lahir
                                     tgl_lahir_str = selected_user.get('Tanggal Lahir', '01-01-1990')
@@ -580,6 +579,7 @@ class AdminPage:
                                         ["Laki-laki", "Perempuan"],
                                         index=0 if selected_user.get('Jenis Kelamin') == "Laki-laki" else 1
                                     )
+                                    new_password = st.text_input("Password Baru (kosongkan jika tidak diubah)", type="password")
                                 
                                 if st.form_submit_button("Update Pengguna"):
                                     # Siapkan data update
