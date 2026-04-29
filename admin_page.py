@@ -602,22 +602,22 @@ class AdminPage:
                                             st.error(err)
                                     else:
                                     # Siapkan data update
-                                    update_data = {
-                                        'user_id': new_user_id,
-                                        'nama_lengkap': new_nama,
-                                        'role': new_role,
-                                        'tanggal_lahir': new_tanggal_lahir.strftime("%d-%m-%Y"),
-                                        'jenis_kelamin': new_jenis_kelamin
-                                    }
-                                    
-                                    # Tambahkan password jika diisi
-                                    if new_password:
-                                        update_data['password'] = new_password
-                                    
-                                    if self._update_user(selected_user['_id'], update_data):
-                                        st.success(f"Data {new_nama} berhasil diupdate!")
-                                        # st.balloons()
-                                        st.rerun()
+                                        update_data = {
+                                            'user_id': new_user_id,
+                                            'nama_lengkap': new_nama,
+                                            'role': new_role,
+                                            'tanggal_lahir': new_tanggal_lahir.strftime("%d-%m-%Y"),
+                                            'jenis_kelamin': new_jenis_kelamin
+                                        }
+                                        
+                                        # Tambahkan password jika diisi
+                                        if new_password:
+                                            update_data['password'] = new_password
+                                        
+                                        if self._update_user(selected_user['_id'], update_data):
+                                            st.success(f"Data {new_nama} berhasil diupdate!")
+                                            # st.balloons()
+                                            st.rerun()
                     else:
                         st.info("Pilih pengguna di atas untuk mengedit")
                 else:
