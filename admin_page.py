@@ -995,7 +995,7 @@ class AdminPage:
                             new_height = st.number_input("Tinggi (mm)", min_value=0, value=subject_params.get('Height (mm)', 0))
                             new_weight = st.number_input("Berat (kg)", min_value=0.0, value=subject_params.get('Bodymass (kg)', 0.0))
                             
-                            if st.form_submit_button("💾 Update Data"):
+                            if st.form_submit_button("Update Data"):
                                 update_data = {
                                     "Subject Parameters.Subject Name": new_name,
                                     "Subject Parameters.Age": new_age,
@@ -1017,7 +1017,7 @@ class AdminPage:
                                 update_data["Subject Parameters.BMI Classification"] = bmi_class
                                 
                                 self.collection.update_one({'_id': selected_doc['_id']}, {'$set': update_data})
-                                st.success("✅ Data berhasil diupdate!")
+                                st.success(f"Data {new_name} berhasil diupdate!")
                                 st.rerun()
                 else:
                     st.info("Pilih data diatas untuk mengedit")
