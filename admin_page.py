@@ -469,33 +469,52 @@ class AdminPage:
                 with col1:
                     role = st.selectbox("Jenis User", ["pasien", "dokter", "admin"])
                     user_id = st.text_input("User ID", placeholder="Masukkan NIK untuk pasien, NIP untuk dokter/admin")
-                    nama_lengkap = st.text_input("Nama Lengkap")
-                    password = st.text_input("Password", type="password")
+                    nama_lengkap = st.text_input("Nama Lengkap", placeholder="Masukkan nama lengkap")
+                    password = st.text_input("Password", type="password", placeholder="Masukkan password")
                     
                 with col2:
-                    tanggal_lahir = st.date_input("Tanggal Lahir", min_value=datetime(1900, 1, 1), max_value=datetime.now(), value=datetime(1990, 1, 1))
+                    tanggal_lahir = st.date_input("Tanggal Lahir", min_value=datetime(1900, 1, 1), max_value=datetime.now(), value=None)
                     jenis_kelamin = st.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
                 
                 submitted = st.form_submit_button("Tambah User Baru")
                 
                 if submitted:
-                    if not user_id or not nama_lengkap or not password:
-                        st.error("Harap isi semua field yang wajib!")
+                    if user_id and nama_lengkap and password:
+                        errors = []
+
+                        if role in ["dokter", "admin"]:
+                            if not user_id.isdigit():
+                                errors.append(f"NIP untuk {role} harus berupa angka (tidak boleh huruf).")
+                            if len(user_id) != 18:
+                                errors.append(f"NIP untuk {role} harus terdiri dari 18 digit.")
+                        else:
+                            if not user_id.isdigit():
+                                errors.append("NIK harus berupa angka (tidak boleh huruf).")
+                            if len(user_id) != 16:
+                                errors.append("NIK harus terdiri dari 16 digit.")
+                                
+                        if any(char.isdigit() for char in nama_lengkap):
+                            errors.append("Nama lengkap harus berupa huruf dan tidak boleh mengandung angka.")
+                        if not tanggal_lahir:
+                            errors.append("Tanggal lahir wajib diisi.")
+                        if errors:
+                            for err in errors:
+                                st.error(err)
+                        else:
+                            user_data = {
+                                'user_id': user_id,
+                                'nama_lengkap': nama_lengkap,
+                                'password': password,
+                                'role': role,
+                                'tanggal_lahir': tanggal_lahir.strftime("%d-%m-%Y"),
+                                'jenis_kelamin': jenis_kelamin,
+                                'tanggal_dibuat': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            }
+                            if self._add_new_user(user_data):
+                                st.success(f"{nama_lengkap} berhasil ditambahkan sebagai {role}!")
+                                st.rerun()
                     else:
-                        user_data = {
-                            'user_id': user_id,
-                            'nama_lengkap': nama_lengkap,
-                            'password': password,
-                            'role': role,
-                            'tanggal_lahir': tanggal_lahir.strftime("%d-%m-%Y"),
-                            'jenis_kelamin': jenis_kelamin,
-                            'tanggal_dibuat': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        }
-                        
-                        if self._add_new_user(user_data):
-                            st.success(f"User {nama_lengkap} berhasil ditambahkan sebagai {role}!")
-                            st.balloons()
-                            st.rerun()
+                        st.error("Harap isi semua kolom")
     
         # Tab 3: Kelola Pengguna (Edit & Delete)
         with tabs[2]:
@@ -578,7 +597,7 @@ class AdminPage:
                                     
                                     if self._update_user(selected_user['_id'], update_data):
                                         st.success(f"Data pengguna {new_nama} berhasil diupdate!")
-                                        st.balloons()
+                                        # st.balloons()
                                         st.rerun()
                     else:
                         st.info("Pilih pengguna di atas untuk mengedit")
