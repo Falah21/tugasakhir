@@ -241,7 +241,7 @@ class AdminPage:
         st.sidebar.markdown("<p class='sidebar-title'>Sistem Dashboard Pemeriksaan Gait</p>", unsafe_allow_html=True)
         st.sidebar.markdown("<p class='sidebar-subtitle'>Menu</p>", unsafe_allow_html=True)
     
-        menu_list = ["Home", "Manajemen User", "Baseline Data Gait", "Riwayat Pemeriksaan Pasien", "Logout"]
+        menu_list = ["Beranda", "Manajemen Pengguna", "Baseline Data Gait", "Riwayat Pemeriksaan Pasien", "Logout"]
     
         for menu in menu_list:
             if st.sidebar.button(menu, use_container_width=True, type="primary" 
@@ -407,7 +407,7 @@ class AdminPage:
         # Load data pasien sebelum menampilkan
         self._load_pasien_data()
         
-        st.markdown("### Manajemen Data Pengguna")
+        st.markdown("### Manajemen Pengguna")
         
         # Tab untuk jenis user yang berbeda (tambah tab kelola)
         tabs = st.tabs(["Semua Pengguna", "Tambah Pengguna Baru", "Kelola Pengguna"])
@@ -818,7 +818,7 @@ class AdminPage:
     # ---------- Manajemen Data Normal GAIT ----------
 
     def _manage_normal_data(self):
-        st.markdown("### Manajemen Baseline Data Gait")
+        st.markdown("### Baseline Data Gait")
         
         # Stats Overview
         total_data = self.collection.count_documents({})
@@ -1046,7 +1046,7 @@ class AdminPage:
             
             col1, col2 = st.columns(2)
             with col1:
-                st.metric("Total Pemeriksaan", total_exams)
+                st.metric("Total Pemeriksaan Keseluruhan", total_exams)
             # with col2:
             #     st.metric("Total Pasien Unik", unique_patients)
             with col2:
@@ -1135,7 +1135,7 @@ class AdminPage:
         # self._inject_css()
     
         if "menu_admin" not in st.session_state:
-            st.session_state.menu_admin = "Home"
+            st.session_state.menu_admin = "Beranda"
     
         if 'admin_logged_in' not in st.session_state:
             st.session_state.admin_logged_in = False
@@ -1163,12 +1163,12 @@ class AdminPage:
 
         # Setelah login
         menu = self._sidebar()
-        if menu == "Home":
+        if menu == "Beranda":
             self._account_card()
             # st.success("🎉 Selamat datang di Dashboard Admin GAIT Clinic!")
             # st.info("Gunakan menu di sidebar untuk mengelola data pengguna dan data normal GAIT.")
             
-        elif menu == "Manajemen User":
+        elif menu == "Manajemen Pengguna":
             self._panel_data()
             
         elif menu == "Baseline Data Gait":
