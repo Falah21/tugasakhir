@@ -588,8 +588,8 @@ class AdminPage:
                                             errors.append(f"NIP untuk {new_role} harus berupa angka (tidak boleh huruf).")
                                         if len(new_user_id) != 18:
                                             errors.append(f"NIP untuk {new_role} harus terdiri dari 18 digit.")
-                                     else:
-                                         if not new_user_id.isdigit():
+                                    else:
+                                        if not new_user_id.isdigit():
                                             errors.append("NIK harus berupa angka (tidak boleh huruf).")
                                         if len(new_user_id) != 16:
                                             errors.append("NIK harus terdiri dari 16 digit.")
