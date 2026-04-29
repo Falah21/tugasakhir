@@ -582,6 +582,25 @@ class AdminPage:
                                     new_password = st.text_input("Password Baru (kosongkan jika tidak diubah)", type="password")
                                 
                                 if st.form_submit_button("Update Pengguna"):
+                                    errors = []
+                                    if new_role in ["dokter", "admin"]:
+                                        if not new_user_id.isdigit():
+                                            errors.append(f"NIP untuk {new_role} harus berupa angka (tidak boleh huruf).")
+                                        if len(new_user_id) != 18:
+                                            errors.append(f"NIP untuk {new_role} harus terdiri dari 18 digit.")
+                                     else:
+                                         if not new_user_id.isdigit():
+                                            errors.append("NIK harus berupa angka (tidak boleh huruf).")
+                                        if len(new_user_id) != 16:
+                                            errors.append("NIK harus terdiri dari 16 digit.")
+                                    if any(char.isdigit() for char in new_nama):
+                                        errors.append("Nama lengkap harus berupa huruf dan tidak boleh mengandung angka.")
+                                    if not new_tanggal_lahir:
+                                        errors.append("Tanggal lahir wajib diisi.")
+                                    if errors:
+                                        for err in errors:
+                                            st.error(err)
+                                    else:
                                     # Siapkan data update
                                     update_data = {
                                         'user_id': new_user_id,
@@ -596,7 +615,7 @@ class AdminPage:
                                         update_data['password'] = new_password
                                     
                                     if self._update_user(selected_user['_id'], update_data):
-                                        st.success(f"Data pengguna {new_nama} berhasil diupdate!")
+                                        st.success(f"Data {new_nama} berhasil diupdate!")
                                         # st.balloons()
                                         st.rerun()
                     else:
@@ -757,20 +776,34 @@ class AdminPage:
             db = client['GaitDB']
             collection = db['users']
             
+            # Cek duplikasi user_id (jika ada perubahan user_id)
+            if 'user_id' in update_data:
+                existing_user = collection.find_one({
+                    'user_id': update_data['user_id'],
+                    '_id': {'$ne': ObjectId(user_id)}  # Cari user dengan user_id sama tapi bukan dirinya sendiri
+                })
+                if existing_user:
+                    st.error(f"User ID '{update_data['user_id']}' sudah terdaftar! Gunakan ID yang berbeda.")
+                    return False
+                    
             # Hapus password dari update_data jika tidak ingin diupdate
             if 'password' in update_data and update_data['password']:
                 # Hash password baru
                 hashed_password = bcrypt.hashpw(update_data['password'].encode('utf-8'), bcrypt.gensalt())
                 update_data['password'] = hashed_password.decode('utf-8')
-            else:
-                # Jika password kosong, hapus dari update_data
-                update_data.pop('password', None)
+            # else:
+            #     # Jika password kosong, hapus dari update_data
+            #     update_data.pop('password', None)
+            elif 'password' in update_data:
+            # Hapus password dari update jika kosong
+                del update_data['password']
             
             result = collection.update_one(
                 {'_id': ObjectId(user_id)},
                 {'$set': update_data}
             )
-            
+
+            st.session_state.pasien_list_initialized = False
             return result.modified_count > 0
             
         except Exception as e:
