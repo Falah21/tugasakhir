@@ -902,26 +902,6 @@ class AdminPage:
                 <div class="stats-number">{female_count}</div>
             </div>
             """, unsafe_allow_html=True)
-
-        # col1, col2, col3 = st.columns(3)
-        
-        # with col1:
-        #     st.metric("Total Data Normal", total_data)
-        
-        # with col2:
-        #     male_count = self.collection.count_documents({"Subject Parameters.Gender": "L"})
-        #     st.metric("Data Pria", male_count)
-        
-        # with col3:
-        #     female_count = self.collection.count_documents({"Subject Parameters.Gender": "P"})
-        #     st.metric("Data Wanita", female_count)
-            
-        # with col4:
-        #     # Data dengan usia di bawah 30
-        #     young_count = self.collection.count_documents({"Subject Parameters.Age": {"$lt": 30}})
-        #     st.metric("Usia < 30", young_count)
-        
-        # st.markdown("---")
         
         # Tampilkan data dalam tabel
         st.subheader("Daftar Baseline Data Gait")
@@ -971,7 +951,7 @@ class AdminPage:
                 age = subject_params.get('Age', 'N/A')
                 gender = subject_params.get('Gender', 'N/A')
                 display_text = f"{name} ({age} tahun, {gender})"
-                edit_options.append((str(doc['_id']), display_text))
+                edit_options.append((str(doc['_id']), display_text, name))
             
             if edit_options:
                 # Tambahkan opsi default di awal
@@ -989,6 +969,7 @@ class AdminPage:
                     if selected_doc:
                         with st.form("edit_form"):
                             subject_params = selected_doc.get('Subject Parameters', {})
+                            current_name = subject_params.get('Subject Name', '')
                             new_name = st.text_input("Nama Subjek", value=subject_params.get('Subject Name', ''))
                             new_age = st.number_input("Usia", min_value=0, max_value=120, value=subject_params.get('Age', 0))
                             new_gender = st.selectbox("Jenis Kelamin", ["L", "P"], index=0 if subject_params.get('Gender') == 'L' else 1)
@@ -996,13 +977,25 @@ class AdminPage:
                             new_weight = st.number_input("Berat (kg)", min_value=0.0, value=subject_params.get('Bodymass (kg)', 0.0))
                             
                             if st.form_submit_button("Update Data"):
-                                update_data = {
-                                    "Subject Parameters.Subject Name": new_name,
-                                    "Subject Parameters.Age": new_age,
-                                    "Subject Parameters.Gender": new_gender,
-                                    "Subject Parameters.Height (mm)": new_height,
-                                    "Subject Parameters.Bodymass (kg)": new_weight
-                                }
+                                errors = []
+                                if new_name != current_name:
+                                    existing_data = self.collection.find_one({
+                                        "Subject Parameters.Subject Name": new_name,
+                                        "_id": {"$ne": selected_doc['_id']}  # Exclude current document
+                                    })
+                                    if existing_data:
+                                        errors.append(f"Nama '{new_name}' sudah terdaftar! Silahkan gunakan nama yang berbeda.")
+                                if errors:
+                                    for err in errors:
+                                        st.error(err)
+                                else:
+                                    update_data = {
+                                        "Subject Parameters.Subject Name": new_name,
+                                        "Subject Parameters.Age": new_age,
+                                        "Subject Parameters.Gender": new_gender,
+                                        "Subject Parameters.Height (mm)": new_height,
+                                        "Subject Parameters.Bodymass (kg)": new_weight
+                                    }
                                 # Hitung ulang BMI
                                 height_m = new_height / 1000
                                 new_bmi = new_weight / (height_m ** 2) if height_m > 0 else 0
