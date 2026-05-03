@@ -969,7 +969,6 @@ class AdminPage:
                     if selected_doc:
                         with st.form("edit_form"):
                             subject_params = selected_doc.get('Subject Parameters', {})
-                            current_name = subject_params.get('Subject Name', '')
                             new_name = st.text_input("Nama Subjek", value=subject_params.get('Subject Name', ''))
                             new_age = st.number_input("Usia", min_value=0, max_value=120, value=subject_params.get('Age', 0))
                             new_gender = st.selectbox("Jenis Kelamin", ["L", "P"], index=0 if subject_params.get('Gender') == 'L' else 1)
@@ -977,25 +976,12 @@ class AdminPage:
                             new_weight = st.number_input("Berat (kg)", min_value=0.0, value=subject_params.get('Bodymass (kg)', 0.0))
                             
                             if st.form_submit_button("Update Data"):
-                                errors = []
-                                if new_name != current_name:
-                                    existing_data = self.collection.find_one({
-                                        "Subject Parameters.Subject Name": new_name,
-                                        "_id": {"$ne": selected_doc['_id']}  # Exclude current document
-                                    })
-                                    if existing_data:
-                                        errors.append(f"Nama '{new_name}' sudah terdaftar! Silahkan gunakan nama yang berbeda.")
-                                if errors:
-                                    for err in errors:
-                                        st.error(err)
-                                else:
-                                    update_data = {
-                                        "Subject Parameters.Subject Name": new_name,
-                                        "Subject Parameters.Age": new_age,
-                                        "Subject Parameters.Gender": new_gender,
-                                        "Subject Parameters.Height (mm)": new_height,
-                                        "Subject Parameters.Bodymass (kg)": new_weight
-                                    }
+                                update_data = {
+                                    "Subject Parameters.Subject Name": new_name,
+                                    "Subject Parameters.Age": new_age,
+                                    "Subject Parameters.Gender": new_gender,
+                                    "Subject Parameters.Height (mm)": new_height,
+                                    "Subject Parameters.Bodymass (kg)": new_weight}
                                 # Hitung ulang BMI
                                 height_m = new_height / 1000
                                 new_bmi = new_weight / (height_m ** 2) if height_m > 0 else 0
@@ -1046,7 +1032,7 @@ class AdminPage:
                     selected_doc = next((doc for doc in data if str(doc['_id']) == selected_delete_option), None)
                     if selected_doc:
                         subject_params = selected_doc.get('Subject Parameters', {})
-                        st.warning(f"⚠️ Anda akan menghapus data: **{subject_params.get('Subject Name', 'N/A')}**")
+                        st.warning(f"Anda akan menghapus data: **{subject_params.get('Subject Name', 'N/A')}**")
                         st.write(f"- Usia: {subject_params.get('Age', 'N/A')}")
                         st.write(f"- Gender: {subject_params.get('Gender', 'N/A')}")
                         st.write(f"- Tinggi: {subject_params.get('Height (mm)', 'N/A')} mm")
@@ -1058,7 +1044,7 @@ class AdminPage:
                         with col_confirm1:
                             if st.button("Hapus Permanen", type="secondary", use_container_width=True):
                                 self.collection.delete_one({'_id': selected_doc['_id']})
-                                st.success("✅ Data berhasil dihapus!")
+                                st.success("Data berhasil dihapus!")
                                 st.rerun()
                         with col_confirm2:
                             if st.button("Batal", use_container_width=True):
