@@ -937,7 +937,7 @@ class AdminPage:
         
         # Fitur Edit dan Delete
         st.markdown("---")
-        st.subheader("Kelola Data")
+        st.subheader("Kelola Data Baseline")
         col1, col2 = st.columns(2)
         
         with col1:
