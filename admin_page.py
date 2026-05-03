@@ -476,7 +476,7 @@ class AdminPage:
                     jenis_kelamin = st.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
                     password = st.text_input("Password", type="password", placeholder="Masukkan password")
                 
-                submitted = st.form_submit_button("Tambah User Baru")
+                submitted = st.form_submit_button("Tambah Pengguna Baru")
                 
                 if submitted:
                     if user_id and nama_lengkap and password:
