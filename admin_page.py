@@ -943,29 +943,29 @@ class AdminPage:
         with col1:
             st.markdown("#### Edit Data")
             
-            # Buat pilihan untuk selectbox dengan format: "Nama (Usia, Gender)"
-            edit_options = []
-            for doc in data:
-                subject_params = doc.get('Subject Parameters', {})
-                name = subject_params.get('Subject Name', 'N/A')
-                age = subject_params.get('Age', 'N/A')
-                gender = subject_params.get('Gender', 'N/A')
-                display_text = f"{name} ({age} tahun, {gender})"
-                edit_options.append((str(doc['_id']), display_text, name))
-            
-            if edit_options:
-                # Tambahkan opsi default di awal
-                options_with_default = [("", "Pilih Data untuk Diedit")] + edit_options
+            if data:
+                # Buat dictionary untuk mapping display text ke document
+                edit_options_dict = {}
+                for doc in data:
+                    subject_params = doc.get('Subject Parameters', {})
+                    name = subject_params.get('Subject Name', 'N/A')
+                    age = subject_params.get('Age', 'N/A')
+                    gender = subject_params.get('Gender', 'N/A')
+                    display_text = f"{name} ({age} tahun, {gender})"
+                    edit_options_dict[display_text] = doc
                 
-                selected_option = st.selectbox(
+                # Buat list of options untuk selectbox
+                edit_options_list = ["Pilih Data untuk Diedit"] + list(edit_options_dict.keys())
+                
+                selected_display = st.selectbox(
                     "Pilih data untuk diedit:",
-                    options=[opt[0] for opt in options_with_default],
-                    format_func=lambda x: next((display for doc_id, display in options_with_default if doc_id == x), 'Pilih Data untuk Diedit')
+                    options=edit_options_list,
+                    key="edit_select"
                 )
                 
                 # Hanya tampilkan form edit jika user memilih data (bukan opsi default)
-                if selected_option and selected_option != "":
-                    selected_doc = next((doc for doc in data if str(doc['_id']) == selected_option), None)
+                if selected_display and selected_display != "Pilih Data untuk Diedit":
+                    selected_doc = edit_options_dict[selected_display]
                     if selected_doc:
                         with st.form("edit_form"):
                             subject_params = selected_doc.get('Subject Parameters', {})
@@ -996,23 +996,23 @@ class AdminPage:
                                         "Subject Parameters.Height (mm)": new_height,
                                         "Subject Parameters.Bodymass (kg)": new_weight
                                     }
-                                
-                                # Hitung ulang BMI
-                                height_m = new_height / 1000
-                                new_bmi = new_weight / (height_m ** 2) if height_m > 0 else 0
-                                bmi_class = (
-                                    "Kurus Berat" if new_bmi < 17.0 else
-                                    "Kurus Ringan" if 17.0 <= new_bmi <= 18.4 else
-                                    "Normal" if 18.5 <= new_bmi <= 25.0 else
-                                    "Gemuk Ringan" if 25.1 <= new_bmi <= 27.0 else
-                                    "Gemuk Berat"
-                                )
-                                update_data["Subject Parameters.BMI"] = round(new_bmi, 2)
-                                update_data["Subject Parameters.BMI Classification"] = bmi_class
-                                
-                                self.collection.update_one({'_id': selected_doc['_id']}, {'$set': update_data})
-                                st.success(f"Data {new_name} berhasil diupdate!")
-                                st.rerun()
+                                    
+                                    # Hitung ulang BMI
+                                    height_m = new_height / 1000
+                                    new_bmi = new_weight / (height_m ** 2) if height_m > 0 else 0
+                                    bmi_class = (
+                                        "Kurus Berat" if new_bmi < 17.0 else
+                                        "Kurus Ringan" if 17.0 <= new_bmi <= 18.4 else
+                                        "Normal" if 18.5 <= new_bmi <= 25.0 else
+                                        "Gemuk Ringan" if 25.1 <= new_bmi <= 27.0 else
+                                        "Gemuk Berat"
+                                    )
+                                    update_data["Subject Parameters.BMI"] = round(new_bmi, 2)
+                                    update_data["Subject Parameters.BMI Classification"] = bmi_class
+                                    
+                                    self.collection.update_one({'_id': selected_doc['_id']}, {'$set': update_data})
+                                    st.success(f"Data {new_name} berhasil diupdate!")
+                                    st.rerun()
                 else:
                     st.info("Pilih data diatas untuk mengedit")
             else:
@@ -1021,33 +1021,32 @@ class AdminPage:
         with col2:
             st.markdown("#### Hapus Data")
             
-            # Buat pilihan untuk delete dengan format yang sama
-            delete_options = []
-            for doc in data:
-                subject_params = doc.get('Subject Parameters', {})
-                name = subject_params.get('Subject Name', 'N/A')
-                age = subject_params.get('Age', 'N/A')
-                gender = subject_params.get('Gender', 'N/A')
-                display_text = f"{name} ({age} tahun, {gender})"
-                delete_options.append((str(doc['_id']), display_text))
-            
-            if delete_options:
-                # Tambahkan opsi default di awal
-                delete_options_with_default = [("", "Pilih Data untuk Dihapus")] + delete_options
+            if data:
+                # Buat dictionary untuk mapping display text ke document untuk delete
+                delete_options_dict = {}
+                for doc in data:
+                    subject_params = doc.get('Subject Parameters', {})
+                    name = subject_params.get('Subject Name', 'N/A')
+                    age = subject_params.get('Age', 'N/A')
+                    gender = subject_params.get('Gender', 'N/A')
+                    display_text = f"{name} ({age} tahun, {gender})"
+                    delete_options_dict[display_text] = doc
                 
-                selected_delete_option = st.selectbox(
+                # Buat list of options untuk selectbox
+                delete_options_list = ["Pilih Data untuk Dihapus"] + list(delete_options_dict.keys())
+                
+                selected_delete_display = st.selectbox(
                     "Pilih data untuk dihapus:",
-                    options=[opt[0] for opt in delete_options_with_default],
-                    key="delete_select",
-                    format_func=lambda x: next((display for doc_id, display in delete_options_with_default if doc_id == x), 'Pilih Data untuk Dihapus')
+                    options=delete_options_list,
+                    key="delete_select"
                 )
                 
                 # Hanya tampilkan konfirmasi penghapusan jika user memilih data (bukan opsi default)
-                if selected_delete_option and selected_delete_option != "":
-                    selected_doc = next((doc for doc in data if str(doc['_id']) == selected_delete_option), None)
+                if selected_delete_display and selected_delete_display != "Pilih Data untuk Dihapus":
+                    selected_doc = delete_options_dict[selected_delete_display]
                     if selected_doc:
                         subject_params = selected_doc.get('Subject Parameters', {})
-                        st.warning(f"Anda akan menghapus data: **{subject_params.get('Subject Name', 'N/A')}**")
+                        st.warning(f"⚠️ Anda akan menghapus data: **{subject_params.get('Subject Name', 'N/A')}**")
                         st.write(f"- Usia: {subject_params.get('Age', 'N/A')}")
                         st.write(f"- Gender: {subject_params.get('Gender', 'N/A')}")
                         st.write(f"- Tinggi: {subject_params.get('Height (mm)', 'N/A')} mm")
@@ -1059,7 +1058,7 @@ class AdminPage:
                         with col_confirm1:
                             if st.button("Hapus Permanen", type="secondary", use_container_width=True):
                                 self.collection.delete_one({'_id': selected_doc['_id']})
-                                st.success("Data berhasil dihapus!")
+                                st.success("✅ Data berhasil dihapus!")
                                 st.rerun()
                         with col_confirm2:
                             if st.button("Batal", use_container_width=True):
