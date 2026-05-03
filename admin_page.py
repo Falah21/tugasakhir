@@ -237,8 +237,8 @@ class AdminPage:
     def _sidebar(self):
         admin_data = st.session_state.get('admin_user_data', {})
         admin_name = admin_data.get('nama_lengkap', 'Admin')
-        
-        st.sidebar.markdown("<p class='sidebar-title'>Sistem Dashboard Pemeriksaan Gait</p>", unsafe_allow_html=True)
+
+        st.sidebar.markdown(f"<p class='sidebar-title'>Selamat Datang<br> {admin_name}</p>", unsafe_allow_html=True)
         st.sidebar.markdown("<p class='sidebar-subtitle'>Menu</p>", unsafe_allow_html=True)
     
         menu_list = ["Beranda", "Manajemen Pengguna", "Baseline Data Gait", "Riwayat Pemeriksaan Pasien", "Logout"]
