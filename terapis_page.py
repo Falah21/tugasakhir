@@ -430,9 +430,9 @@ class TerapisPage:
         
         # ====== Sidebar ======
         dokter_nama = st.session_state.get('terapis_nama', 'Dokter')
-        st.sidebar.markdown(f"<p class='sidebar-title'>Selamat Datang<br> Dr. {dokter_nama}</p>", unsafe_allow_html=True)
+        st.sidebar.markdown(f"<p class='sidebar-title'>Selamat Datang<br> dr. {dokter_nama}</p>", unsafe_allow_html=True)
 
-        st.sidebar.markdown("<p class='sidebar-title'>Menu</p>", unsafe_allow_html=True)
+        st.sidebar.markdown("<p class='sidebar-subtitle'>Menu</p>", unsafe_allow_html=True)
         
         menu_list = ["Dashboard", "Input Baseline Data Gait", "Input Pemeriksaan Pasien", "Riwayat Pemeriksaan", "Logout"]
 
