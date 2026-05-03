@@ -936,7 +936,7 @@ class AdminPage:
         st.dataframe(display_df, use_container_width=True)
         
         # Fitur Edit dan Delete
-        st.markdown("---")
+        # st.markdown("---")
         st.subheader("Kelola Data Baseline")
         col1, col2 = st.columns(2)
         
