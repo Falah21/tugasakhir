@@ -518,7 +518,7 @@ class AdminPage:
     
         # Tab 3: Kelola Pengguna (Edit & Delete)
         with tabs[2]:
-            st.subheader("Kelola Data Pengguna")
+            # st.subheader("Kelola Data Pengguna")
             
             # Tampilkan ringkasan data yang tersedia
             if not all_users:
