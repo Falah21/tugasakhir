@@ -542,7 +542,7 @@ class AdminPage:
                     options_with_default = [("", "Pilih Pengguna untuk Diedit")] + edit_options
                     
                     selected_option = st.selectbox(
-                        "Pilih pengguna untuk diedit:",
+                        "Silahkan pilih pengguna yang ingin diedit!!",
                         options=[opt[0] for opt in options_with_default],
                         format_func=lambda x: next((display for id, display in options_with_default if id == x), 'Pilih Pengguna untuk Diedit')
                     )
@@ -618,8 +618,8 @@ class AdminPage:
                                             st.success(f"Data {new_nama} berhasil diupdate!")
                                             # st.balloons()
                                             st.rerun()
-                    else:
-                        st.info("Pilih pengguna di atas untuk mengedit")
+                    # else:
+                    #     st.info("Pilih pengguna di atas untuk mengedit")
                 else:
                     st.info("Tidak ada data pengguna yang dapat diedit")
             
@@ -638,7 +638,7 @@ class AdminPage:
                     delete_options_with_default = [("", "Pilih Pengguna untuk Dihapus")] + delete_options
                     
                     selected_delete_option = st.selectbox(
-                        "Pilih pengguna untuk dihapus:",
+                        "Silahkan pilih pengguna yang ingin dihapus!!",
                         options=[opt[0] for opt in delete_options_with_default],
                         key="delete_user_select",
                         format_func=lambda x: next((display for id, display in delete_options_with_default if id == x), 'Pilih Pengguna untuk Dihapus')
@@ -669,8 +669,8 @@ class AdminPage:
                             with col_confirm2:
                                 if st.button("Batal", use_container_width=True):
                                     st.info("Penghapusan dibatalkan")
-                    else:
-                        st.info("Pilih pengguna di atas untuk menghapus")
+                    # else:
+                    #     st.info("Pilih pengguna di atas untuk menghapus")
                 else:
                     st.info("Tidak ada data pengguna yang dapat dihapus")
 
@@ -958,7 +958,7 @@ class AdminPage:
                 edit_options_list = ["Pilih Data untuk Diedit"] + list(edit_options_dict.keys())
                 
                 selected_display = st.selectbox(
-                    "Pilih data untuk diedit:",
+                    "Silahkan pilih data yang akan diedit!!",
                     options=edit_options_list,
                     key="edit_select"
                 )
@@ -1013,8 +1013,8 @@ class AdminPage:
                                     self.collection.update_one({'_id': selected_doc['_id']}, {'$set': update_data})
                                     st.success(f"Data {new_name} berhasil diupdate!")
                                     st.rerun()
-                else:
-                    st.info("Pilih data diatas untuk mengedit")
+                # else:
+                #     st.info("Pilih data diatas untuk mengedit")
             else:
                 st.info("Tidak ada data yang dapat diedit")
         
@@ -1036,7 +1036,7 @@ class AdminPage:
                 delete_options_list = ["Pilih Data untuk Dihapus"] + list(delete_options_dict.keys())
                 
                 selected_delete_display = st.selectbox(
-                    "Pilih data untuk dihapus:",
+                    "Silahkan pilih data yang ingin dihapus!!",
                     options=delete_options_list,
                     key="delete_select"
                 )
@@ -1046,7 +1046,7 @@ class AdminPage:
                     selected_doc = delete_options_dict[selected_delete_display]
                     if selected_doc:
                         subject_params = selected_doc.get('Subject Parameters', {})
-                        st.warning(f"⚠️ Anda akan menghapus data: **{subject_params.get('Subject Name', 'N/A')}**")
+                        st.warning(f"Anda akan menghapus data: **{subject_params.get('Subject Name', 'N/A')}**")
                         st.write(f"- Usia: {subject_params.get('Age', 'N/A')}")
                         st.write(f"- Gender: {subject_params.get('Gender', 'N/A')}")
                         st.write(f"- Tinggi: {subject_params.get('Height (mm)', 'N/A')} mm")
@@ -1058,13 +1058,13 @@ class AdminPage:
                         with col_confirm1:
                             if st.button("Hapus Permanen", type="secondary", use_container_width=True):
                                 self.collection.delete_one({'_id': selected_doc['_id']})
-                                st.success("✅ Data berhasil dihapus!")
+                                st.success("Data berhasil dihapus!")
                                 st.rerun()
                         with col_confirm2:
                             if st.button("Batal", use_container_width=True):
                                 st.info("Penghapusan dibatalkan")
-                else:
-                    st.info("Pilih data di atas untuk menghapus")
+                # else:
+                #     st.info("Pilih data di atas untuk menghapus")
             else:
                 st.info("Tidak ada data yang dapat dihapus")
             
