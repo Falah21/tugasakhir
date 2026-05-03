@@ -876,7 +876,7 @@ class AdminPage:
         total_data = self.collection.count_documents({})
         male_count = self.collection.count_documents({"Subject Parameters.Gender": "L"})
         female_count = self.collection.count_documents({"Subject Parameters.Gender": "P"})
-
+    
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -931,7 +931,7 @@ class AdminPage:
         
         df = pd.DataFrame(table_data)
         
-        # # Tampilkan dataframe tanpa kolom _id
+        # Tampilkan dataframe tanpa kolom _id
         display_df = df.drop('_id', axis=1)
         st.dataframe(display_df, use_container_width=True)
         
@@ -960,7 +960,7 @@ class AdminPage:
                 selected_option = st.selectbox(
                     "Pilih data untuk diedit:",
                     options=[opt[0] for opt in options_with_default],
-                    format_func=lambda x: next((display for id, display in options_with_default if id == x), 'Pilih Data untuk Diedit')
+                    format_func=lambda x: next((display for doc_id, display in options_with_default if doc_id == x), 'Pilih Data untuk Diedit')
                 )
                 
                 # Hanya tampilkan form edit jika user memilih data (bukan opsi default)
@@ -969,6 +969,7 @@ class AdminPage:
                     if selected_doc:
                         with st.form("edit_form"):
                             subject_params = selected_doc.get('Subject Parameters', {})
+                            current_name = subject_params.get('Subject Name', '')
                             new_name = st.text_input("Nama Subjek", value=subject_params.get('Subject Name', ''))
                             new_age = st.number_input("Usia", min_value=0, max_value=120, value=subject_params.get('Age', 0))
                             new_gender = st.selectbox("Jenis Kelamin", ["L", "P"], index=0 if subject_params.get('Gender') == 'L' else 1)
@@ -976,12 +977,26 @@ class AdminPage:
                             new_weight = st.number_input("Berat (kg)", min_value=0.0, value=subject_params.get('Bodymass (kg)', 0.0))
                             
                             if st.form_submit_button("Update Data"):
-                                update_data = {
-                                    "Subject Parameters.Subject Name": new_name,
-                                    "Subject Parameters.Age": new_age,
-                                    "Subject Parameters.Gender": new_gender,
-                                    "Subject Parameters.Height (mm)": new_height,
-                                    "Subject Parameters.Bodymass (kg)": new_weight}
+                                errors = []
+                                if new_name != current_name:
+                                    existing_data = self.collection.find_one({
+                                        "Subject Parameters.Subject Name": new_name,
+                                        "_id": {"$ne": selected_doc['_id']}
+                                    })
+                                    if existing_data:
+                                        errors.append(f"Nama '{new_name}' sudah terdaftar! Silahkan gunakan nama yang berbeda.")
+                                if errors:
+                                    for err in errors:
+                                        st.error(err)
+                                else:
+                                    update_data = {
+                                        "Subject Parameters.Subject Name": new_name,
+                                        "Subject Parameters.Age": new_age,
+                                        "Subject Parameters.Gender": new_gender,
+                                        "Subject Parameters.Height (mm)": new_height,
+                                        "Subject Parameters.Bodymass (kg)": new_weight
+                                    }
+                                
                                 # Hitung ulang BMI
                                 height_m = new_height / 1000
                                 new_bmi = new_weight / (height_m ** 2) if height_m > 0 else 0
@@ -1024,7 +1039,7 @@ class AdminPage:
                     "Pilih data untuk dihapus:",
                     options=[opt[0] for opt in delete_options_with_default],
                     key="delete_select",
-                    format_func=lambda x: next((display for id, display in delete_options_with_default if id == x), 'Pilih Data untuk Dihapus')
+                    format_func=lambda x: next((display for doc_id, display in delete_options_with_default if doc_id == x), 'Pilih Data untuk Dihapus')
                 )
                 
                 # Hanya tampilkan konfirmasi penghapusan jika user memilih data (bukan opsi default)
@@ -1053,7 +1068,7 @@ class AdminPage:
                     st.info("Pilih data di atas untuk menghapus")
             else:
                 st.info("Tidak ada data yang dapat dihapus")
-
+            
     # ---------- Riwayat Pemeriksaan Pasien ----------
     def _patient_examination_history(self):
         st.markdown("### Riwayat Pemeriksaan Pasien")
