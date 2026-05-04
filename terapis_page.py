@@ -610,7 +610,8 @@ class TerapisPage:
                             st.error("Gagal memproses data yang diupload.")
                             
                     except Exception as e:
-                        st.error(f"Error dalam memproses file: {e}")        
+                        st.error(f"Error dalam memproses file: {e}") 
+                        
     def input_data_gait_pasien(self):
         st.subheader("Input Pemeriksaan Pasien")
         
@@ -792,14 +793,14 @@ class TerapisPage:
                         
                         # Tampilkan statistik upload
                         self.show_upload_statistics()
-                                
-                    except Exception as e:
-                        st.error(f"Error dalam memproses file: {e}")
-            else:
-                if 'uploaded_patient_data' in st.session_state:
-                    del st.session_state.uploaded_patient_data
-                if 'norm_kinematics_df' in st.session_state:
-                    del st.session_state.norm_kinematics_df
+                        
+                except Exception as e:
+                    st.error(f"Error dalam memproses file: {e}")
+        else:
+            if 'uploaded_patient_data' in st.session_state:
+                del st.session_state.uploaded_patient_data
+            if 'norm_kinematics_df' in st.session_state:
+                del st.session_state.norm_kinematics_df
 
     def show_examination_history(self):
         st.subheader("Riwayat Pemeriksaan")
