@@ -1320,7 +1320,7 @@ class TerapisPage:
         fig8 = self.create_joint_figure(rankle, "Right Ankle", 'dark blue')
 
         # Tampilkan dalam tabs
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["PELVIS", "KNEE", "HIP", "ANKLE", "HASIL RINGKASAN AI"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["PELVIS", "KNEE", "HIP", "ANKLE", "HASIL RINGKASAN"])
 
         with tab1:
             tab1.subheader("PELVIS")
@@ -1423,7 +1423,7 @@ class TerapisPage:
         
     def show_ai_summary_tab_with_phases(self):
         """Menampilkan tab Hasil Ringkasan AI dengan tombol generate manual"""
-        st.subheader("HASIL RINGKASAN AI")
+        # st.subheader("HASIL RINGKASAN AI")
         
         # Cek apakah semua MAE sudah tersedia
         required_mae = [
