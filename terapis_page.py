@@ -1648,59 +1648,95 @@ class TerapisPage:
                 
                 # PROMPT A dan B
                 prompt_a = f"""
-                Anda adalah seorang fisioterapis klinis dan ahli biomekanika yang berpengalaman dalam analisis gait. 
-                Anda memahami konsep gait cycle, joint kinematics, serta evaluasi parameter gait berdasarkan rentang 
-                nilai normal (upper bound dan lower bound) dan nilai Mean Absolute Error (MAE).         
-                
-                DATA ANALISIS GAIT:
-                {full_data}
-                
-                INSTRUKSI:
-                Lakukan analisis secara objektif, profesional, dan berbasis data yang diberikan.
-                a. Interpretasikan nilai MAE sebagai ukuran rata-rata deviasi parameter gait pasien terhadap nilai gait normal.
-                b. Identifikasi fase gait mana yang memiliki MAE tertinggi untuk setiap sendi dan setiap fase.
-                c. Bandingkan hasil antara sisi kanan dan kiri untuk setiap sendi dan setiap fase.
-                
-                Gunakan bahasa medis yang jelas, sistematis, dan mudah dipahami oleh tenaga kesehatan.
-                Analisis bersifat deskriptif dan tidak mencakup penetapan diagnosis medis.
-                Hindari spekulasi atau asumsi di luar data yang tersedia. 
-    
-                Buat 3 variasi ringkasan berdasarkan data diatas:
-                VARIASI 1: Analisis singkat dan padat (2-3 paragraf)
-                VARIASI 2: Analisis terstruktur dengan sub-bagian per sendi dan per fase
-                VARIASI 3: Analisis berfokus pada rekomendasi klinis
-    
-                Pisahkan setiap variasi dengan "=== VARIASI X ==="
-                """
+                    Anda adalah fisioterapis klinis dan analis biomekanika gait.
+                    
+                    DATA:
+                    {full_data}
+                    
+                    TUGAS:
+                    Lakukan analisis gait dengan fokus pada temuan paling penting dan deviasi signifikan.
+                    
+                    ATURAN WAJIB:
+                    - Maksimal 200 kata per variasi
+                    - Hindari terlalu banyak angka (cukup gunakan: rendah, sedang, tinggi)
+                    - Fokus hanya pada temuan paling mencolok
+                    - Jangan menjelaskan semua fase
+                    - Jangan mengulang isi tabel data mentah
+                    - Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
+                    
+                    OUTPUT:
+                    
+                    === VARIASI 1 ===
+                    Ringkasan singkat (2 paragraf):
+                    - Gambaran umum deviasi gait
+                    - Sisi dominan (kanan/kiri)
+                    - Sendi utama yang bermasalah
+                    
+                    === VARIASI 2 ===
+                    Analisis terstruktur + tabel highlight:
+                    
+                    1. Highlight Temuan Utama:
+                    - Sebutkan 3–4 temuan paling signifikan (tanpa detail angka)
+                    
+                    2. Tabel Ringkasan Deviasi:
+                    Buat tabel dengan format:
+                    
+                    | Sendi | Sisi | Fase Paling Bermasalah | Tingkat Deviasi |
+                    |-------|------|----------------------|-----------------|
+                    
+                    Isi hanya dengan temuan yang paling signifikan saja (maksimal 5 baris).
+                    
+                    Gunakan istilah:
+                    - Rendah
+                    - Sedang
+                    - Tinggi
+                    
+                    === VARIASI 3 ===
+                    Analisis klinis:
+                    - Interpretasi makna deviasi
+                    - Pola kompensasi (jika ada)
+                    - Implikasi terhadap fungsi berjalan
+                    - Tanpa tabel
+                    """
                 
                 prompt_b = f"""
                 Buat laporan hasil gait analysis berdasarkan data berikut:
                 
-                DATA ANALISIS GAIT:
+                DATA:
                 {full_data}
                 
-                INSTRUKSI:
-                Struktur laporan hasil mengikuti format berikut:
+                ATURAN WAJIB:
+                - Maksimal 200 kata per variasi
+                - Jangan menampilkan semua angka (cukup highlight yang paling penting)
+                - Gunakan istilah kualitatif: ringan, moderat, tinggi
+                - Fokus pada pola, bukan angka
+                - Hindari penjelasan per fase secara lengkap
+                - Gunakan bahasa formal namun ringkas
+                - Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
+                
+                
+                STRUKTUR:
+                
                 a. HASIL PEMERIKSAAN
-                    - Sajikan nilai Mean Absolute Error (MAE) dalam bentuk poin untuk setiap sendi utama.
-                    - Soroti nilai MAE tertinggi dan terendah dari setiap sendi.
+                - Ringkasan singkat kondisi umum (tanpa list angka panjang)
+                
                 b. INTERPRETASI KLINIS
-                    - Jelaskan makna klinis dari posisi parameter gait terhadap rentang nilai normal.
-                    - Interpretasikan nilai MAE sebagai tingkat deviasi rata-rata terhadap gait normal.
-                    - Hubungkan temuan dengan fase-fase gait cycle
-                    - Bandingkan hasil antara sisi kanan dan kiri berdasarkan data yang tersedia.
+                - Pola utama (asimetris / dominan sisi tertentu)
+                - Sendi paling bermasalah
+                - Fase paling kritis (cukup 1–2 fase saja)
+                
                 c. REKOMENDASI
-                    - Saran klinis atau intervensi umum berdasarkan temuan
-                    - Target perbaikan gait yang diharapkan        
+                - Saran umum (tidak terlalu panjang)
                 
-                Berikan 3 variasi laporan berdasarkan data diatas:
+                OUTPUT:
+                === VARIASI 1 ===
+                Fokus temuan utama (ringkas)
                 
-                VARIASI 1: Laporan dengan fokus pada temuan utama
-                VARIASI 2: Laporan klinis lengkap dengan detail per sendi dan fase gait
-                VARIASI 3: Laporan dengan tambahan pada rekomendasi terapi
+                === VARIASI 2 ===
+                Lebih terstruktur tapi tetap ringkas
                 
-                Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
-                Pisahkan setiap variasi dengan "=== VARIASI X ==="
+                === VARIASI 3 ===
+                Fokus interpretasi + rekomendasi
                 """
                 
                 # Generate summaries
