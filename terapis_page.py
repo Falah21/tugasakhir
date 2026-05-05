@@ -936,34 +936,10 @@ class TerapisPage:
         except Exception as e:
             st.error(f"Error mengambil data riwayat: {e}")
 
-    # def show_upload_statistics(self):
-    #     """Menampilkan statistik waktu upload"""
-    #     if 'upload_times' in st.session_state and st.session_state.upload_times:
-    #         with st.expander("📊 Statistik Waktu Upload Data"):
-    #             df_uploads = pd.DataFrame(st.session_state.upload_times)
-                
-    #             # Hitung statistik
-    #             avg_time = df_uploads['execution_time'].mean()
-    #             min_time = df_uploads['execution_time'].min()
-    #             max_time = df_uploads['execution_time'].max()
-    #             total_uploads = len(df_uploads)
-                
-    #             col1, col2, col3, col4 = st.columns(4)
-    #             with col1:
-    #                 st.metric("Total Upload", total_uploads)
-    #             with col2:
-    #                 st.metric("Rata-rata Waktu", f"{avg_time:.2f} detik")
-    #             with col3:
-    #                 st.metric("Tercepat", f"{min_time:.2f} detik")
-    #             with col4:
-    #                 st.metric("Terlama", f"{max_time:.2f} detik")
-                
-    #             st.dataframe(df_uploads, use_container_width=True)
-
     def show_upload_statistics(self):
-        """Menampilkan statistik waktu upload dan kecepatan"""
+        """Menampilkan statistik waktu upload"""
         if 'upload_times' in st.session_state and st.session_state.upload_times:
-            with st.expander("📊 Statistik Riwayat Upload"):
+            with st.expander("📊 Statistik Waktu Upload Data"):
                 df_uploads = pd.DataFrame(st.session_state.upload_times)
                 
                 # Hitung statistik
@@ -971,39 +947,18 @@ class TerapisPage:
                 min_time = df_uploads['execution_time'].min()
                 max_time = df_uploads['execution_time'].max()
                 total_uploads = len(df_uploads)
-                avg_speed = df_uploads['upload_speed_mbps'].mean()
                 
-                col1, col2, col3, col4, col5 = st.columns(5)
+                col1, col2, col3, col4 = st.columns(4)
                 with col1:
                     st.metric("Total Upload", total_uploads)
                 with col2:
-                    st.metric("Rata-rata Waktu", f"{avg_time:.2f} dtk")
+                    st.metric("Rata-rata Waktu", f"{avg_time:.2f} detik")
                 with col3:
-                    st.metric("Rata-rata Kecepatan", f"{avg_speed:.2f} Mbps")
+                    st.metric("Tercepat", f"{min_time:.2f} detik")
                 with col4:
-                    st.metric("Upload Tercepat", f"{min_time:.2f} dtk")
-                with col5:
-                    st.metric("Upload Terlama", f"{max_time:.2f} dtk")
+                    st.metric("Terlama", f"{max_time:.2f} detik")
                 
-                # Tampilkan tabel detail
-                st.dataframe(
-                    df_uploads[['timestamp', 'pasien', 'file_size_mb', 'execution_time', 'upload_speed_mbps', 'connection_quality']], 
-                    use_container_width=True
-                )
-                
-                # Grafik kecepatan upload
-                if len(df_uploads) > 1:
-                    st.markdown("### 📈 Tren Kecepatan Upload")
-                    fig = px.line(
-                        df_uploads, 
-                        x='timestamp', 
-                        y='upload_speed_mbps',
-                        title='Kecepatan Upload per Pemeriksaan',
-                        labels={'timestamp': 'Waktu', 'upload_speed_mbps': 'Kecepatan (Mbps)'}
-                    )
-                    fig.add_hline(y=5, line_dash="dash", line_color="red", annotation_text="Batas Lambat")
-                    fig.add_hline(y=20, line_dash="dash", line_color="yellow", annotation_text="Batas Normal")
-                    st.plotly_chart(fig, use_container_width=True)
+                st.dataframe(df_uploads, use_container_width=True)
 
     def show_dashboard(self):
         st.markdown("## Dashboard Gait Analysis")
