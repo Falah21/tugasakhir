@@ -722,6 +722,11 @@ class TerapisPage:
                 # MULAI TIMER
                 start_time = time.time()
                 
+                # CATAT UKURAN FILE SEBELUM PROSES
+                file_size_bytes = len(uploaded_file.getvalue())
+                file_size_kb = file_size_bytes / 1024
+                file_size_mb = file_size_kb / 1024
+                
                 # Proses file dengan GaitAnalysisData
                 gait_data = GaitAnalysisData(uploaded_file)
                 processed_data = gait_data.to_dict()
@@ -760,6 +765,7 @@ class TerapisPage:
                     'bmi_classification': bmi_class,
                     'file_info': {
                         'file_name': uploaded_file.name,
+                        'file_size_mb': round(file_size_mb, 2),
                         'upload_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     },
                     'gait_data': processed_data,
@@ -795,20 +801,69 @@ class TerapisPage:
                 end_time = time.time()
                 upload_time = end_time - start_time
                 
+                # HITUNG KECEPATAN UPLOAD (Mbps)
+                # Rumus: (File size dalam bits) / (waktu dalam detik) / 1,000,000
+                file_size_bits = file_size_bytes * 8
+                upload_speed_mbps = (file_size_bits / upload_time) / 1_000_000
+                
+                # Tentukan kualitas koneksi berdasarkan kecepatan
+                if upload_speed_mbps < 1:
+                    connection_quality = "Sangat Lambat 🐌"
+                    quality_color = "🔴"
+                elif upload_speed_mbps < 5:
+                    connection_quality = "Lambat ⚠️"
+                    quality_color = "🟠"
+                elif upload_speed_mbps < 20:
+                    connection_quality = "Normal 👍"
+                    quality_color = "🟡"
+                elif upload_speed_mbps < 50:
+                    connection_quality = "Cepat 🚀"
+                    quality_color = "🟢"
+                else:
+                    connection_quality = "Sangat Cepat ⚡"
+                    quality_color = "💚"
+                
                 # Simpan ke session state
                 if 'upload_times' not in st.session_state:
                     st.session_state.upload_times = []
                 st.session_state.upload_times.append({
                     'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     'pasien': nama_pasien,
-                    'file_size': len(uploaded_file.getvalue()) / 1024,  # KB
-                    'execution_time': upload_time
+                    'file_size_kb': round(file_size_kb, 2),
+                    'file_size_mb': round(file_size_mb, 2),
+                    'execution_time': upload_time,
+                    'upload_speed_mbps': round(upload_speed_mbps, 2),
+                    'connection_quality': connection_quality
                 })
                 
-                # Tampilkan BMI di hasil
+                # Tampilkan hasil dengan informasi kecepatan
                 st.success(message)
-                st.info(f"Informasi BMI Pasien: {bmi:.2f} ({bmi_class})")
-                st.info(f"Waktu Upload & Proses Data: {upload_time:.2f} detik")
+                
+                # Buat container untuk informasi detail
+                with st.container():
+                    st.markdown("### 📊 Detail Proses Upload")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Ukuran File", f"{file_size_mb:.2f} MB")
+                    with col2:
+                        st.metric("Waktu Proses", f"{upload_time:.2f} detik")
+                    with col3:
+                        st.metric(f"{quality_color} Kecepatan Upload", f"{upload_speed_mbps:.2f} Mbps")
+                    
+                    # Tampilkan kualitas koneksi
+                    st.info(f"{quality_color} **Kualitas Koneksi:** {connection_quality}")
+                    
+                    # Tampilkan BMI
+                    st.info(f"📊 **BMI Pasien:** {bmi:.2f} ({bmi_class})")
+                    
+                    # Analisis pengaruh kecepatan WiFi
+                    if upload_speed_mbps < 5:
+                        st.warning("⚠️ **Catatan:** Kecepatan upload Anda tergolong lambat. Ini dapat mempengaruhi waktu upload file. Disarankan menggunakan koneksi yang lebih stabil untuk performa terbaik.")
+                    elif upload_speed_mbps < 20:
+                        st.info("ℹ️ **Informasi:** Kecepatan upload Anda normal. Proses upload berjalan dengan baik.")
+                    else:
+                        st.success("✅ **Informasi:** Kecepatan upload Anda sangat baik! Proses upload berjalan optimal.")
                 
                 self.reset_ai_summary_session_state_except_current()
                 st.session_state.current_patient_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y%m%d_%H%M%S')}"
@@ -937,10 +992,34 @@ class TerapisPage:
         except Exception as e:
             st.error(f"Error mengambil data riwayat: {e}")
 
+    # def show_upload_statistics(self):
+    #     """Menampilkan statistik waktu upload"""
+    #     if 'upload_times' in st.session_state and st.session_state.upload_times:
+    #         with st.expander("📊 Statistik Waktu Upload Data"):
+    #             df_uploads = pd.DataFrame(st.session_state.upload_times)
+                
+    #             # Hitung statistik
+    #             avg_time = df_uploads['execution_time'].mean()
+    #             min_time = df_uploads['execution_time'].min()
+    #             max_time = df_uploads['execution_time'].max()
+    #             total_uploads = len(df_uploads)
+                
+    #             col1, col2, col3, col4 = st.columns(4)
+    #             with col1:
+    #                 st.metric("Total Upload", total_uploads)
+    #             with col2:
+    #                 st.metric("Rata-rata Waktu", f"{avg_time:.2f} detik")
+    #             with col3:
+    #                 st.metric("Tercepat", f"{min_time:.2f} detik")
+    #             with col4:
+    #                 st.metric("Terlama", f"{max_time:.2f} detik")
+                
+    #             st.dataframe(df_uploads, use_container_width=True)
+
     def show_upload_statistics(self):
-        """Menampilkan statistik waktu upload"""
+        """Menampilkan statistik waktu upload dan kecepatan"""
         if 'upload_times' in st.session_state and st.session_state.upload_times:
-            with st.expander("📊 Statistik Waktu Upload Data"):
+            with st.expander("📊 Statistik Riwayat Upload"):
                 df_uploads = pd.DataFrame(st.session_state.upload_times)
                 
                 # Hitung statistik
@@ -948,18 +1027,39 @@ class TerapisPage:
                 min_time = df_uploads['execution_time'].min()
                 max_time = df_uploads['execution_time'].max()
                 total_uploads = len(df_uploads)
+                avg_speed = df_uploads['upload_speed_mbps'].mean()
                 
-                col1, col2, col3, col4 = st.columns(4)
+                col1, col2, col3, col4, col5 = st.columns(5)
                 with col1:
                     st.metric("Total Upload", total_uploads)
                 with col2:
-                    st.metric("Rata-rata Waktu", f"{avg_time:.2f} detik")
+                    st.metric("Rata-rata Waktu", f"{avg_time:.2f} dtk")
                 with col3:
-                    st.metric("Tercepat", f"{min_time:.2f} detik")
+                    st.metric("Rata-rata Kecepatan", f"{avg_speed:.2f} Mbps")
                 with col4:
-                    st.metric("Terlama", f"{max_time:.2f} detik")
+                    st.metric("Upload Tercepat", f"{min_time:.2f} dtk")
+                with col5:
+                    st.metric("Upload Terlama", f"{max_time:.2f} dtk")
                 
-                st.dataframe(df_uploads, use_container_width=True)
+                # Tampilkan tabel detail
+                st.dataframe(
+                    df_uploads[['timestamp', 'pasien', 'file_size_mb', 'execution_time', 'upload_speed_mbps', 'connection_quality']], 
+                    use_container_width=True
+                )
+                
+                # Grafik kecepatan upload
+                if len(df_uploads) > 1:
+                    st.markdown("### 📈 Tren Kecepatan Upload")
+                    fig = px.line(
+                        df_uploads, 
+                        x='timestamp', 
+                        y='upload_speed_mbps',
+                        title='Kecepatan Upload per Pemeriksaan',
+                        labels={'timestamp': 'Waktu', 'upload_speed_mbps': 'Kecepatan (Mbps)'}
+                    )
+                    fig.add_hline(y=5, line_dash="dash", line_color="red", annotation_text="Batas Lambat")
+                    fig.add_hline(y=20, line_dash="dash", line_color="yellow", annotation_text="Batas Normal")
+                    st.plotly_chart(fig, use_container_width=True)
 
     def show_dashboard(self):
         st.markdown("## Dashboard Gait Analysis")
