@@ -686,15 +686,15 @@ class TerapisPage:
         if submit_button:
             # Validasi input
             if selected_pasien == "Pilih Data Pasien yang akan diperiksa":
-                st.warning("⚠️ Silakan pilih pasien terlebih dahulu sebelum mengupload file.")
+                st.warning("Silakan pilih pasien terlebih dahulu sebelum mengupload file.")
                 return
             
             if uploaded_file is None:
-                st.warning("⚠️ Silakan upload file data gait pasien terlebih dahulu.")
+                st.warning("Silakan upload file data gait pasien terlebih dahulu.")
                 return
             
             if tinggi_badan <= 0 or berat_badan <= 0:
-                st.warning("⚠️ Silakan isi tinggi badan dan berat badan dengan benar.")
+                st.warning("Silakan isi tinggi badan dan berat badan dengan benar.")
                 return
             
             # Hitung BMI
@@ -807,8 +807,8 @@ class TerapisPage:
                 
                 # Tampilkan BMI di hasil
                 st.success(message)
-                st.info(f"📊 **BMI Pasien:** {bmi:.2f} ({bmi_class})")
-                st.info(f"⏱️ **Waktu Upload & Proses Data:** {upload_time:.2f} detik")
+                st.info(f"Informasi BMI Pasien: {bmi:.2f} ({bmi_class})")
+                st.info(f"Waktu Upload & Proses Data: {upload_time:.2f} detik")
                 
                 self.reset_ai_summary_session_state_except_current()
                 st.session_state.current_patient_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y%m%d_%H%M%S')}"
@@ -1663,7 +1663,10 @@ class TerapisPage:
                     - Jangan menjelaskan semua fase
                     - Jangan mengulang isi tabel data mentah
                     - Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
-                    
+                    - Gunakan format **bold** untuk menyoroti sendi yang paling bermasalah, fase gait paling kritis, dan tingkat deviasi (misalnya: tinggi atau sangat tinggi).
+                    - Jangan menggunakan bold secara berlebihan (maksimal 1–3 kata per kalimat).
+
+                                        
                     OUTPUT:
                     
                     === VARIASI 1 ===
@@ -1681,10 +1684,10 @@ class TerapisPage:
                     2. Tabel Ringkasan Deviasi:
                     Buat tabel dengan format:
                     
-                    | Sendi | Sisi | Fase Paling Bermasalah | Tingkat Deviasi |
-                    |-------|------|----------------------|-----------------|
+                    | Sendi | Sisi | Fase Paling Bermasalah | Tingkat Deviasi | Hasil (Angka) |
+                    |-------|------|----------------------|-----------------|-------|
                     
-                    Isi hanya dengan temuan yang paling signifikan saja (maksimal 5 baris).
+                    Isi hanya dengan temuan yang paling signifikan saja (maksimal 7 baris).
                     
                     Gunakan istilah:
                     - Rendah
@@ -1717,15 +1720,15 @@ class TerapisPage:
                 
                 STRUKTUR:
                 
-                a. HASIL PEMERIKSAAN
+                a. HASIL PEMERIKSAAN:
                 - Ringkasan singkat kondisi umum (tanpa list angka panjang)
                 
-                b. INTERPRETASI KLINIS
+                b. INTERPRETASI KLINIS:
                 - Pola utama (asimetris / dominan sisi tertentu)
                 - Sendi paling bermasalah
                 - Fase paling kritis (cukup 1–2 fase saja)
                 
-                c. REKOMENDASI
+                c. REKOMENDASI:
                 - Saran umum (tidak terlalu panjang)
                 
                 OUTPUT:
@@ -1744,14 +1747,14 @@ class TerapisPage:
                 summaries_b = []
                 
                 try:
-                    with st.spinner("Membuat ringkasan Prompt A..."):
+                    with st.spinner("Mohon tunggu... Sistem sedang membuat Ringkasan AI"):
                         response_a = gemini_model.generate_content(prompt_a)
                         if response_a.text:
                             summaries_a = self.parse_ai_response_dropdown(response_a.text, "A")
                         else:
                             summaries_a = self.create_default_summaries("A")
                     
-                    with st.spinner("Membuat ringkasan Prompt B..."):
+                    # with st.spinner("Membuat ringkasan Prompt B..."):
                         response_b = gemini_model.generate_content(prompt_b)
                         if response_b.text:
                             summaries_b = self.parse_ai_response_dropdown(response_b.text, "B")
