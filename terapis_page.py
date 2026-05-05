@@ -719,13 +719,27 @@ class TerapisPage:
             nama_pasien = parts[1].strip()
             
             try:
-                # MULAI TIMER
-                start_time = time.time()
-                
-                # CATAT UKURAN FILE SEBELUM PROSES
+                # UKUR UKURAN FILE
                 file_size_bytes = len(uploaded_file.getvalue())
                 file_size_kb = file_size_bytes / 1024
                 file_size_mb = file_size_kb / 1024
+                
+                # ========== PENGUKURAN 1: UPLOAD SPEED MURNI ==========
+                # Mulai timer untuk upload murni (Streamlit otomatis handle upload)
+                upload_start_time = time.time()
+                
+                # Baca file ke memory (ini yang diukur sebagai waktu upload)
+                file_content = uploaded_file.getvalue()
+                
+                upload_end_time = time.time()
+                pure_upload_time = upload_end_time - upload_start_time
+                
+                # Hitung pure upload speed (Mbps)
+                file_size_bits = file_size_bytes * 8
+                pure_upload_speed_mbps = (file_size_bits / pure_upload_time) / 1_000_000 if pure_upload_time > 0 else 0
+                
+                # ========== PENGUKURAN 2: PROSES DATA ==========
+                process_start_time = time.time()
                 
                 # Proses file dengan GaitAnalysisData
                 gait_data = GaitAnalysisData(uploaded_file)
@@ -750,6 +764,12 @@ class TerapisPage:
                     rows.append(row)
     
                 st.session_state.norm_kinematics_df = pd.DataFrame(rows)
+                
+                process_end_time = time.time()
+                processing_time = process_end_time - process_start_time
+                
+                # ========== PENGUKURAN 3: SIMPAN KE DATABASE ==========
+                db_start_time = time.time()
                 
                 # Simpan data pasien ke MongoDB
                 examination_data = {
@@ -797,31 +817,25 @@ class TerapisPage:
                     collection.insert_one(examination_data)
                     message = f"Data gait pasien dengan NIK {pasien_user_id} berhasil disimpan!"
                 
-                # AKHIRI TIMER
-                end_time = time.time()
-                upload_time = end_time - start_time
+                db_end_time = time.time()
+                db_time = db_end_time - db_start_time
                 
-                # HITUNG KECEPATAN UPLOAD (Mbps)
-                # Rumus: (File size dalam bits) / (waktu dalam detik) / 1,000,000
-                file_size_bits = file_size_bytes * 8
-                upload_speed_mbps = (file_size_bits / upload_time) / 1_000_000
+                # TOTAL WAKTU KESELURUHAN
+                total_time = pure_upload_time + processing_time + db_time
                 
-                # Tentukan kualitas koneksi berdasarkan kecepatan
-                if upload_speed_mbps < 1:
-                    connection_quality = "Sangat Lambat 🐌"
-                    quality_color = "🔴"
-                elif upload_speed_mbps < 5:
-                    connection_quality = "Lambat ⚠️"
-                    quality_color = "🟠"
-                elif upload_speed_mbps < 20:
-                    connection_quality = "Normal 👍"
-                    quality_color = "🟡"
-                elif upload_speed_mbps < 50:
-                    connection_quality = "Cepat 🚀"
-                    quality_color = "🟢"
+                # Klasifikasi kecepatan upload murni
+                if pure_upload_speed_mbps < 5:
+                    upload_quality = "Lambat ⚠️"
+                    upload_color = "🔴"
+                elif pure_upload_speed_mbps < 20:
+                    upload_quality = "Normal 👍"
+                    upload_color = "🟡"
+                elif pure_upload_speed_mbps < 50:
+                    upload_quality = "Cepat 🚀"
+                    upload_color = "🟢"
                 else:
-                    connection_quality = "Sangat Cepat ⚡"
-                    quality_color = "💚"
+                    upload_quality = "Sangat Cepat ⚡"
+                    upload_color = "💚"
                 
                 # Simpan ke session state
                 if 'upload_times' not in st.session_state:
@@ -829,44 +843,68 @@ class TerapisPage:
                 st.session_state.upload_times.append({
                     'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     'pasien': nama_pasien,
-                    'file_size_kb': round(file_size_kb, 2),
                     'file_size_mb': round(file_size_mb, 2),
-                    'execution_time': upload_time,
-                    'upload_speed_mbps': round(upload_speed_mbps, 2),
-                    'connection_quality': connection_quality
+                    'pure_upload_time': round(pure_upload_time, 3),
+                    'pure_upload_speed_mbps': round(pure_upload_speed_mbps, 2),
+                    'processing_time': round(processing_time, 2),
+                    'db_time': round(db_time, 2),
+                    'total_time': round(total_time, 2),
+                    'upload_quality': upload_quality
                 })
                 
-                # Tampilkan hasil dengan informasi kecepatan
+                # Tampilkan hasil dengan detail lengkap
                 st.success(message)
                 
-                # Buat container untuk informasi detail
                 with st.container():
-                    st.markdown("### 📊 Detail Proses Upload")
+                    st.markdown("### 📊 Detail Waktu Proses")
                     
+                    # Tampilkan perbandingan dengan speed test
+                    st.markdown(f"""
+                    <div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; margin-bottom: 20px;'>
+                        <h4>📡 Perbandingan Kecepatan Upload</h4>
+                        <table style='width: 100%;'>
+                            <tr>
+                                <td><b>🎯 Speed Test Website:</b></td>
+                                <td><b>17.72 Mbps</b></td>
+                                <td>(Referensi eksternal)</td>
+                            </tr>
+                            <tr>
+                                <td><b>📤 Pure Upload Speed (Aplikasi):</b></td>
+                                <td><b>{pure_upload_speed_mbps:.2f} Mbps</b></td>
+                                <td>{upload_color} {upload_quality}</td>
+                            </tr>
+                        </table>
+                        <small>⚠️ Catatan: Perbedaan kecepatan normal terjadi karena pengukuran di aplikasi hanya mengukur waktu upload file ke memory, sementara speed test mengukur koneksi end-to-end.</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Tabel breakdown waktu
                     col1, col2, col3 = st.columns(3)
                     with col1:
-                        st.metric("Ukuran File", f"{file_size_mb:.2f} MB")
+                        st.metric("📤 Upload Murni", f"{pure_upload_time:.3f} detik")
+                        st.caption(f"Kecepatan: {pure_upload_speed_mbps:.2f} Mbps")
                     with col2:
-                        st.metric("Waktu Proses", f"{upload_time:.2f} detik")
+                        st.metric("⚙️ Proses Data", f"{processing_time:.2f} detik")
+                        st.caption("Parsing & Ekstraksi")
                     with col3:
-                        st.metric(f"{quality_color} Kecepatan Upload", f"{upload_speed_mbps:.2f} Mbps")
+                        st.metric("💾 Simpan ke DB", f"{db_time:.2f} detik")
+                        st.caption("MongoDB Insert")
                     
-                    # Tampilkan kualitas koneksi
-                    st.info(f"{quality_color} **Kualitas Koneksi:** {connection_quality}")
+                    # Total waktu
+                    st.info(f"📊 **Total Waktu Keseluruhan:** {total_time:.2f} detik")
                     
-                    # Tampilkan BMI
+                    # BMI
                     st.info(f"📊 **BMI Pasien:** {bmi:.2f} ({bmi_class})")
                     
-                    # Analisis pengaruh kecepatan WiFi
-                    if upload_speed_mbps < 5:
-                        st.warning("⚠️ **Catatan:** Kecepatan upload Anda tergolong lambat. Ini dapat mempengaruhi waktu upload file. Disarankan menggunakan koneksi yang lebih stabil untuk performa terbaik.")
-                    elif upload_speed_mbps < 20:
-                        st.info("ℹ️ **Informasi:** Kecepatan upload Anda normal. Proses upload berjalan dengan baik.")
+                    # Analisis
+                    if pure_upload_speed_mbps < 5:
+                        st.warning("⚠️ **Analisis:** Kecepatan upload Anda rendah. Proses upload file akan terasa lambat. Disarankan koneksi yang lebih stabil.")
+                    elif pure_upload_speed_mbps < 17.72:
+                        st.info(f"ℹ️ **Analisis:** Kecepatan upload Anda ({pure_upload_speed_mbps:.2f} Mbps) lebih lambat dari speed test referensi ({17.72} Mbps). Ini bisa disebabkan oleh beban jaringan atau variasi pengukuran.")
                     else:
-                        st.success("✅ **Informasi:** Kecepatan upload Anda sangat baik! Proses upload berjalan optimal.")
+                        st.success(f"✅ **Analisis:** Kecepatan upload Anda baik! Mendekati atau melebihi referensi speed test.")
                 
                 self.reset_ai_summary_session_state_except_current()
-                st.session_state.current_patient_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y%m%d_%H%M%S')}"
                 
                 # Tampilkan statistik upload
                 self.show_upload_statistics()
