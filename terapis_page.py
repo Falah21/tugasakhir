@@ -31,10 +31,6 @@ else:
     gemini_model = None
     st.warning("⚠️ API Key Gemini tidak ditemukan. Fitur AI akan dinonaktifkan.")
 
-def _wib_now():
-    return datetime.utcnow() + timedelta(hours=7)
-datetime.now = _wib_now
-
 # ======================= LOGIN FORM =======================
 
 def login_form(role_label: str = "Dokter"):
