@@ -1,48 +1,38 @@
-import pandas as pd
-from pymongo import MongoClient
+import io
+import json
 import math
+import time
+import traceback
+from datetime import datetime
+import bcrypt
 import matplotlib.pyplot as plt
-from PIL import Image
-import streamlit as st
+import numpy as np
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import pandas as pd
+import streamlit as st
+from PIL import Image
 from pymongo import MongoClient
-import numpy as np
 from pymongo.server_api import ServerApi
-import io
-import json  # ⬅️ TAMBAH INI
 import google.generativeai as genai
 from css_style import load_css
-import traceback
-import bcrypt
-from datetime import datetime, timedelta
-import time
 
-# 🧩 Konfigurasi halaman
-# st.set_page_config(page_title="Dashboard GAIT Terapis", layout="wide")
-# st.set_page_config(page_title="Dashboard GAIT Terapis", layout="wide", initial_sidebar_state="expanded")
-
-# ====== KONFIGURASI GEMINI AI ======
+# Konfigurasi Gemini API
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     gemini_model = genai.GenerativeModel('gemini-2.5-flash')
 else:
     gemini_model = None
-    st.warning("⚠️ API Key Gemini tidak ditemukan. Fitur AI akan dinonaktifkan.")
+    st.warning("API Key Gemini tidak ditemukan. Fitur AI akan dinonaktifkan.")
 
-# ======================= LOGIN FORM =======================
-
+# Login Form
 def login_form(role_label: str = "Dokter"):
-    # Load CSS dari file terpisah
     st.markdown(load_css(), unsafe_allow_html=True)
-
-    # Tombol kembali
     if st.button("Kembali", key="back_button"):
         st.session_state.role = None
         st.rerun()
 
-    # Konten login
+    # 
     st.markdown("<h2>Sistem Dashboard Gait Analysis</h2>", unsafe_allow_html=True)
     st.markdown("<p class='subtitle'>Selamat Datang di Sistem Dashboard Pemeriksaan Gait</p>", unsafe_allow_html=True)
     st.markdown("---")
@@ -50,35 +40,26 @@ def login_form(role_label: str = "Dokter"):
     st.subheader(f"Login - {role_label}")
     user_id = st.text_input("NIP", placeholder="Masukkan NIP anda")
     password = st.text_input("Password", type="password", placeholder="Masukkan password anda")
-
-    # st.markdown("<a class='forgot' href='#'>Lupa kata sandi?</a>", unsafe_allow_html=True)
-    # st.markdown("<br>", unsafe_allow_html=True)
-
     submit = st.button("Login", use_container_width=True)
 
-    st.markdown(
-        "<p class='footer'>Dengan masuk, Anda menyetujui kebijakan Privasi & Syarat Layanan sistem GAIT ini.</p>",
-        unsafe_allow_html=True,
-    )
-
+    st.markdown("<p class='footer'>Dengan masuk, Anda menyetujui kebijakan Privasi & Syarat Layanan sistem GAIT ini.</p>", unsafe_allow_html=True)
     return user_id, password, submit
+    
 # Optimasi koneksi MongoDB
 def get_mongo_client():
     return MongoClient(
         st.secrets["MONGO_URI"],
         serverSelectionTimeoutMS=5000,
         connectTimeoutMS=5000,
-        socketTimeoutMS=5000
-    )
+        socketTimeoutMS=5000)
 
-# Kelas GaitAnalysisData untuk data normal
+# GaitAnalysisData untuk Data Normal
 class GaitAnalysisDataNormal:
     def __init__(self, content, usia, jenis_kelamin):
         try:
-            # Membaca file Excel ke dalam DataFrame pandas
-            self.df = pd.read_excel(io.BytesIO(content), sheet_name=[0, 1])
+            self.df = pd.read_excel(io.BytesIO(content), sheet_name=[0, 1]) # Membaca file Excel
             self.suin = self.df[0]  # Lembar pertama untuk data mentah
-            self.normkin = self.df[1].iloc[:, :31]  # Lembar kedua untuk kinematika terstandarisasi
+            self.normkin = self.df[1].iloc[:, :31]  # Lembar kedua untuk normskin
         except Exception as e:
             st.error(f"Error reading the Excel file: {e}")
             return
@@ -185,10 +166,10 @@ class GaitAnalysisDataNormal:
             **self.norm_kinematics
         }
     
-# Kelas GaitAnalysisData untuk data pasien (yang lama)
+# GaitAnalysisData untuk data pemeriksaan pasien
 class GaitAnalysisData:
     def __init__(self, data):
-        self.df = pd.read_excel(data, sheet_name=[0, 1])  # Read the uploaded file
+        self.df = pd.read_excel(data, sheet_name=[0, 1])
         self.suin = self.df[0]
         self.normkin = self.df[1].iloc[:, :31]
 
@@ -251,21 +232,20 @@ class GaitAnalysisData:
         return {
             "Norm Kinematics": {
                 "Percentage of Gait Cycle": self.normkin_processed['Percentage of Gait Cycle'].values.tolist(),  # Convert to list
-                "LPelvisAngles_X": self.normkin_processed["LPelvisAngles_X"].values.tolist(),  # Convert to list
-                "RPelvisAngles_X": self.normkin_processed["RPelvisAngles_X"].values.tolist(),  # Convert to list
-                "LHipAngles_X": self.normkin_processed["LHipAngles_X"].values.tolist(),  # Convert to list
-                "RHipAngles_X": self.normkin_processed["RHipAngles_X"].values.tolist(),  # Convert to list
-                "LKneeAngles_X": self.normkin_processed["LKneeAngles_X"].values.tolist(),  # Convert to list
-                "RKneeAngles_X": self.normkin_processed["RKneeAngles_X"].values.tolist(),  # Convert to list
-                "LAnkleAngles_X": self.normkin_processed["LAnkleAngles_X"].values.tolist(),  # Convert to list
-                "RAnkleAngles_X": self.normkin_processed["RAnkleAngles_X"].values.tolist(),  # Convert to list
-                "LFootProgressAngles_X": self.normkin_processed["LFootProgressAngles_X"].values.tolist(),  # Convert to list
-                "RFootProgressAngles_X": self.normkin_processed["RFootProgressAngles_X"].values.tolist()   # Convert to list
+                "LPelvisAngles_X": self.normkin_processed["LPelvisAngles_X"].values.tolist(),
+                "RPelvisAngles_X": self.normkin_processed["RPelvisAngles_X"].values.tolist(), 
+                "LHipAngles_X": self.normkin_processed["LHipAngles_X"].values.tolist(),  
+                "RHipAngles_X": self.normkin_processed["RHipAngles_X"].values.tolist(), 
+                "LKneeAngles_X": self.normkin_processed["LKneeAngles_X"].values.tolist(), 
+                "RKneeAngles_X": self.normkin_processed["RKneeAngles_X"].values.tolist(),
+                "LAnkleAngles_X": self.normkin_processed["LAnkleAngles_X"].values.tolist(),  
+                "RAnkleAngles_X": self.normkin_processed["RAnkleAngles_X"].values.tolist(),  
+                "LFootProgressAngles_X": self.normkin_processed["LFootProgressAngles_X"].values.tolist(),  
+                "RFootProgressAngles_X": self.normkin_processed["RFootProgressAngles_X"].values.tolist() 
             }
         }
 
     def to_dict(self):
-        # Combine all sections into a single dictionary
         return {
             **self.trial_info,
             **self.subject_params,
@@ -273,44 +253,378 @@ class GaitAnalysisData:
             **self.norm_kinematics
         }
         
-class TerapisPage:
-    def __init__(self):
-        # Hapus daftar user terapis sementara
-        # self.terapis_users = {"terapis1": "1234"}  # DIHAPUS
-        pass
+class DokterPage:
+    def _check_dokter_login(self, user_id, password):
+        try:
+            client = get_mongo_client()
+            db = client['GaitDB']
+            collection = db['users']
+            
+            # Cari user dengan role dokter
+            dokter = collection.find_one({'user_id': user_id, 'role': 'dokter'})
+            
+            if dokter:
+                stored_password = dokter.get('password') # Ambil password hash dari database
+                # Verifikasi password dengan bcrypt
+                if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
+                    return {
+                        'user_id': dokter.get('user_id'),
+                        'nama_lengkap': dokter.get('nama_lengkap'),
+                        'role': dokter.get('role'),
+                        'tanggal_lahir': dokter.get('tanggal_lahir', ''),
+                        'jenis_kelamin': dokter.get('jenis_kelamin', '')
+                }
+            return None
+            
+        except Exception as e:
+            st.error(f"Error checking login: {e}")
+            return None
 
-    # ====== FUNGSI TIMER UTILITY ======
-    def timer_decorator(self, func_name):
-        """Decorator untuk mengukur waktu eksekusi fungsi"""
-        def decorator(func):
-            def wrapper(*args, **kwargs):
-                start_time = time.time()
-                result = func(*args, **kwargs)
-                end_time = time.time()
-                execution_time = end_time - start_time
+    # Menu Utama
+    def run(self):
+        st.markdown(load_css(), unsafe_allow_html=True)
+        
+        # inisialisasi session state
+        if 'uploaded_patient_data' not in st.session_state:
+            st.session_state.uploaded_patient_data = None
+        if 'norm_kinematics_df' not in st.session_state:
+            st.session_state.norm_kinematics_df = None
+        if "dokter_logged_in" not in st.session_state:
+            st.session_state.dokter_logged_in = False
+        if "dokter_user_id" not in st.session_state:
+            st.session_state.dokter_user_id = None
+        if "dokter_nama" not in st.session_state:
+            st.session_state.dokter_nama = None 
+        if "dokter_menu" not in st.session_state:
+            st.session_state.dokter_menu = "Dashboard"       
+
+        # jika belum login → tampilkan form login
+        if not st.session_state.dokter_logged_in:
+            username, password, submit = login_form("Dokter")
+            if submit:
+                # Cek login dari database
+                user_data = self._check_dokter_login(username, password)
+                if user_data:
+                    st.session_state.dokter_logged_in = True
+                    st.session_state.dokter_user_id = user_data['user_id']
+                    st.session_state.dokter_nama = user_data['nama_lengkap']
+                    st.session_state.dokter_role = user_data['role']
+                    st.success(f"Login berhasil! Selamat datang dr. {user_data['nama_lengkap']}")
+                    st.rerun()
+                else:
+                    st.error("Login gagal! Username atau password salah.")
+            return
+        
+        # Sidebar Menu
+        dokter_nama = st.session_state.get('dokter_nama', 'Dokter')
+        st.sidebar.markdown(f"<p class='sidebar-title'>Selamat Datang<br> dr. {dokter_nama}</p>", unsafe_allow_html=True)
+        st.sidebar.markdown("<p class='sidebar-subtitle'>Menu</p>", unsafe_allow_html=True)
+        
+        menu_list = ["Dashboard", "Input Baseline Data Gait", "Input Pemeriksaan Pasien", "Riwayat Pemeriksaan", "Logout"]
+        for menu in menu_list:
+            if st.sidebar.button(menu, use_container_width=True, type="primary" 
+                                 if st.session_state.dokter_menu == menu else "secondary"):
+                                     st.session_state.dokter_menu = menu
+                                     st.rerun()
+
+        # Navigasi Utama
+        if st.session_state.dokter_menu == "Dashboard":
+            self.show_dashboard()
+        elif st.session_state.dokter_menu == "Input Baseline Data Gait":
+            self.input_data_gait_normal()
+        elif st.session_state.dokter_menu == "Input Pemeriksaan Pasien":
+            self.input_data_gait_pasien()
+        elif st.session_state.dokter_menu == "Riwayat Pemeriksaan":
+            self.show_examination_history()
+        elif st.session_state.dokter_menu == "Logout":
+            st.session_state.dokter_logged_in = False
+            st.session_state.dokter_user_id = None
+            st.session_state.dokter_nama = None
+            st.session_state.dokter_role = None
+            st.session_state.dokter_menu = "Dashboard"
+            st.session_state.role = None
+            st.rerun()
+
+    # Menu Input Baseline Data Gait
+    def input_data_gait_normal(self):
+        st.subheader("Input Baseline Data Gait")
+        uploaded_file = st.file_uploader("Upload file data subjek gait normal (Format .xlsx)", type=["xlsx"], key="normal_upload")
+        
+        if uploaded_file is not None:
+            col1, col2 = st.columns(2)
+            with col1:
+                usia = st.number_input("Masukkan Usia:", min_value=0, max_value=120, key="usia_normal")
+            with col2:
+                jenis_kelamin = st.selectbox("Jenis Kelamin", ["Pilih Jenis Kelamin", "L", "P"], key="gender_normal").strip().upper()
+
+            if st.button("Proses Data Baseline", key="process_normal"):
+                if usia == 0 or jenis_kelamin == "":
+                    st.warning("Harap masukkan usia dan jenis kelamin sebelum memproses file.")
+                elif jenis_kelamin not in ['L', 'P']:
+                    st.warning("Jenis kelamin harus diisi.")
+                else:
+                    try:
+                        content = uploaded_file.read()
+                        gait_data = GaitAnalysisDataNormal(content, usia, jenis_kelamin)
+                    
+                        if hasattr(gait_data, 'df'):
+                            data_dict = gait_data.to_dict()
+
+                            def check_missing(data):
+                                if isinstance(data, dict):
+                                    return any(check_missing(v) for v in data.values())
+                                elif isinstance(data, list):
+                                    return any(check_missing(v) for v in data)
+                                else:
+                                    return pd.isna(data)
+
+                            def check_norm_kinematics(norm_kinematics):
+                                for key, value in norm_kinematics.items():
+                                    if isinstance(value, list):
+                                        for v in value:
+                                            if pd.isna(v):
+                                                return True  # Ada NaN/None
+                                            try:
+                                                float(v)  # pastikan bisa dikonversi ke angka
+                                            except ValueError:
+                                                return True  # Ada teks non-numerik
+                                    else:
+                                        return True  # Format tidak sesuai, harusnya list
+                                return False  # Semua aman
+
+                            norm_kin_data = data_dict.get("Norm Kinematics", {})
+                            if check_missing(data_dict) or check_norm_kinematics(norm_kin_data):
+                                st.error("Data tidak valid: terdapat nilai kosong atau teks non-numerik.")
+                            else:
+                                try:
+                                    client = get_mongo_client()
+                                    db = client['GaitDB']
+                                    collection = db['gait_data']
+                                    data_dict["upload_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                    
+                                    collection.insert_one(data_dict)
+                                    st.success("Data berhasil disimpan ke database!")
+                                    
+                                    # Tampilkan ringkasan data
+                                    st.markdown("Ringkasan Data yang Disimpan")
+                                    st.json({
+                                        "Nama Subjek": data_dict["Subject Parameters"]["Subject Name"],
+                                        "Usia": data_dict["Subject Parameters"]["Age"],
+                                        "Jenis Kelamin": data_dict["Subject Parameters"]["Gender"],
+                                        "BMI": f"{data_dict['Subject Parameters']['BMI']:.2f}",
+                                        "Klasifikasi BMI": data_dict["Subject Parameters"]["BMI Classification"]
+                                    })
+                                except Exception as e:
+                                    st.error(f"Error menyimpan data ke database: {e}")
+                        else:
+                            st.error("Gagal memproses data yang diupload.")
+                    except Exception as e:
+                        st.error(f"Error dalam memproses file: {e}")
+
+    # Menu Input Pemeriksaan Pasien                
+    def input_data_gait_pasien(self):
+        st.subheader("Input Pemeriksaan Pasien")
+        with st.form(key="form_pemeriksaan_pasien"):
+            try:
+                client = get_mongo_client()
+                db = client['GaitDB']
+                collection = db['users']
                 
-                # Simpan ke session state
-                if 'execution_times' not in st.session_state:
-                    st.session_state.execution_times = {}
-                st.session_state.execution_times[func_name] = execution_time
+                # Ambil semua data pasien
+                pasien_data = list(collection.find({'role': 'pasien'}, {'user_id': 1, 'nama_lengkap': 1}))
+        
+                # Buat opsi dropdown
+                pasien_options = ["Pilih Data Pasien yang akan diperiksa"] + [
+                    f"{pasien['user_id']} - {pasien['nama_lengkap']}" 
+                    for pasien in pasien_data
+                    if 'user_id' in pasien and 'nama_lengkap' in pasien]
                 
-                # Tampilkan waktu eksekusi
-                st.success(f"⏱️ **{func_name}** selesai dalam {execution_time:.2f} detik")
+            except Exception as e:
+                st.error(f"Error mengambil data pasien: {e}")
+                pasien_options = ["Pilih Data Pasien yang akan diperiksa"]
+            
+            # Dropdown untuk memilih pasien
+            selected_pasien = st.selectbox("Pilih Data Pasien yang akan diperiksa", options=pasien_options, key="pasien_dropdown_form")
+            # Input tanggal pemeriksaan
+            tanggal = st.date_input("Tanggal Pemeriksaan", key="tanggal_form")
+            col1, col2 = st.columns(2)
+            with col1:
+                tinggi_badan = st.number_input("Tinggi Badan (cm)", min_value=0.0, step=0.1, format="%.1f", key="tinggi_form")
+            with col2:
+                berat_badan = st.number_input("Berat Badan (kg)", min_value=0.0, step=0.1, format="%.1f", key="berat_form")
+            
+            # Upload file data GAIT pasien
+            uploaded_file = st.file_uploader("Upload file data gait pasien (Format .xlsx)", type=["xlsx"], key="file_uploader_form")
+            # Tombol submit di dalam form
+            submit_button = st.form_submit_button("Simpan Data Pemeriksaan", type="primary", use_container_width=True)
+        
+        # Proses setelah submit
+        if submit_button:
+            if selected_pasien == "Pilih Data Pasien yang akan diperiksa":
+                st.warning("Silakan pilih pasien terlebih dahulu sebelum mengupload file.")
+                return
+            if uploaded_file is None:
+                st.warning("Silakan upload file data gait pasien terlebih dahulu.")
+                return
+            if tinggi_badan <= 0 or berat_badan <= 0:
+                st.warning("Silakan isi tinggi badan dan berat badan dengan benar.")
+                return
+            
+            # Hitung BMI
+            if tinggi_badan > 0:
+                tinggi_m = tinggi_badan / 100
+                bmi = berat_badan / (tinggi_m ** 2)
                 
-                return result
-            return wrapper
-        return decorator
+                if bmi < 17.0:
+                    bmi_class = "Kurus Berat"
+                elif bmi < 18.5:
+                    bmi_class = "Kurus Ringan"
+                elif bmi < 25.1:
+                    bmi_class = "Normal"
+                elif bmi < 27.1:
+                    bmi_class = "Gemuk Ringan"
+                else:
+                    bmi_class = "Gemuk Berat"
+            
+            parts = selected_pasien.split(" - ")
+            pasien_user_id = parts[0].strip()
+            nama_pasien = parts[1].strip()
+            
+            try:              
+                # Proses file dengan GaitAnalysisData
+                gait_data = GaitAnalysisData(uploaded_file)
+                processed_data = gait_data.to_dict()
+                # Ekstrak data untuk Norm Kinematics
+                norm_kinematics = processed_data["Norm Kinematics"]
+                rows = []
+                
+                for i in range(len(norm_kinematics["Percentage of Gait Cycle"])):
+                    row = {
+                        "%cycle": norm_kinematics["Percentage of Gait Cycle"][i],
+                        "LPelvisAngles_X": norm_kinematics["LPelvisAngles_X"][i],
+                        "RPelvisAngles_X": norm_kinematics["RPelvisAngles_X"][i],
+                        "LHipAngles_X": norm_kinematics["LHipAngles_X"][i],
+                        "RHipAngles_X": norm_kinematics["RHipAngles_X"][i],
+                        "LKneeAngles_X": norm_kinematics["LKneeAngles_X"][i],
+                        "RKneeAngles_X": norm_kinematics["RKneeAngles_X"][i],
+                        "LAnkleAngles_X": norm_kinematics["LAnkleAngles_X"][i],
+                        "RAnkleAngles_X": norm_kinematics["RAnkleAngles_X"][i],
+                    }
+                    rows.append(row)
     
-    def format_execution_time(self, seconds):
-        """Format waktu eksekusi"""
-        if seconds < 60:
-            return f"{seconds:.2f} detik"
-        elif seconds < 3600:
-            minutes = seconds / 60
-            return f"{minutes:.2f} menit"
-        else:
-            hours = seconds / 3600
-            return f"{hours:.2f} jam"
+                st.session_state.norm_kinematics_df = pd.DataFrame(rows)
+                
+                # Simpan data pasien ke MongoDB
+                examination_data = {
+                    'pasien_id': pasien_user_id,
+                    'nama_pasien': nama_pasien,
+                    'dokter_id': st.session_state.get('dokter_user_id', 'unknown'),
+                    'dokter_nama': st.session_state.get('dokter_nama', 'unknown'),
+                    'tanggal_pemeriksaan': tanggal.strftime("%Y-%m-%d"),
+                    'upload_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'tinggi_badan': tinggi_badan,
+                    'berat_badan': berat_badan,
+                    'bmi': bmi,
+                    'bmi_classification': bmi_class,
+                    'file_info': {
+                        'file_name': uploaded_file.name,
+                        'upload_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")},
+                    'gait_data': processed_data,
+                    'norm_kinematics': rows
+                }
+                
+                client = get_mongo_client()
+                db = client['GaitDB']
+                collection = db['patient_examinations']
+    
+                st.session_state.current_pasien_id = pasien_user_id
+                st.session_state.current_nama_pasien = nama_pasien
+                st.session_state.current_tanggal_pemeriksaan = tanggal.strftime("%Y-%m-%d")
+                st.session_state.current_patient_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y%m%d_%H%M%S')}"
+                
+                # Cek apakah sudah ada pemeriksaan
+                existing_exam = collection.find_one({'pasien_id': pasien_user_id, 'tanggal_pemeriksaan': tanggal.strftime("%Y-%m-%d")})
+                if existing_exam:
+                    collection.update_one(
+                        {'_id': existing_exam['_id']},
+                        {'$set': examination_data}
+                    )
+                    message = f"Data gait pasien dengan NIK {pasien_user_id} berhasil diupdate!"
+                else:
+                    collection.insert_one(examination_data)
+                    message = f"Data gait pasien dengan NIK {pasien_user_id} berhasil disimpan!"
+                # Reset ringkasan AI untuk pasien baru
+                self.reset_ai_summary_session_state_except_current()
+                st.session_state.current_patient_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y%m%d_%H%M%S')}" 
+            except Exception as e:
+                st.error(f"Error dalam memproses file: {e}")     
+
+    # Menu Riwayat Pemeriksaan Pasien
+    def show_examination_history(self):
+        st.subheader("Riwayat Pemeriksaan") 
+        try:
+            client = get_mongo_client()
+            db = client['GaitDB']
+            collection = db['patient_examinations']
+            
+            dokter_id = st.session_state.get('dokter_user_id', None)
+            dokter_nama = st.session_state.get('dokter_nama', None)
+            
+            if not dokter_id:
+                st.error("Data dokter tidak ditemukan. Silakan login kembali.")
+                return
+
+            # Ambil data pemeriksaan hanya untuk dokter yang login
+            # Gunakan filter berdasarkan dokter_id
+            examinations = list(collection.find({'dokter_id': dokter_id}).sort('upload_date', -1))
+            
+            if not examinations:
+                st.info(f"Belum ada riwayat pemeriksaan pasien untuk Dr. {dokter_nama}.")
+                return
+
+            # Siapkan data untuk tabel
+            table_data = []
+            for exam in examinations:
+                file_info = exam.get('file_info', {})
+                table_data.append({
+                    'Tanggal Pemeriksaan': exam.get('tanggal_pemeriksaan', 'N/A'),
+                    'NIK Pasien': exam.get('pasien_id', 'N/A'),
+                    'Nama Pasien': exam.get('nama_pasien', 'N/A'),
+                    'Tinggi (cm)':  exam.get('tinggi_badan', 'N/A'),
+                    'Berat (kg)': exam.get('berat_badan', 'N/A'),
+                    'Klasifikasi BMI': exam.get('bmi_classification', 'N/A'),
+                    'Dokter': dokter_nama,
+                    'File Name': file_info.get('file_name', 'N/A') if isinstance(file_info, dict) else 'N/A'
+                })
+            
+            df = pd.DataFrame(table_data)
+            
+            st.markdown("### Filter Riwayat")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                filter_nik = st.text_input("Filter berdasarkan NIK Pasien:")
+            with col2:
+                filter_nama = st.text_input("Filter berdasarkan Nama Pasien:")
+
+            filtered_df = df.copy()
+            if filter_nik:
+                filtered_df = filtered_df[filtered_df['NIK Pasien'].str.contains(filter_nik, case=False, na=False)]
+            if filter_nama:
+                filtered_df = filtered_df[filtered_df['Nama Pasien'].str.contains(filter_nama, case=False, na=False)]
+            
+            if not filtered_df.empty:
+                st.dataframe(filtered_df, use_container_width=True)
+                st.markdown(f"**Menampilkan {len(filtered_df)} dari {len(df)} data pemeriksaan**")
+
+                csv = filtered_df.to_csv(index=False)
+                st.download_button(label="Download Riwayat sebagai CSV", data=csv, file_name=f"riwayat_pemeriksaan_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv")
+            else:
+                st.info("Tidak ada data yang sesuai dengan filter.")
+
+        except Exception as e:
+            st.error(f"Error mengambil data riwayat: {e}")
+
     
     # ==================== FUNGSI HELPER UNTUK GAIT PHASE ====================
     def get_gait_phase(self, percentage):
@@ -368,26 +682,6 @@ class TerapisPage:
         
         return mae_per_phase
 
-    # def display_mae_per_phase(self, mae_phases, joint_name):
-    #     """Menampilkan MAE per fase dalam format yang rapi tanpa level keparahan"""
-    #     with st.expander(f"Detail MAE per Fase - {joint_name}"):
-    #         # Buat dataframe untuk tampilan
-    #         phase_data = []
-    #         for phase, mae in mae_phases.items():
-    #             phase_data.append({
-    #                 'Fase Gait': phase,
-    #                 'MAE (°)': f"{mae:.2f}"
-    #             })
-            
-    #         df_phases = pd.DataFrame(phase_data)
-    #         st.dataframe(df_phases, use_container_width=True, hide_index=True)
-            
-    #         # Tampilkan fase dengan MAE tertinggi
-    #         if mae_phases:
-    #             max_phase = max(mae_phases, key=mae_phases.get)
-    #             max_mae = mae_phases[max_phase]
-    #             st.info(f"**Fase dengan deviasi terbesar:** {max_phase} (MAE = {max_mae:.2f}°)")
-
     def calculate_bounds_from_normal_data(self, filtered_df):
         """Menghitung upper bound dan lower bound dari data normal"""
         bounds = {}
@@ -428,536 +722,6 @@ class TerapisPage:
         
         return bounds
         
-    def run(self):
-        st.markdown(load_css(), unsafe_allow_html=True)
-        # inisialisasi session state
-        if 'uploaded_patient_data' not in st.session_state:
-            st.session_state.uploaded_patient_data = None
-        if 'norm_kinematics_df' not in st.session_state:
-            st.session_state.norm_kinematics_df = None
-        if "terapis_logged_in" not in st.session_state:
-            st.session_state.terapis_logged_in = False
-        if "terapis_user_id" not in st.session_state:
-            st.session_state.terapis_user_id = None
-        if "terapis_nama" not in st.session_state:
-            st.session_state.terapis_nama = None 
-        if "terapis_menu" not in st.session_state:
-            st.session_state.terapis_menu = "Dashboard"       
-
-        # jika belum login → tampilkan form login
-        if not st.session_state.terapis_logged_in:
-            username, password, submit = login_form("Dokter")
-            if submit:
-                # Cek login dari database
-                user_data = self._check_terapis_login(username, password)
-                if user_data:
-                    st.session_state.terapis_logged_in = True
-                    st.session_state.terapis_user_id = user_data['user_id']
-                    st.session_state.terapis_nama = user_data['nama_lengkap']
-                    st.session_state.terapis_role = user_data['role']
-                    st.success(f"Login berhasil! Selamat datang Dr. {user_data['nama_lengkap']}")
-                    st.rerun()
-                else:
-                    st.error("Login gagal! Username atau password salah.")
-            return  # hentikan eksekusi di sini sampai login selesai
-        
-        # ====== Sidebar ======
-        dokter_nama = st.session_state.get('terapis_nama', 'Dokter')
-        st.sidebar.markdown(f"<p class='sidebar-title'>Selamat Datang<br> dr. {dokter_nama}</p>", unsafe_allow_html=True)
-
-        st.sidebar.markdown("<p class='sidebar-subtitle'>Menu</p>", unsafe_allow_html=True)
-        
-        menu_list = ["Dashboard", "Input Baseline Data Gait", "Input Pemeriksaan Pasien", "Riwayat Pemeriksaan", "Logout"]
-
-        for menu in menu_list:
-            if st.sidebar.button(
-                menu,
-                use_container_width=True,
-                type="primary" if st.session_state.terapis_menu == menu else "secondary"
-            ):
-                st.session_state.terapis_menu = menu
-                st.rerun()
-
-        # ====== Konten utama ======
-        if st.session_state.terapis_menu == "Dashboard":
-            self.show_dashboard()
-        elif st.session_state.terapis_menu == "Input Baseline Data Gait":
-            self.input_data_gait_normal()
-
-        elif st.session_state.terapis_menu == "Input Pemeriksaan Pasien":
-            self.input_data_gait_pasien()
-
-        elif st.session_state.terapis_menu == "Riwayat Pemeriksaan":
-            self.show_examination_history()
-
-        elif st.session_state.terapis_menu == "Logout":
-            st.session_state.terapis_logged_in = False
-            st.session_state.terapis_user_id = None
-            st.session_state.terapis_nama = None
-            st.session_state.terapis_role = None
-            st.session_state.terapis_menu = "Dashboard"
-            st.session_state.role = None
-            st.rerun()
-
-    def _check_terapis_login(self, user_id, password):
-        """Cek login dokter dari database"""
-        try:
-            client = get_mongo_client()
-            db = client['GaitDB']
-            collection = db['users']
-            
-            # Cari user dengan role terapis
-            terapis = collection.find_one({
-                'user_id': user_id,
-                'role': 'dokter'
-            })
-            
-            if terapis:
-                # Ambil password hash dari database
-                stored_password = terapis.get('password')
-                # Verifikasi password dengan bcrypt
-                if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
-                    return {
-                        'user_id': terapis.get('user_id'),
-                        'nama_lengkap': terapis.get('nama_lengkap'),
-                        'role': terapis.get('role'),
-                        'tanggal_lahir': terapis.get('tanggal_lahir', ''),
-                        'jenis_kelamin': terapis.get('jenis_kelamin', '')
-                }
-            return None
-            
-        except Exception as e:
-            st.error(f"Error checking login: {e}")
-            return None
-            
-    def input_data_gait_normal(self):
-        st.subheader("Input Baseline Data Gait")
-        # st.markdown("### Upload Data Subjek Normal")
-        uploaded_file = st.file_uploader("Upload file data subjek gait normal (Format .xlsx)", type=["xlsx"], key="normal_upload")
-        
-        if uploaded_file is not None:
-            col1, col2 = st.columns(2)
-            with col1:
-                usia = st.number_input("Masukkan Usia:", min_value=0, max_value=120, key="usia_normal")
-            with col2:
-                jenis_kelamin = st.selectbox("Jenis Kelamin", ["Pilih Jenis Kelamin", "L", "P"], key="gender_normal").strip().upper()
-                # st.text_input("Masukkan Jenis Kelamin (L/P):", key="gender_normal").strip().upper()
-
-            if st.button("Proses Data Baseline", key="process_normal"):
-                if usia == 0 or jenis_kelamin == "":
-                    st.warning("Harap masukkan usia dan jenis kelamin sebelum memproses file.")
-                elif jenis_kelamin not in ['L', 'P']:
-                    st.warning("Jenis kelamin harus diisi.")
-                else:
-                    try:
-                        content = uploaded_file.read()
-                        gait_data = GaitAnalysisDataNormal(content, usia, jenis_kelamin)
-                        
-                        if hasattr(gait_data, 'df'):
-                            data_dict = gait_data.to_dict()
-
-                            # Periksa apakah ada data kosong (None atau NaN)
-                            def check_missing(data):
-                                if isinstance(data, dict):
-                                    return any(check_missing(v) for v in data.values())
-                                elif isinstance(data, list):
-                                    return any(check_missing(v) for v in data)
-                                else:
-                                    # Cek apakah nilai kosong (NaN atau None)
-                                    return pd.isna(data)
-
-                            def check_norm_kinematics(norm_kinematics):
-                                for key, value in norm_kinematics.items():
-                                    if isinstance(value, list):
-                                        for v in value:
-                                            if pd.isna(v):
-                                                return True  # Ada NaN/None
-                                            try:
-                                                float(v)  # pastikan bisa dikonversi ke angka
-                                            except ValueError:
-                                                return True  # Ada teks non-numerik
-                                    else:
-                                        return True  # Format tidak sesuai, harusnya list
-                                return False  # Semua aman
-
-                            norm_kin_data = data_dict.get("Norm Kinematics", {})
-                            if check_missing(data_dict) or check_norm_kinematics(norm_kin_data):
-                                st.error("Data tidak valid: terdapat nilai kosong atau teks non-numerik.")
-                            else:
-                                try:
-                                    client = get_mongo_client()
-                                    db = client['GaitDB']
-                                    collection = db['gait_data']
-                                    data_dict["upload_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                    
-                                    collection.insert_one(data_dict)
-                                    st.success("Data berhasil disimpan ke database!")
-                                    
-                                    # Tampilkan ringkasan data
-                                    st.markdown("### Ringkasan Data yang Disimpan")
-                                    st.json({
-                                        "Nama Subjek": data_dict["Subject Parameters"]["Subject Name"],
-                                        "Usia": data_dict["Subject Parameters"]["Age"],
-                                        "Jenis Kelamin": data_dict["Subject Parameters"]["Gender"],
-                                        "BMI": f"{data_dict['Subject Parameters']['BMI']:.2f}",
-                                        "Klasifikasi BMI": data_dict["Subject Parameters"]["BMI Classification"]
-                                    })
-                                    
-                                except Exception as e:
-                                    st.error(f"Error menyimpan data ke database: {e}")
-                        else:
-                            st.error("Gagal memproses data yang diupload.")
-                            
-                    except Exception as e:
-                        st.error(f"Error dalam memproses file: {e}") 
-                        
-    def input_data_gait_pasien(self):
-        st.subheader("Input Pemeriksaan Pasien")
-        
-        # Reset timer untuk upload data
-        if 'upload_start_time' in st.session_state:
-            del st.session_state.upload_start_time
-        
-        # Gunakan form untuk semua input
-        with st.form(key="form_pemeriksaan_pasien"):
-            # Ambil data pasien dari database untuk dropdown
-            try:
-                client = get_mongo_client()
-                db = client['GaitDB']
-                collection = db['users']
-                
-                # Ambil semua data pasien
-                pasien_data = list(collection.find(
-                    {'role': 'pasien'}, 
-                    {'user_id': 1, 'nama_lengkap': 1}))
-        
-                # Buat opsi dropdown
-                pasien_options = ["Pilih Data Pasien yang akan diperiksa"] + [
-                    f"{pasien['user_id']} - {pasien['nama_lengkap']}" 
-                    for pasien in pasien_data 
-                    if 'user_id' in pasien and 'nama_lengkap' in pasien
-                ]
-                
-            except Exception as e:
-                st.error(f"Error mengambil data pasien: {e}")
-                pasien_options = ["Pilih Data Pasien yang akan diperiksa"]
-            
-            # Dropdown untuk memilih pasien
-            selected_pasien = st.selectbox(
-                "Pilih Data Pasien yang akan diperiksa",
-                options=pasien_options,
-                key="pasien_dropdown_form"
-            )
-            
-            # Input tanggal pemeriksaan
-            tanggal = st.date_input("Tanggal Pemeriksaan", key="tanggal_form")
-        
-            col1, col2 = st.columns(2)
-            with col1:
-                tinggi_badan = st.number_input(
-                    "Tinggi Badan (cm)", 
-                    min_value=0.0, 
-                    step=0.1, 
-                    format="%.1f",
-                    key="tinggi_form"
-                )
-            
-            with col2:
-                berat_badan = st.number_input(
-                    "Berat Badan (kg)", 
-                    min_value=0.0, 
-                    step=0.1, 
-                    format="%.1f",
-                    key="berat_form"
-                )
-            
-            # Upload file data GAIT pasien
-            uploaded_file = st.file_uploader(
-                "Upload file data gait pasien (Format .xlsx)", 
-                type=["xlsx"],
-                key="file_uploader_form"
-            )
-            
-            # Tombol submit di dalam form
-            submit_button = st.form_submit_button("Simpan Data Pemeriksaan", type="primary", use_container_width=True)
-        
-        # Proses setelah form disubmit
-        if submit_button:
-            # Validasi input
-            if selected_pasien == "Pilih Data Pasien yang akan diperiksa":
-                st.warning("Silakan pilih pasien terlebih dahulu sebelum mengupload file.")
-                return
-            
-            if uploaded_file is None:
-                st.warning("Silakan upload file data gait pasien terlebih dahulu.")
-                return
-            
-            if tinggi_badan <= 0 or berat_badan <= 0:
-                st.warning("Silakan isi tinggi badan dan berat badan dengan benar.")
-                return
-            
-            # Hitung BMI
-            if tinggi_badan > 0:
-                tinggi_m = tinggi_badan / 100
-                bmi = berat_badan / (tinggi_m ** 2)
-                
-                if bmi < 17.0:
-                    bmi_class = "Kurus Berat"
-                elif bmi < 18.5:
-                    bmi_class = "Kurus Ringan"
-                elif bmi < 25.1:
-                    bmi_class = "Normal"
-                elif bmi < 27.1:
-                    bmi_class = "Gemuk Ringan"
-                else:
-                    bmi_class = "Gemuk Berat"
-            
-            # Ekstrak ID pasien
-            parts = selected_pasien.split(" - ")
-            pasien_user_id = parts[0].strip()
-            nama_pasien = parts[1].strip()
-            
-            try:
-                # MULAI TIMER
-                start_time = time.time()
-                
-                # Proses file dengan GaitAnalysisData
-                gait_data = GaitAnalysisData(uploaded_file)
-                processed_data = gait_data.to_dict()
-    
-                # Ekstrak data untuk Norm Kinematics
-                norm_kinematics = processed_data["Norm Kinematics"]
-                rows = []
-                
-                for i in range(len(norm_kinematics["Percentage of Gait Cycle"])):
-                    row = {
-                        "%cycle": norm_kinematics["Percentage of Gait Cycle"][i],
-                        "LPelvisAngles_X": norm_kinematics["LPelvisAngles_X"][i],
-                        "RPelvisAngles_X": norm_kinematics["RPelvisAngles_X"][i],
-                        "LHipAngles_X": norm_kinematics["LHipAngles_X"][i],
-                        "RHipAngles_X": norm_kinematics["RHipAngles_X"][i],
-                        "LKneeAngles_X": norm_kinematics["LKneeAngles_X"][i],
-                        "RKneeAngles_X": norm_kinematics["RKneeAngles_X"][i],
-                        "LAnkleAngles_X": norm_kinematics["LAnkleAngles_X"][i],
-                        "RAnkleAngles_X": norm_kinematics["RAnkleAngles_X"][i],
-                    }
-                    rows.append(row)
-    
-                st.session_state.norm_kinematics_df = pd.DataFrame(rows)
-                
-                # Simpan data pasien ke MongoDB
-                examination_data = {
-                    'pasien_id': pasien_user_id,
-                    'nama_pasien': nama_pasien,
-                    'dokter_id': st.session_state.get('terapis_user_id', 'unknown'),
-                    'dokter_nama': st.session_state.get('terapis_nama', 'unknown'),
-                    'tanggal_pemeriksaan': tanggal.strftime("%Y-%m-%d"),
-                    'upload_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    'tinggi_badan': tinggi_badan,
-                    'berat_badan': berat_badan,
-                    'bmi': bmi,
-                    'bmi_classification': bmi_class,
-                    'file_info': {
-                        'file_name': uploaded_file.name,
-                        'upload_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    },
-                    'gait_data': processed_data,
-                    'norm_kinematics': rows
-                }
-                
-                client = get_mongo_client()
-                db = client['GaitDB']
-                collection = db['patient_examinations']
-    
-                st.session_state.current_pasien_id = pasien_user_id
-                st.session_state.current_nama_pasien = nama_pasien
-                st.session_state.current_tanggal_pemeriksaan = tanggal.strftime("%Y-%m-%d")
-                st.session_state.current_patient_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y%m%d_%H%M%S')}"
-                
-                # Cek apakah sudah ada pemeriksaan
-                existing_exam = collection.find_one({
-                    'pasien_id': pasien_user_id,
-                    'tanggal_pemeriksaan': tanggal.strftime("%Y-%m-%d")
-                })
-                
-                if existing_exam:
-                    collection.update_one(
-                        {'_id': existing_exam['_id']},
-                        {'$set': examination_data}
-                    )
-                    message = f"Data gait pasien dengan NIK {pasien_user_id} berhasil diupdate!"
-                else:
-                    collection.insert_one(examination_data)
-                    message = f"Data gait pasien dengan NIK {pasien_user_id} berhasil disimpan!"
-                
-                # AKHIRI TIMER
-                end_time = time.time()
-                upload_time = end_time - start_time
-                
-                # Simpan ke session state
-                if 'upload_times' not in st.session_state:
-                    st.session_state.upload_times = []
-                st.session_state.upload_times.append({
-                    'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    'pasien': nama_pasien,
-                    'file_size': len(uploaded_file.getvalue()) / 1024,  # KB
-                    'execution_time': upload_time
-                })
-                
-                # Tampilkan BMI di hasil
-                st.success(message)
-                st.info(f"Informasi BMI Pasien: {bmi:.2f} ({bmi_class})")
-                st.info(f"Waktu Upload & Proses Data: {upload_time:.2f} detik")
-                
-                self.reset_ai_summary_session_state_except_current()
-                st.session_state.current_patient_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y%m%d_%H%M%S')}"
-                
-                # Tampilkan statistik upload
-                self.show_upload_statistics()
-                
-            except Exception as e:
-                st.error(f"Error dalam memproses file: {e}")      
-
-    def show_examination_history(self):
-        st.subheader("Riwayat Pemeriksaan")
-        
-        try:
-            # Koneksi ke MongoDB
-            client = get_mongo_client()
-            db = client['GaitDB']
-            collection = db['patient_examinations']
-            
-            # Ambil data dokter yang sedang login
-            dokter_id = st.session_state.get('terapis_user_id', None)
-            dokter_nama = st.session_state.get('terapis_nama', None)
-            
-            if not dokter_id:
-                st.error("Data dokter tidak ditemukan. Silakan login kembali.")
-                return
-
-            # Ambil data pemeriksaan hanya untuk dokter yang login
-            # Gunakan filter berdasarkan dokter_id
-            examinations = list(collection.find(
-                {'dokter_id': dokter_id}  # Filter hanya untuk dokter yang login
-            ).sort('upload_date', -1))
-            
-            if not examinations:
-                st.info(f"Belum ada riwayat pemeriksaan pasien untuk Dr. {dokter_nama}.")
-                return
-            
-            total_exams = len(examinations)
-            # unique_patients = len(set(exam.get('pasien_id') for exam in examinations if exam.get('pasien_id')))
-
-            # col1, col2 = st.columns(2)
-            # with col1:
-            #     st.metric("Total Pemeriksaan", total_exams)
-            # # with col2:
-            # #     st.metric("Total Pasien Unik", unique_patients)
-            # with col2:
-            #     # Hitung pemeriksaan bulan ini
-            #     current_month = datetime.now().strftime("%Y-%m")
-            #     monthly_exams = len([exam for exam in examinations 
-            #                     if exam.get('upload_date', '').startswith(current_month)])
-            #     st.metric("Pemeriksaan Bulan Ini", monthly_exams)
-
-            # st.markdown("---")
-
-            # Siapkan data untuk tabel
-            table_data = []
-            for exam in examinations:
-                pasien_id = exam.get('pasien_id', 'N/A')
-                nama_pasien = exam.get('nama_pasien', 'N/A')
-                tanggal_pemeriksaan = exam.get('tanggal_pemeriksaan', 'N/A')
-                upload_date = exam.get('upload_date', 'N/A')
-                
-                # Data antropometri (jika ada)
-                tinggi_badan = exam.get('tinggi_badan', 'N/A')
-                berat_badan = exam.get('berat_badan', 'N/A')
-                bmi = exam.get('bmi', 'N/A')
-                bmi_class = exam.get('bmi_classification', 'N/A')
-                
-                # Info file (jika ada)
-                file_info = exam.get('file_info', {})
-                file_name = file_info.get('file_name', 'N/A') if isinstance(file_info, dict) else 'N/A'
-
-                table_data.append({
-                    'Tanggal Pemeriksaan': tanggal_pemeriksaan,
-                    'NIK Pasien': pasien_id,
-                    'Nama Pasien': nama_pasien,
-                    'Tinggi (cm)': f"{tinggi_badan:.1f}" if isinstance(tinggi_badan, (int, float)) else tinggi_badan,
-                    'Berat (kg)': f"{berat_badan:.1f}" if isinstance(berat_badan, (int, float)) else berat_badan,
-                    'Klasifikasi BMI': bmi_class,
-                    'Dokter': dokter_nama,
-                    'File Name': file_name
-                })
-            
-            # Tampilkan dalam tabel
-            df = pd.DataFrame(table_data)
-            # st.dataframe(df, use_container_width=True)
-            
-            # Fitur filter
-            st.markdown("### Filter Riwayat")
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                filter_nik = st.text_input("Filter berdasarkan NIK Pasien:")
-            with col2:
-                filter_nama = st.text_input("Filter berdasarkan Nama Pasien:")
-            # with col3:
-            #     filter_tanggal = st.text_input("Filter berdasarkan Tanggal Pemeriksaan (YYYY-MM-DD):")
-
-            
-            # Apply filters
-            filtered_df = df.copy()
-            if filter_nik:
-                filtered_df = filtered_df[filtered_df['NIK Pasien'].str.contains(filter_nik, case=False, na=False)]
-            if filter_nama:
-                filtered_df = filtered_df[filtered_df['Nama Pasien'].str.contains(filter_nama, case=False, na=False)]
-            # if filter_tanggal:
-            #     filtered_df = filtered_df[filtered_df['Tanggal Pemeriksaan'].astype(str).str.contains(filter_tanggal, case=False, na=False)]
-                # Tampilkan tabel
-            if not filtered_df.empty:
-                st.dataframe(filtered_df, use_container_width=True)
-            
-                # Tampilkan jumlah data
-                st.markdown(f"**Menampilkan {len(filtered_df)} dari {len(df)} data pemeriksaan**")
-            
-                # Tombol download
-                csv = filtered_df.to_csv(index=False)
-                st.download_button(
-                    label="Download Riwayat sebagai CSV",
-                    data=csv,
-                    file_name=f"riwayat_pemeriksaan_{datetime.now().strftime('%Y%m%d')}.csv",
-                    mime="text/csv")
-            else:
-                st.info("Tidak ada data yang sesuai dengan filter.")
-
-        except Exception as e:
-            st.error(f"Error mengambil data riwayat: {e}")
-
-    def show_upload_statistics(self):
-        """Menampilkan statistik waktu upload"""
-        if 'upload_times' in st.session_state and st.session_state.upload_times:
-            with st.expander("📊 Statistik Waktu Upload Data"):
-                df_uploads = pd.DataFrame(st.session_state.upload_times)
-                
-                # Hitung statistik
-                avg_time = df_uploads['execution_time'].mean()
-                min_time = df_uploads['execution_time'].min()
-                max_time = df_uploads['execution_time'].max()
-                total_uploads = len(df_uploads)
-                
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("Total Upload", total_uploads)
-                with col2:
-                    st.metric("Rata-rata Waktu", f"{avg_time:.2f} detik")
-                with col3:
-                    st.metric("Tercepat", f"{min_time:.2f} detik")
-                with col4:
-                    st.metric("Terlama", f"{max_time:.2f} detik")
-                
-                st.dataframe(df_uploads, use_container_width=True)
 
     def show_dashboard(self):
         st.markdown("## Dashboard Gait Analysis")
