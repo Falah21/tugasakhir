@@ -1,16 +1,9 @@
 import streamlit as st
 from admin_page import AdminPage
 from pasien_page import PasienPage
-from terapis_page import TerapisPage
-# from css_style import load_css
+from dokter_page import DokterPage
 
-st.set_page_config(
-    page_title="Sistem Dashboard Gait Analysis",
-    page_icon="⛨",
-    layout="wide"  # biar bisa full width
-)
-
-# st.markdown(load_css(), unsafe_allow_html=True)
+st.set_page_config(page_title="Sistem Dashboard Gait Analysis", page_icon="⛨", layout="wide")
 
 # Inisialisasi session state
 if "role" not in st.session_state:
@@ -19,7 +12,7 @@ if "role" not in st.session_state:
 # Fungsi navigasi biar gak perlu double click
 def go_to(role):
     st.session_state.role = role
-    st.rerun()  # langsung rerun
+    st.rerun()
 
 def main():
     st.markdown("""
@@ -165,7 +158,6 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    # Konten utama
     st.markdown("<h2>Sistem Dashboard Gait Analysis</h2>", unsafe_allow_html=True)
     st.markdown("<p class='subtitle'>Selamat Datang di Sistem Dashboard Pemeriksaan Gait</p>", unsafe_allow_html=True)
     st.markdown("<p class='section-title'>Silahkan Pilih Role Terlebih Dahulu</p>", unsafe_allow_html=True)
@@ -179,31 +171,18 @@ def main():
             go_to("admin")
     with col2:
         if st.button("Dokter", key="btn_dokter", use_container_width=True):
-            go_to("terapis")
+            go_to("dokter")
     with col3:
         if st.button("Pasien", key="btn_pasien", use_container_width=True):
             go_to("pasien")
         
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # st.markdown("<div class='button-grid'>", unsafe_allow_html=True)
-
-    # if st.button("Admin"):
-    #     go_to("admin")
-    
-    # if st.button("Dokter"):
-    #     go_to("terapis")
-    
-    # if st.button("Pasien"):
-    #     go_to("pasien")
-    
-    # st.markdown("</div>", unsafe_allow_html=True)
-
 # Routing role
 if st.session_state.role == "admin":
     AdminPage().run()
-elif st.session_state.role == "terapis":
-    TerapisPage().run()
+elif st.session_state.role == "dokter":
+    DokterPage().run()
 elif st.session_state.role == "pasien":
     PasienPage().run()
 else:
