@@ -625,104 +625,6 @@ class DokterPage:
         except Exception as e:
             st.error(f"Error mengambil data riwayat: {e}")
 
-    
-    # ==================== FUNGSI HELPER UNTUK GAIT PHASE ====================
-    def get_gait_phase(self, percentage):
-        """Mengembalikan nama fase gait berdasarkan persentase siklus (0-100)"""
-        if 0 <= percentage <= 2:
-            return "Initial Contact"
-        elif 2 < percentage <= 10:
-            return "Loading Response"
-        elif 10 < percentage <= 30:
-            return "Mid-Stance"
-        elif 30 < percentage <= 50:
-            return "Terminal Stance"
-        elif 50 < percentage <= 60:
-            return "Pre-Swing"
-        elif 60 < percentage <= 73:
-            return "Initial Swing"
-        elif 73 < percentage <= 87:
-            return "Mid-Swing"
-        elif 87 < percentage <= 100:
-            return "Terminal Swing"
-        else:
-            return "Unknown"
-
-    def get_phase_indices(self, percentage_list):
-        """Mengembalikan dictionary indeks untuk setiap fase"""
-        phases = {
-            'Initial Contact (0-2%)': (0, 2),
-            'Loading Response (2-10%)': (2, 10),
-            'Mid-Stance (10-30%)': (10, 30),
-            'Terminal Stance (30-50%)': (30, 50),
-            'Pre-Swing (50-60%)': (50, 60),
-            'Initial Swing (60-73%)': (60, 73),
-            'Mid-Swing (73-87%)': (73, 87),
-            'Terminal Swing (87-100%)': (87, 100)
-        }
-        
-        phase_indices = {}
-        for phase, (start, end) in phases.items():
-            # Cari indeks yang sesuai dengan rentang persentase
-            indices = [i for i, p in enumerate(percentage_list) if start <= p <= end]
-            phase_indices[phase] = indices
-        
-        return phase_indices
-
-    def calculate_mae_per_phase(self, patient_values, normal_values, phase_indices):
-        """Menghitung MAE untuk setiap fase gait"""
-        mae_per_phase = {}
-        
-        for phase, indices in phase_indices.items():
-            if indices:  # Pastikan ada indeks
-                patient_phase = [patient_values[i] for i in indices]
-                normal_phase = [normal_values[i] for i in indices]
-                mae = np.mean(np.abs(np.array(patient_phase) - np.array(normal_phase)))
-                mae_per_phase[phase] = mae
-        
-        return mae_per_phase
-
-    def calculate_bounds_from_normal_data(self, filtered_df):
-        """Menghitung upper bound dan lower bound dari data normal"""
-        bounds = {}
-        
-        # Daftar joint yang akan dihitung
-        joints = {
-            'LPelvisAngles_X': [],
-            'RPelvisAngles_X': [],
-            'LHipAngles_X': [],
-            'RHipAngles_X': [],
-            'LKneeAngles_X': [],
-            'RKneeAngles_X': [],
-            'LAnkleAngles_X': [],
-            'RAnkleAngles_X': []
-        }
-        
-        for joint in joints.keys():
-            if joint in filtered_df.columns:
-                # Ambil semua nilai untuk joint ini
-                joint_values = pd.DataFrame(filtered_df[joint].tolist())
-                
-                # Hitung mean dan std
-                mean_values = joint_values.mean(axis=0).values
-                std_values = joint_values.std(axis=0).values
-                
-                # Upper bound = mean + 2*std (95% confidence interval)
-                # Lower bound = mean - 2*std
-                upper_bound = mean_values + (2 * std_values)
-                lower_bound = mean_values - (2 * std_values)
-                
-                bounds[joint] = {
-                    'upper': np.mean(upper_bound),  # Rata-rata upper bound sepanjang gait cycle
-                    'lower': np.mean(lower_bound),  # Rata-rata lower bound sepanjang gait cycle
-                    'upper_by_cycle': upper_bound.tolist(),
-                    'lower_by_cycle': lower_bound.tolist(),
-                    'mean_by_cycle': mean_values.tolist()
-                }
-        
-        return bounds
-        
-
     def show_dashboard(self):
         st.markdown("## Dashboard Gait Analysis")
 
@@ -733,31 +635,23 @@ class DokterPage:
 
         if has_patient_data:
             try:
-                # with st.spinner("Memuat data dan membuat visualisasi..."):
                 self.process_dashboard_with_patient()
             except Exception as e:
                 st.error(f"Error dalam memproses dashboard: {e}")
         else:
-            # Tampilkan dashboard tanpa data pasien
             st.warning("ℹ️ Tidak ada data pasien yang diupload. Silakan upload data pasien di menu 'Input Pemeriksan Pasien' untuk melihat analisis perbandingan.")
-            # st.markdown("---")
             self.show_normal_dashboard()
 
-    def process_dashboard_with_patient(self):
-        """Method terpisah untuk memproses dashboard dengan data pasien"""
-        # MULAI TIMER UNTUK RENDER VISUALISASI
-        render_start_time = time.time()
-        
+    # Proses dashboard dengan data pasien
+    def process_dashboard_with_patient(self):       
         px.defaults.template = 'plotly_dark'
         px.defaults.color_continuous_scale = 'reds'
-        
-        # Koneksi ke MongoDB - dengan timeout
+
         client = get_mongo_client()
         db = client['GaitDB']
         collection = db['gait_data']
-        
-        # Membaca data dari MongoDB dengan limit
-        cursor = collection.find().limit(100)  # Batasi data untuk performa
+
+        cursor = collection.find().limit(100)  # Batasi data
         data = list(cursor)
         
         if len(data) == 0:
@@ -770,22 +664,15 @@ class DokterPage:
         df.columns = df.columns.str.replace('Subject Parameters.', '')
         df.columns = df.columns.str.replace('Body Measurements.', '')
         df.columns = df.columns.str.replace('Norm Kinematics.', '')
-    
-        # ====== FILTER ======
+
         st.markdown("<div class='filter-box'>", unsafe_allow_html=True)
         st.markdown("### Filter Data")
     
         col1, col2, col3 = st.columns([2, 2, 2])
-        
         with col1:
             min_age = df['Age'].min()
             max_age = df['Age'].max()
-            age_range = st.slider(
-                'Filter by Age Range:',
-                min_value=min_age,
-                max_value=max_age,
-                value=(min_age, max_age)
-            )
+            age_range = st.slider('Filter by Age Range:', min_value=min_age, max_value=max_age, value=(min_age, max_age))
     
         with col2:
             bmi_options = ["All BMI Classification"] + list(df["BMI Classification"].value_counts().keys().sort_values())
@@ -811,80 +698,83 @@ class DokterPage:
             return
             
         st.markdown(f"**Total Records:** {len(filtered_df)}")
-    
         st.session_state.filtered_normal_df = filtered_df
-        # Gunakan data pasien dari session state
+
         norm_kinematics_df = st.session_state.norm_kinematics_df
-    
-        # Buat visualisasi untuk setiap joint
         self.create_visualizations(filtered_df, norm_kinematics_df)
-        
-        # AKHIRI TIMER
-        render_end_time = time.time()
-        render_time = render_end_time - render_start_time
-        
-        # Simpan ke session state
-        if 'render_times' not in st.session_state:
-            st.session_state.render_times = []
-        st.session_state.render_times.append({
-            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'data_points': len(filtered_df),
-            'execution_time': render_time
-        })
-        
-        st.info(f"⏱️ **Waktu Render Visualisasi Dashboard:** {render_time:.2f} detik")
-        
-        # Tampilkan statistik render
-        self.show_render_statistics()
-    
-    def show_render_statistics(self):
-        """Menampilkan statistik waktu render visualisasi"""
-        if 'render_times' in st.session_state and st.session_state.render_times:
-            with st.expander("📊 Statistik Waktu Render Visualisasi"):
-                df_render = pd.DataFrame(st.session_state.render_times)
-                
-                # Hitung statistik
-                avg_time = df_render['execution_time'].mean()
-                min_time = df_render['execution_time'].min()
-                max_time = df_render['execution_time'].max()
-                total_renders = len(df_render)
-                
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("Total Render", total_renders)
-                with col2:
-                    st.metric("Rata-rata Waktu", f"{avg_time:.2f} detik")
-                with col3:
-                    st.metric("Tercepat", f"{min_time:.2f} detik")
-                with col4:
-                    st.metric("Terlama", f"{max_time:.2f} detik")
-                
-                st.dataframe(df_render[['timestamp', 'data_points', 'execution_time']], use_container_width=True)
 
+    # dashboard baseline data normal (tanpa pemeriksaan pasien)
+    def show_normal_dashboard(self):
+        px.defaults.template = 'plotly_dark'
+        px.defaults.color_continuous_scale = 'reds'
+
+        client = get_mongo_client()
+        db = client['GaitDB']
+        collection = db['gait_data']
+
+        cursor = collection.find().limit(100)
+        data = list(cursor)
+        if len(data) == 0:
+            st.error("Database Normal Belum Ada. Silahkan Upload Data Normal pada Menu 'Input Baseline Data Gait'")
+            st.info("Untuk melihat dashboard analisis gait, Anda perlu mengupload data subjek normal terlebih dahulu.")
+            return
+
+        df = pd.json_normalize(data)
+        df.columns = df.columns.str.replace('Trial Information.', '') # Mengubah nama kolom
+        df.columns = df.columns.str.replace('Subject Parameters.', '')
+        df.columns = df.columns.str.replace('Body Measurements.', '')
+        df.columns = df.columns.str.replace('Norm Kinematics.', '')
+
+        st.markdown("<div class='filter-box'>", unsafe_allow_html=True)
+        st.markdown("### Filter Data")
+
+        col1, col2, col3 = st.columns([2, 2, 2])
+        with col1:
+            min_age = df['Age'].min()
+            max_age = df['Age'].max()
+            age_range = st.slider('Filter by Age Range:', min_value=min_age, max_value=max_age, value=(min_age, max_age))
+
+        with col2:
+            bmi_options = ["All BMI Classification"] + list(df["BMI Classification"].value_counts().keys().sort_values())
+            classbmi = st.selectbox(label="BMI Classification", options=bmi_options)
+
+        with col3:
+            gender_mapping = {"L": "Pria", "P": "Wanita"}
+            df["Gender"] = df["Gender"].map(gender_mapping)
+            gender_options = ["All Gender"] + list(df["Gender"].value_counts().keys().sort_values())
+            gender = st.selectbox(label="Gender", options=gender_options)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        filtered_df = df[(df['Age'] >= age_range[0]) & (df['Age'] <= age_range[1])]
+        if classbmi != "All BMI Classification":
+            filtered_df = filtered_df[filtered_df['BMI Classification'] == classbmi]
+        if gender != "All Gender":
+            filtered_df = filtered_df[filtered_df["Gender"] == gender]
+            
+        if filtered_df.empty:
+            st.error(f"There is no data with gender {gender} classified as {classbmi}.")
+        else:
+            st.markdown(f"**Total Records:** {len(filtered_df)}")
+            st.session_state.filtered_normal_df = filtered_df
+            self.show_normal_charts_only(filtered_df)
+
+    # Visualisasi untuk semua sendi
     def create_visualizations(self, filtered_df, norm_kinematics_df):
-        """Membuat visualisasi untuk semua joint"""
-        # Persentase gait cycle (0-100)
         percentage_cycle = list(range(101))
-
-        # Dapatkan indeks untuk setiap fase
-        phase_indices = self.get_phase_indices(percentage_cycle)
+        phase_indices = self.get_phase_indices(percentage_cycle) # Dapatkan indeks untuk setiap fase
         
-        # ==================== PELVIS ====================
-        # Extract data pelvis dari filtered_df
+        # PELVIS
         l_pelvis_angles = pd.DataFrame(filtered_df['LPelvisAngles_X'].tolist())
         r_pelvis_angles = pd.DataFrame(filtered_df['RPelvisAngles_X'].tolist())
 
-        # Hitung mean untuk pelvis
         mean_l_pelvis = l_pelvis_angles.mean(axis=0).values
         std_l_pelvis = l_pelvis_angles.std(axis=0) / np.sqrt(l_pelvis_angles.shape[0])
         mean_r_pelvis = r_pelvis_angles.mean(axis=0).values
         std_r_pelvis = r_pelvis_angles.std(axis=0) / np.sqrt(r_pelvis_angles.shape[0])
-
-        # Konversi ke numpy array jika perlu
         std_l_pelvis = std_l_pelvis.values if isinstance(std_l_pelvis, pd.Series) else std_l_pelvis
         std_r_pelvis = std_r_pelvis.values if isinstance(std_r_pelvis, pd.Series) else std_r_pelvis
 
-        # Buat dataframe untuk pelvis
         lpelvis = pd.DataFrame({
             "%cycle": percentage_cycle,
             'Mean_Lpelvis': mean_l_pelvis,
@@ -994,22 +884,18 @@ class DokterPage:
             phase_indices
         )
         
-        # ==================== ANKLE ====================
-        # Extract data ankle dari filtered_df
+        # ANKLE
         l_ankle_angles = pd.DataFrame(filtered_df['LAnkleAngles_X'].tolist())
         r_ankle_angles = pd.DataFrame(filtered_df['RAnkleAngles_X'].tolist())
         
-        # Hitung mean untuk ankle
         mean_l_ankle = l_ankle_angles.mean(axis=0).values
         std_l_ankle = l_ankle_angles.std(axis=0) / np.sqrt(l_ankle_angles.shape[0])
         mean_r_ankle = r_ankle_angles.mean(axis=0).values
         std_r_ankle = r_ankle_angles.std(axis=0) / np.sqrt(r_ankle_angles.shape[0])
-        
-        # Konversi ke numpy array jika perlu
+
         std_l_ankle = std_l_ankle.values if isinstance(std_l_ankle, pd.Series) else std_l_ankle
         std_r_ankle = std_r_ankle.values if isinstance(std_r_ankle, pd.Series) else std_r_ankle
-        
-        # Buat dataframe untuk ankle
+
         lankle = pd.DataFrame({
             "%cycle": percentage_cycle,
             'Mean_Lankle': mean_l_ankle,
@@ -1023,8 +909,7 @@ class DokterPage:
             'std_Rankle': std_r_ankle,
             'your right ankle': norm_kinematics_df['RAnkleAngles_X'].values
         })
-        
-        # Hitung MAE per fase untuk Ankle
+
         mae_ankle_left_phases = self.calculate_mae_per_phase(
             lankle["your left ankle"].values, 
             lankle["Mean_Lankle"].values, 
@@ -1046,8 +931,7 @@ class DokterPage:
         maerhip = np.mean(np.abs(rhip["your right hip"] - rhip["Mean_Rhip"]))
         maelankle = np.mean(np.abs(lankle["your left ankle"] - lankle["Mean_Lankle"]))
         maerankle = np.mean(np.abs(rankle["your right ankle"] - rankle["Mean_Rankle"]))
-        
-        # ====== SIMPAN KE SESSION STATE ======
+
         # MAE keseluruhan
         st.session_state.mae_pelvis_left = maelpelvis
         st.session_state.mae_pelvis_right = maerpelvis
@@ -1068,10 +952,10 @@ class DokterPage:
         st.session_state.mae_ankle_left_phases = mae_ankle_left_phases
         st.session_state.mae_ankle_right_phases = mae_ankle_right_phases
         
-        # Simpan phase_indices juga
+        # Simpan phase_indices 
         st.session_state.phase_indices = phase_indices
 
-        # ====== BUAT FIGURES ======
+        # Buat Figure
         fig1 = self.create_pelvis_figure(lpelvis, "Left Pelvis", 'orange')
         fig2 = self.create_pelvis_figure(rpelvis, "Right Pelvis", 'dark blue')
         fig3 = self.create_joint_figure(lknee, "Left Knee", 'orange')
@@ -1087,32 +971,25 @@ class DokterPage:
         with tab1:
             tab1.subheader("PELVIS")
             tab1.write('Pelvis (dalam bahasa Indonesia: panggul) adalah struktur tulang yang berbentuk cekungan di bawah perut, di antara tulang pinggul, dan di atas paha.')
-
             col1, col2 = tab1.columns(2)
             with col1:
                 st.plotly_chart(fig1, use_container_width=True)
-                st.write(f"**MAE Keseluruhan Left Pelvis: {maelpelvis:.2f}°**")
-                # self.display_mae_per_phase(mae_pelvis_left_phases, "Left Pelvis")
-                
+                st.write(f"**MAE Keseluruhan Left Pelvis: {maelpelvis:.2f}°**") 
             with col2:
                 st.plotly_chart(fig2, use_container_width=True)
-                st.write(f"**MAE Keseluruhan Right Pelvis: {maerpelvis:.2f}°**")
-                # self.display_mae_per_phase(mae_pelvis_right_phases, "Right Pelvis")
+                st.write(f"**MAE Keseluruhan Right Pelvis: {maerpelvis:.2f}°**") 
                 
         with tab2:
             tab2.subheader("KNEE")
             tab2.write('Knee (dalam bahasa Indonesia: lutut) adalah bagian tubuh manusia yang terletak di antara paha dan betis, berfungsi sebagai sendi yang menghubungkan tulang femur (paha) dengan tulang tibia (betis).')
-
             col1, col2 = tab2.columns(2)
             with col1:
                 st.plotly_chart(fig3, use_container_width=True)
                 st.write(f"**MAE Keseluruhan Left Knee: {maelknee:.2f}°**")
-                # self.display_mae_per_phase(mae_knee_left_phases, "Left Knee")
             with col2:
                 st.plotly_chart(fig4, use_container_width=True)
                 st.write(f"**MAE Keseluruhan Right Knee: {maerknee:.2f}°**")
-                # self.display_mae_per_phase(mae_knee_right_phases, "Right Knee")
-
+                
         with tab3:
             tab3.subheader("HIP")
             tab3.write('Hip (dalam bahasa Indonesia: pinggul) adalah bagian tubuh yang terletak di bawah perut, menghubungkan tubuh bagian atas dengan kaki.')
@@ -1121,12 +998,10 @@ class DokterPage:
             with col1:
                 st.plotly_chart(fig5, use_container_width=True)
                 st.write(f"**MAE Keseluruhan Left Hip: {maelhip:.2f}°**")
-                # self.display_mae_per_phase(mae_hip_left_phases, "Left Hip")
             with col2:
                 st.plotly_chart(fig6, use_container_width=True)
                 st.write(f"**MAE Keseluruhan Right Hip: {maerhip:.2f}°**")
-                # self.display_mae_per_phase(mae_hip_right_phases, "Right Hip")
-
+                
         with tab4:
             tab4.subheader("ANKLE")
             tab4.write('Ankle (dalam bahasa Indonesia: pergelangan kaki) adalah sendi yang terletak di antara kaki bagian bawah (tulang tibia dan fibula) dan bagian atas kaki (tulang talus).')
@@ -1135,1041 +1010,13 @@ class DokterPage:
             with col1:
                 st.plotly_chart(fig7, use_container_width=True)
                 st.write(f"**MAE Keseluruhan Left Ankle: {maelankle:.2f}°**")
-                # self.display_mae_per_phase(mae_ankle_left_phases, "Left Ankle")
             with col2:
                 st.plotly_chart(fig8, use_container_width=True)
                 st.write(f"**MAE Keseluruhan Right Ankle: {maerankle:.2f}°**")
-                # self.display_mae_per_phase(mae_ankle_right_phases, "Right Ankle")
 
         with tab5:
             self.show_ai_summary_tab_with_phases()
 
-    def show_performance_summary(self):
-        """Menampilkan ringkasan performa semua komponen"""
-        st.markdown("## 📊 Ringkasan Performa Sistem")
-        
-        # Upload times
-        if 'upload_times' in st.session_state and st.session_state.upload_times:
-            df_upload = pd.DataFrame(st.session_state.upload_times)
-            avg_upload = df_upload['execution_time'].mean()
-            st.metric("Rata-rata Waktu Upload Data", f"{avg_upload:.2f} detik")
-        
-        # AI generation times
-        if 'ai_generation_times' in st.session_state and st.session_state.ai_generation_times:
-            df_ai = pd.DataFrame(st.session_state.ai_generation_times)
-            avg_ai = df_ai['execution_time'].mean()
-            st.metric("Rata-rata Waktu Generate AI", f"{avg_ai:.2f} detik")
-        
-        # Render times
-        if 'render_times' in st.session_state and st.session_state.render_times:
-            df_render = pd.DataFrame(st.session_state.render_times)
-            avg_render = df_render['execution_time'].mean()
-            st.metric("Rata-rata Waktu Render Dashboard", f"{avg_render:.2f} detik")
-
-    def create_default_summaries(self, prompt_type):
-        """Membuat default summaries jika AI gagal"""
-        return [
-            {
-                "label": f"Prompt {prompt_type} - Variasi 1",
-                "value": "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini."
-            },
-            {
-                "label": f"Prompt {prompt_type} - Variasi 2", 
-                "value": "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini."
-            },
-            {
-                "label": f"Prompt {prompt_type} - Variasi 3",
-                "value": "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini."
-            }
-        ]
-        
-    def show_ai_summary_tab_with_phases(self):
-        """Menampilkan tab Hasil Ringkasan AI dengan tombol generate manual"""
-        # st.subheader("HASIL RINGKASAN AI")
-        
-        # Cek apakah semua MAE sudah tersedia
-        required_mae = [
-            'mae_pelvis_left', 'mae_pelvis_right',
-            'mae_knee_left', 'mae_knee_right',
-            'mae_hip_left', 'mae_hip_right',
-            'mae_ankle_left', 'mae_ankle_right',
-            'phase_indices'
-        ]
-        
-        missing_mae = [mae for mae in required_mae if mae not in st.session_state]
-        
-        if missing_mae:
-            st.warning("Data MAE belum lengkap. Silakan upload data pasien terlebih dahulu.")
-            return
-    
-        # INISIALISASI
-        if 'current_patient_key' not in st.session_state:
-            st.session_state.current_patient_key = f"patient_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
-        current_patient_key = st.session_state.current_patient_key
-        
-        # Ambil data upper bound dan lower bound
-        if 'filtered_normal_df' not in st.session_state:
-            st.info("Untuk menggunakan fitur AI, silakan upload data normal terlebih dahulu di menu 'Input Baseline Data Gait'")
-            if st.button("🔄 Refresh", key="refresh_normal_data"):
-                st.rerun()
-            return
-        
-        filtered_df = st.session_state.filtered_normal_df
-    
-        if filtered_df.empty:
-            st.warning("Data normal kosong. Silakan cek filter yang Anda gunakan.")
-            return
-        
-        # Hitung upper bound dan lower bound
-        bounds_data = self.calculate_bounds_from_normal_data(filtered_df)
-        
-        # Tampilkan tabel MAE
-        st.markdown("### Ringkasan MAE Keseluruhan")
-        mae_overall_data = []
-        
-        # Pelvis
-        pelvis_left = st.session_state.mae_pelvis_left
-        pelvis_right = st.session_state.mae_pelvis_right
-        pelvis_avg = (pelvis_left + pelvis_right) / 2
-        mae_overall_data.append({
-            'Joint': 'Pelvis',
-            'Kiri (°)': f"{pelvis_left:.2f}",
-            'Kanan (°)': f"{pelvis_right:.2f}",
-            'Rata-rata (°)': f"{pelvis_avg:.2f}"
-        })
-        
-        # Knee
-        knee_left = st.session_state.mae_knee_left
-        knee_right = st.session_state.mae_knee_right
-        knee_avg = (knee_left + knee_right) / 2
-        mae_overall_data.append({
-            'Joint': 'Knee',
-            'Kiri (°)': f"{knee_left:.2f}",
-            'Kanan (°)': f"{knee_right:.2f}",
-            'Rata-rata (°)': f"{knee_avg:.2f}"
-        })
-        
-        # Hip
-        hip_left = st.session_state.mae_hip_left
-        hip_right = st.session_state.mae_hip_right
-        hip_avg = (hip_left + hip_right) / 2
-        mae_overall_data.append({
-            'Joint': 'Hip',
-            'Kiri (°)': f"{hip_left:.2f}",
-            'Kanan (°)': f"{hip_right:.2f}",
-            'Rata-rata (°)': f"{hip_avg:.2f}"
-        })
-        
-        # Ankle
-        ankle_left = st.session_state.mae_ankle_left
-        ankle_right = st.session_state.mae_ankle_right
-        ankle_avg = (ankle_left + ankle_right) / 2
-        mae_overall_data.append({
-            'Joint': 'Ankle',
-            'Kiri (°)': f"{ankle_left:.2f}",
-            'Kanan (°)': f"{ankle_right:.2f}",
-            'Rata-rata (°)': f"{ankle_avg:.2f}"
-        })
-        
-        mae_overall_df = pd.DataFrame(mae_overall_data)
-        st.dataframe(mae_overall_df, use_container_width=True, hide_index=True)
-        
-        # ===== TABEL MAE PER FASE GAIT =====
-        st.markdown("### Detail MAE per Fase Gait")
-        phases_order = [
-            'Initial Contact (0-2%)',
-            'Loading Response (2-10%)',
-            'Mid-Stance (10-30%)',
-            'Terminal Stance (30-50%)',
-            'Pre-Swing (50-60%)',
-            'Initial Swing (60-73%)',
-            'Mid-Swing (73-87%)',
-            'Terminal Swing (87-100%)'
-        ]
-        
-        # Buat data untuk tabel per fase
-        mae_phases_data = []
-        
-        for phase in phases_order:
-            row_data = {
-                'Fase Gait': phase,
-                'Pelvis Kiri (°)': f"{st.session_state.mae_pelvis_left_phases.get(phase, 0):.2f}",
-                'Pelvis Kanan (°)': f"{st.session_state.mae_pelvis_right_phases.get(phase, 0):.2f}",
-                'Knee Kiri (°)': f"{st.session_state.mae_knee_left_phases.get(phase, 0):.2f}",
-                'Knee Kanan (°)': f"{st.session_state.mae_knee_right_phases.get(phase, 0):.2f}",
-                'Hip Kiri (°)': f"{st.session_state.mae_hip_left_phases.get(phase, 0):.2f}",
-                'Hip Kanan (°)': f"{st.session_state.mae_hip_right_phases.get(phase, 0):.2f}",
-                'Ankle Kiri (°)': f"{st.session_state.mae_ankle_left_phases.get(phase, 0):.2f}",
-                'Ankle Kanan (°)': f"{st.session_state.mae_ankle_right_phases.get(phase, 0):.2f}"
-            }
-            mae_phases_data.append(row_data)
-        
-        mae_phases_df = pd.DataFrame(mae_phases_data)
-        st.dataframe(mae_phases_df, use_container_width=True, hide_index=True)
-       
-        # ===== TOMBOL GENERATE AI =====
-        patient_saved_key = f'saved_summary_content_{current_patient_key}'
-        patient_ai_generated_key = f'ai_summaries_generated_{current_patient_key}'
-        
-        # Jika sudah ada hasil yang disimpan
-        if patient_saved_key in st.session_state and st.session_state[patient_saved_key]:
-            st.markdown("### Hasil Terbaik yang Telah Disimpan")
-            st.info(st.session_state[patient_saved_key])
-            st.markdown("---")
-            
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                if st.button("🔄 Generate Ringkasan Baru", use_container_width=True, type="secondary"):
-                    if patient_saved_key in st.session_state:
-                        del st.session_state[patient_saved_key]
-                    if patient_ai_generated_key in st.session_state:
-                        del st.session_state[patient_ai_generated_key]
-                    if f'summaries_a_{current_patient_key}' in st.session_state:
-                        del st.session_state[f'summaries_a_{current_patient_key}']
-                    if f'summaries_b_{current_patient_key}' in st.session_state:
-                        del st.session_state[f'summaries_b_{current_patient_key}']
-                    if f'selected_summary_label_{current_patient_key}' in st.session_state:
-                        del st.session_state[f'selected_summary_label_{current_patient_key}']
-                    if f'selected_summary_content_{current_patient_key}' in st.session_state:
-                        del st.session_state[f'selected_summary_content_{current_patient_key}']
-                    st.rerun()
-            return
-        
-        # Jika belum ada hasil AI yang digenerate
-        if patient_ai_generated_key not in st.session_state:
-            st.markdown("### Generate Ringkasan AI")
-            st.info("Klik tombol di bawah untuk menghasilkan ringkasan AI berdasarkan data MAE dan batas normal (Upper/Lower Bound) yang telah dihitung.")
-            
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                generate_button = st.button("Generate Ringkasan AI", use_container_width=True, type="primary")
-            
-            if not generate_button:
-                st.stop()
-            
-            # Jika tombol ditekan, generate summaries
-            if generate_button:
-                if gemini_model is None:
-                    st.error("Fitur AI tidak tersedia karena API key Gemini tidak dikonfigurasi.")
-                    return
-                
-                # MULAI TIMER UNTUK GENERATE AI
-                ai_start_time = time.time()
-                
-                # Hitung overall MAE
-                all_mae_values = [
-                    st.session_state.mae_pelvis_left,
-                    st.session_state.mae_pelvis_right,
-                    st.session_state.mae_knee_left,
-                    st.session_state.mae_knee_right,
-                    st.session_state.mae_hip_left,
-                    st.session_state.mae_hip_right,
-                    st.session_state.mae_ankle_left,
-                    st.session_state.mae_ankle_right]
-                overall_mae = np.mean(all_mae_values)
-    
-                mae_summary = f"""
-                MAE KESELURUHAN (Rata-rata seluruh siklus gait 0-100%):
-                - Pelvis Kiri: {st.session_state.mae_pelvis_left:.2f}°, Pelvis Kanan: {st.session_state.mae_pelvis_right:.2f}°, Rata-rata: {(st.session_state.mae_pelvis_left + st.session_state.mae_pelvis_right)/2:.2f}°
-                - Knee Kiri: {st.session_state.mae_knee_left:.2f}°, Knee Kanan: {st.session_state.mae_knee_right:.2f}°, Rata-rata: {(st.session_state.mae_knee_left + st.session_state.mae_knee_right)/2:.2f}°
-                - Hip Kiri: {st.session_state.mae_hip_left:.2f}°, Hip Kanan: {st.session_state.mae_hip_right:.2f}°, Rata-rata: {(st.session_state.mae_hip_left + st.session_state.mae_hip_right)/2:.2f}°
-                - Ankle Kiri: {st.session_state.mae_ankle_left:.2f}°, Ankle Kanan: {st.session_state.mae_ankle_right:.2f}°, Rata-rata: {(st.session_state.mae_ankle_left + st.session_state.mae_ankle_right)/2:.2f}°
-                Rata-rata Keseluruhan Semua Sendi: {overall_mae:.2f}°
-                """
-                
-                # Siapkan data MAE per fase untuk prompt
-                mae_phases_summary = "\nMAE PER FASE GAIT:\n"
-                
-                for phase in phases_order:
-                    mae_phases_summary += f"\n{phase}:\n"
-                    mae_phases_summary += f"  - Pelvis Kiri: {st.session_state.mae_pelvis_left_phases.get(phase, 0):.2f}°, Pelvis Kanan: {st.session_state.mae_pelvis_right_phases.get(phase, 0):.2f}°\n"
-                    mae_phases_summary += f"  - Knee Kiri: {st.session_state.mae_knee_left_phases.get(phase, 0):.2f}°, Knee Kanan: {st.session_state.mae_knee_right_phases.get(phase, 0):.2f}°\n"
-                    mae_phases_summary += f"  - Hip Kiri: {st.session_state.mae_hip_left_phases.get(phase, 0):.2f}°, Hip Kanan: {st.session_state.mae_hip_right_phases.get(phase, 0):.2f}°\n"
-                    mae_phases_summary += f"  - Ankle Kiri: {st.session_state.mae_ankle_left_phases.get(phase, 0):.2f}°, Ankle Kanan: {st.session_state.mae_ankle_right_phases.get(phase, 0):.2f}°\n"
-                
-                # Siapkan data bounds
-                bounds_summary = "\nBATAS NORMAL (Upper Bound dan Lower Bound):\n"
-                joints_for_bounds = [
-                    ('LPelvisAngles_X', 'Pelvis Kiri'),
-                    ('RPelvisAngles_X', 'Pelvis Kanan'),
-                    ('LKneeAngles_X', 'Knee Kiri'),
-                    ('RKneeAngles_X', 'Knee Kanan'),
-                    ('LHipAngles_X', 'Hip Kiri'),
-                    ('RHipAngles_X', 'Hip Kanan'),
-                    ('LAnkleAngles_X', 'Ankle Kiri'),
-                    ('RAnkleAngles_X', 'Ankle Kanan')
-                ]
-                
-                for key, name in joints_for_bounds:
-                    bound = bounds_data.get(key, {'upper': 0, 'lower': 0})
-                    bounds_summary += f"- {name}: Upper={bound['upper']:.2f}°, Lower={bound['lower']:.2f}°\n"
-                
-                # Gabungkan semua data
-                full_data = mae_summary + mae_phases_summary + bounds_summary
-                
-                # PROMPT A dan B
-                prompt_a = f"""
-                    Anda adalah fisioterapis klinis dan analis biomekanika gait.
-                    
-                    DATA:
-                    {full_data}
-                    
-                    TUGAS:
-                    Lakukan analisis gait dengan fokus pada temuan paling penting dan deviasi signifikan.
-                    
-                    ATURAN WAJIB:
-                    - Maksimal 200 kata per variasi
-                    - Hindari terlalu banyak angka (cukup gunakan: rendah, sedang, tinggi)
-                    - Fokus hanya pada temuan paling mencolok
-                    - Jangan menjelaskan semua fase
-                    - Jangan mengulang isi tabel data mentah
-                    - Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
-                    - Gunakan format **bold** untuk menyoroti sendi yang paling bermasalah, fase gait paling kritis, dan tingkat deviasi (misalnya: tinggi atau sangat tinggi).
-                    - Jangan menggunakan bold secara berlebihan (maksimal 1–3 kata per kalimat).
-
-                                        
-                    OUTPUT:
-                    
-                    === VARIASI 1 ===
-                    Ringkasan singkat (2 paragraf):
-                    - Gambaran umum deviasi gait
-                    - Sisi dominan (kanan/kiri)
-                    - Sendi utama yang bermasalah
-                    
-                    === VARIASI 2 ===
-                    Analisis terstruktur + tabel highlight:
-                    
-                    1. Highlight Temuan Utama:
-                    - Sebutkan 3–4 temuan paling signifikan (tanpa detail angka)
-                    
-                    2. Tabel Ringkasan Deviasi:
-                    Buat tabel dengan format:
-                    
-                    | Sendi | Sisi | Fase Paling Bermasalah | Tingkat Deviasi | Hasil (Angka) |
-                    |-------|------|----------------------|-----------------|-------|
-                    
-                    Isi hanya dengan temuan yang paling signifikan saja (maksimal 7 baris).
-                    
-                    Gunakan istilah:
-                    - Rendah
-                    - Sedang
-                    - Tinggi
-                    
-                    === VARIASI 3 ===
-                    Analisis klinis:
-                    - Interpretasi makna deviasi
-                    - Pola kompensasi (jika ada)
-                    - Implikasi terhadap fungsi berjalan
-                    - Tanpa tabel
-                    """
-                
-                prompt_b = f"""
-                Buat laporan hasil gait analysis berdasarkan data berikut:
-                
-                DATA:
-                {full_data}
-                
-                ATURAN WAJIB:
-                - Maksimal 200 kata per variasi
-                - Jangan menampilkan semua angka (cukup highlight yang paling penting)
-                - Gunakan istilah kualitatif: ringan, moderat, tinggi
-                - Fokus pada pola, bukan angka
-                - Hindari penjelasan per fase secara lengkap
-                - Gunakan bahasa formal namun ringkas
-                - Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
-                
-                
-                STRUKTUR:
-                
-                a. HASIL PEMERIKSAAN:
-                - Ringkasan singkat kondisi umum (tanpa list angka panjang)
-                
-                b. INTERPRETASI KLINIS:
-                - Pola utama (asimetris / dominan sisi tertentu)
-                - Sendi paling bermasalah
-                - Fase paling kritis (cukup 1–2 fase saja)
-                
-                c. REKOMENDASI:
-                - Saran umum (tidak terlalu panjang)
-                
-                OUTPUT:
-                === VARIASI 1 ===
-                Fokus temuan utama (ringkas)
-                
-                === VARIASI 2 ===
-                Lebih terstruktur tapi tetap ringkas
-                
-                === VARIASI 3 ===
-                Fokus interpretasi + rekomendasi
-                """
-                
-                # Generate summaries
-                summaries_a = []
-                summaries_b = []
-                
-                try:
-                    with st.spinner("Mohon tunggu... Sistem sedang membuat Ringkasan AI"):
-                        response_a = gemini_model.generate_content(prompt_a)
-                        if response_a.text:
-                            summaries_a = self.parse_ai_response_dropdown(response_a.text, "A")
-                        else:
-                            summaries_a = self.create_default_summaries("A")
-                    
-                    # with st.spinner("Membuat ringkasan Prompt B..."):
-                        response_b = gemini_model.generate_content(prompt_b)
-                        if response_b.text:
-                            summaries_b = self.parse_ai_response_dropdown(response_b.text, "B")
-                        else:
-                            summaries_b = self.create_default_summaries("B")
-                            
-                    # AKHIRI TIMER AI
-                    ai_end_time = time.time()
-                    ai_generation_time = ai_end_time - ai_start_time
-                    
-                    # Simpan ke session state
-                    if 'ai_generation_times' not in st.session_state:
-                        st.session_state.ai_generation_times = []
-                    st.session_state.ai_generation_times.append({
-                        'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        'prompt_a_length': len(prompt_a),
-                        'prompt_b_length': len(prompt_b),
-                        'response_a_length': len(response_a.text) if response_a.text else 0,
-                        'response_b_length': len(response_b.text) if response_b.text else 0,
-                        'execution_time': ai_generation_time
-                    })
-                    
-                    st.success(f"✅ Ringkasan AI berhasil digenerate!")
-                    st.info(f"⏱️ **Waktu Generate AI:** {ai_generation_time:.2f} detik")
-                    
-                    # Tampilkan statistik AI
-                    self.show_ai_generation_statistics()
-                                
-                except Exception as e:
-                    st.error(f"Error generating AI summaries: {e}")
-                    summaries_a = self.create_default_summaries("A")
-                    summaries_b = self.create_default_summaries("B")
-                
-                # Simpan ke session state
-                st.session_state[f'summaries_a_{current_patient_key}'] = summaries_a
-                st.session_state[f'summaries_b_{current_patient_key}'] = summaries_b
-                st.session_state[patient_ai_generated_key] = True
-                
-                # Inisialisasi selected summary
-                if f'selected_summary_label_{current_patient_key}' not in st.session_state:
-                    if summaries_a:
-                        st.session_state[f'selected_summary_label_{current_patient_key}'] = summaries_a[0]['label']
-                        st.session_state[f'selected_summary_content_{current_patient_key}'] = summaries_a[0]['value']
-                    elif summaries_b:
-                        st.session_state[f'selected_summary_label_{current_patient_key}'] = summaries_b[0]['label']
-                        st.session_state[f'selected_summary_content_{current_patient_key}'] = summaries_b[0]['value']
-                st.rerun()
-        
-        # Jika sudah digenerate, tampilkan hasilnya dan tambahkan statistik waktu
-        else:
-            # Ambil summaries dari session state
-            summaries_a = st.session_state.get(f'summaries_a_{current_patient_key}', [])
-            summaries_b = st.session_state.get(f'summaries_b_{current_patient_key}', [])
-            
-            # Tampilkan statistik waktu generate terakhir
-            if 'ai_generation_times' in st.session_state and st.session_state.ai_generation_times:
-                last_generation = st.session_state.ai_generation_times[-1]
-                st.info(f"⏱️ **Waktu generate terakhir:** {last_generation['execution_time']:.2f} detik pada {last_generation['timestamp']}")
-            
-            # Tampilkan dalam 2 kolom
-            st.markdown("---")
-            st.markdown("## Hasil Prompt")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.markdown("### Hasil Prompt A (Analisis Klinis)")
-                
-                if summaries_a:
-                    for i, summary in enumerate(summaries_a, 1):
-                        with st.container():
-                            st.markdown(f"#### Variasi {i}")
-                            st.markdown(summary['value'])
-                            if i < len(summaries_a):
-                                st.markdown("---")
-                else:
-                    st.info("Tidak ada ringkasan yang dihasilkan")
-            
-            with col2:
-                st.markdown("### Hasil Prompt B (Laporan Hasil)")
-                
-                if summaries_b:
-                    for i, summary in enumerate(summaries_b, 1):
-                        with st.container():
-                            st.markdown(f"#### Variasi {i}")
-                            st.markdown(summary['value'])
-                            if i < len(summaries_b):
-                                st.markdown("---")
-                else:
-                    st.info("Tidak ada ringkasan yang dihasilkan")
-            
-            # Dropdown untuk memilih hasil terbaik
-            st.markdown("---")
-            
-            all_summaries = summaries_a + summaries_b
-            dropdown_options = [summary["label"] for summary in all_summaries]
-            
-            with st.container():
-                col_left, col_center, col_right = st.columns([1, 2, 1])
-                
-                with col_center:
-                    st.markdown("### Pilih Hasil Terbaik")
-                    
-                    def on_dropdown_change():
-                        selected_label = st.session_state.best_summary_dropdown
-                        selected_content = next((s["value"] for s in all_summaries if s["label"] == selected_label), "")
-                        st.session_state[f'selected_summary_label_{current_patient_key}'] = selected_label
-                        st.session_state[f'selected_summary_content_{current_patient_key}'] = selected_content
-                    
-                    selected_label_key = f'selected_summary_label_{current_patient_key}'
-                    current_index = 0
-                    if selected_label_key in st.session_state and st.session_state[selected_label_key] in dropdown_options:
-                        current_index = dropdown_options.index(st.session_state[selected_label_key])
-                    
-                    selected_label = st.selectbox(
-                        "Pilih varian terbaik:",
-                        options=dropdown_options,
-                        index=current_index,
-                        label_visibility="collapsed",
-                        key="best_summary_dropdown",
-                        on_change=on_dropdown_change
-                    )
-                    
-                    selected_content_key = f'selected_summary_content_{current_patient_key}'
-                    if selected_content_key in st.session_state and st.session_state[selected_content_key]:
-                        st.markdown("**Konten yang dipilih:**")
-                        st.info(st.session_state[selected_content_key])
-                    
-                    # Tombol simpan
-                    if st.button("Simpan Hasil Terpilih", use_container_width=True, type="primary", key="save_selected"):
-                        if selected_label_key in st.session_state and st.session_state[selected_label_key]:
-                            parts = st.session_state[selected_label_key].split(" - ")
-                            if len(parts) == 2:
-                                prompt_type = parts[0].replace("Prompt ", "")
-                                variant = parts[1].replace("Varian ", "")
-                                
-                                selected_content = st.session_state[selected_content_key]
-                                
-                                if selected_content:
-                                    mae_data_for_save = []
-                                    for phase in phases_order:
-                                        mae_data_for_save.append({
-                                            'phase': phase,
-                                            'pelvis_left': st.session_state.mae_pelvis_left_phases.get(phase, 0),
-                                            'pelvis_right': st.session_state.mae_pelvis_right_phases.get(phase, 0),
-                                            'knee_left': st.session_state.mae_knee_left_phases.get(phase, 0),
-                                            'knee_right': st.session_state.mae_knee_right_phases.get(phase, 0),
-                                            'hip_left': st.session_state.mae_hip_left_phases.get(phase, 0),
-                                            'hip_right': st.session_state.mae_hip_right_phases.get(phase, 0),
-                                            'ankle_left': st.session_state.mae_ankle_left_phases.get(phase, 0),
-                                            'ankle_right': st.session_state.mae_ankle_right_phases.get(phase, 0)
-                                        })
-                                    
-                                    success = self.save_selected_summary_with_phases(
-                                        prompt_type=prompt_type,
-                                        variant=variant,
-                                        content=selected_content,
-                                        mae_overall={
-                                            'pelvis_left': st.session_state.mae_pelvis_left,
-                                            'pelvis_right': st.session_state.mae_pelvis_right,
-                                            'knee_left': st.session_state.mae_knee_left,
-                                            'knee_right': st.session_state.mae_knee_right,
-                                            'hip_left': st.session_state.mae_hip_left,
-                                            'hip_right': st.session_state.mae_hip_right,
-                                            'ankle_left': st.session_state.mae_ankle_left,
-                                            'ankle_right': st.session_state.mae_ankle_right},
-                                        mae_phases=mae_data_for_save,
-                                        bounds_data=bounds_data)
-                                    
-                                    if success:
-                                        st.session_state[patient_saved_key] = selected_content
-                                        st.success(f"Hasil terpilih ({st.session_state[selected_label_key]}) berhasil disimpan!")
-                                        st.rerun()
-                                    else:
-                                        st.error("Gagal menyimpan ke database")
-                                else:
-                                    st.error("Tidak dapat menemukan konten yang dipilih")
-                            else:
-                                st.error("Format label tidak valid")
-                        else:
-                            st.warning("Silakan pilih varian terlebih dahulu")
-
-    def save_selected_summary_with_phases(self, prompt_type, variant, content, mae_overall, mae_phases, bounds_data):
-        """Simpan ringkasan yang dipilih ke database dengan data MAE per fase"""
-        try:
-            client = get_mongo_client()
-            db = client['GaitDB']
-            collection = db['ai_summaries']
-
-            pasien_id = st.session_state.get('current_pasien_id', None)
-            nama_pasien = st.session_state.get('current_nama_pasien', None)
-            tanggal_pemeriksaan = st.session_state.get('current_tanggal_pemeriksaan', None)
-
-            if not pasien_id and 'norm_kinematics_df' in st.session_state:
-                st.warning("Data pasien tidak ditemukan di session state. Pastikan data pasien sudah diupload.")
-                return False
-            
-            # Data yang akan disimpan
-            summary_data = {
-                'timestamp': datetime.now(),
-                'dokter_id': st.session_state.get('terapis_user_id'),
-                'dokter_nama': st.session_state.get('terapis_nama'),
-                'pasien_id': pasien_id,
-                'nama_pasien': nama_pasien,
-                'tanggal_pemeriksaan': tanggal_pemeriksaan,
-                'prompt_type': prompt_type,
-                'variant': variant,
-                'content': content,
-                'mae_overall': mae_overall,
-                'mae_phases': mae_phases,
-                'bounds_data': bounds_data,
-                'is_best_selected': True
-            }
-            
-            # Simpan ke database
-            result = collection.insert_one(summary_data)
-            
-            return True
-            
-        except Exception as e:
-            st.error(f"Error menyimpan ringkasan: {e}")
-            return False
-
-    def calculate_bounds_from_normal_data(self, filtered_df):
-        """Menghitung upper bound dan lower bound dari data normal"""
-        bounds = {}
-        
-        # Daftar joint yang akan dihitung bounds-nya
-        joints = {
-            'LPelvisAngles_X': [],
-            'RPelvisAngles_X': [],
-            'LHipAngles_X': [],
-            'RHipAngles_X': [],
-            'LKneeAngles_X': [],
-            'RKneeAngles_X': [],
-            'LAnkleAngles_X': [],
-            'RAnkleAngles_X': []
-        }
-        
-        for joint in joints.keys():
-            if joint in filtered_df.columns:
-                # Ambil semua nilai untuk joint ini (setiap baris adalah list of 101 values)
-                joint_values = pd.DataFrame(filtered_df[joint].tolist())
-                
-                # Hitung mean dan std untuk setiap %cycle
-                mean_values = joint_values.mean(axis=0).values
-                std_values = joint_values.std(axis=0).values
-                
-                # Upper bound = mean + 2*std (95% confidence interval)
-                # Lower bound = mean - 2*std
-                upper_bound = mean_values + (2 * std_values)
-                lower_bound = mean_values - (2 * std_values)
-                
-                bounds[joint] = {
-                    'upper': np.mean(upper_bound),  # Rata-rata upper bound sepanjang gait cycle
-                    'lower': np.mean(lower_bound),  # Rata-rata lower bound sepanjang gait cycle
-                    'upper_by_cycle': upper_bound.tolist(),
-                    'lower_by_cycle': lower_bound.tolist(),
-                    'mean_by_cycle': mean_values.tolist()
-                }
-        
-        return bounds
-                            
-    def save_selected_summary_with_bounds(self, prompt_type, variant, content, mae_data, bounds_data):
-    # """Simpan ringkasan yang dipilih ke database dengan bounds data"""
-        try:
-            client = get_mongo_client()
-            db = client['GaitDB']
-            collection = db['ai_summaries']
-            
-            # Data yang akan disimpan
-            summary_data = {
-                'timestamp': datetime.now(),
-                'terapis_user_id': st.session_state.get('terapis_user_id'),
-                'terapis_nama': st.session_state.get('terapis_nama'),
-                'prompt_type': prompt_type,
-                'variant': variant,
-                'content': content,
-                'mae_data': mae_data,
-                'bounds_data': bounds_data,
-                'is_best_selected': True
-            }
-            
-            # Simpan ke database
-            result = collection.insert_one(summary_data)
-            
-            return True
-            
-        except Exception as e:
-            st.error(f"Error menyimpan ringkasan: {e}")
-            return False
-                        
-    def reset_ai_summary_session_state(self):
-        """Reset semua session state terkait AI summary untuk pasien baru"""
-        # Reset semua kunci yang berkaitan dengan AI summary
-        keys_to_reset = [
-            'ai_summaries_generated',
-            'summaries_a',
-            'summaries_b',
-            'selected_summary_label',
-            'selected_summary_content',
-            'saved_summary_content',
-            'current_patient_key'
-        ]
-        
-        # Juga reset semua kunci yang mengandung patient_key lama
-        import re
-        pattern = re.compile(r'.*patient_.*')
-        for key in list(st.session_state.keys()):
-            if pattern.match(key):
-                del st.session_state[key]
-        
-        # Reset kunci utama
-        for key in keys_to_reset:
-            if key in st.session_state:
-                del st.session_state[key]
-        
-        print("Session state AI summary telah direset untuk pasien baru")
-
-    def parse_ai_response_dropdown(self, response_text, prompt_type):
-        """Parse AI response untuk format dropdown"""
-        summaries = []
-        
-        # Split berdasarkan varian
-        variasi_patterns  = [
-            "=== VARIASI 1 ===",
-            "=== VARIASI 2 ===", 
-            "=== VARIASI 3 ===",
-            "VARIASI 1:",
-            "VARIASI 2:",
-            "VARIASI 3:"
-        ]
-        
-        # Cari semua varian
-        for i in range(1, 4):
-            variasi_text = ""
-            
-            # Cari pattern untuk varian i
-            patterns = [
-                f"=== VARIASI {i} ===",
-                f"VARIASI {i}:",
-                f"Variasi {i}:",
-                f"{i}."
-            ]
-            
-            for pattern in patterns:
-                if pattern in response_text:
-                    # Ambil teks setelah pattern
-                    start_idx = response_text.find(pattern) + len(pattern)
-                    
-                    # Cari akhir varian (pattern berikutnya atau akhir teks)
-                    end_idx = len(response_text)
-                    for j in range(i+1, 4):
-                        next_patterns = [
-                            f"=== VARIASI {j} ===",
-                            f"VARIASI {j}:",
-                            f"Variasi {j}:",
-                            f"{j}."
-                        ]
-                        for next_pattern in next_patterns:
-                            if next_pattern in response_text[start_idx:]:
-                                pattern_end_idx = response_text.find(next_pattern, start_idx)
-                                if pattern_end_idx < end_idx:
-                                    end_idx = pattern_end_idx
-                                    break
-                    
-                    variasi_text = response_text[start_idx:end_idx].strip()
-                    break
-            
-            # Jika tidak ditemukan dengan pattern, coba split dengan nomor
-            if not variasi_text and i == 1:
-                # Fallback: split berdasarkan nomor
-                parts = response_text.split(f"{i}.")
-                if len(parts) > 1:
-                    variasi_text = parts[1].strip()
-                    if "2." in variasi_text:
-                        variasi_text = variasi_text.split("2.")[0].strip()
-            
-            if variasi_text:
-                summaries.append({
-                    "label": f"Prompt {prompt_type} - Variasi {i}",
-                    "value": variasi_text
-                })
-        
-        # Jika masih kosong, buat default
-        if not summaries:
-            for i in range(1, 4):
-                summaries.append({
-                    "label": f"Prompt {prompt_type} - Variasi {i}",
-                    "value": f"Ringkasan {prompt_type} - Variasi {i} tidak tersedia"
-                })
-        
-        return summaries
-
-    def save_selected_summary_simple(self, prompt_type, variant, content, mae_data):
-        """Simpan ringkasan yang dipilih ke database"""
-        try:
-            client = get_mongo_client()
-            db = client['GaitDB']
-            collection = db['ai_summaries']
-            
-            # Data yang akan disimpan
-            summary_data = {
-                'timestamp': datetime.now(),
-                'terapis_username': st.session_state.get('terapis_username'),
-                'prompt_type': prompt_type,
-                'variant': variant,
-                'content': content,
-                'mae_data': mae_data,
-                'is_best_selected': True  # Tandai sebagai hasil terbaik yang dipilih
-            }
-            
-            # Simpan ke database
-            result = collection.insert_one(summary_data)
-            
-            return True
-            
-        except Exception as e:
-            st.error(f"Error menyimpan ringkasan: {e}")
-            return False
-
-    def show_ai_generation_statistics(self):
-        """Menampilkan statistik waktu generate AI"""
-        if 'ai_generation_times' in st.session_state and st.session_state.ai_generation_times:
-            with st.expander("📊 Statistik Waktu Generate AI"):
-                df_ai = pd.DataFrame(st.session_state.ai_generation_times)
-                
-                # Hitung statistik
-                avg_time = df_ai['execution_time'].mean()
-                min_time = df_ai['execution_time'].min()
-                max_time = df_ai['execution_time'].max()
-                total_generations = len(df_ai)
-                
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("Total Generate", total_generations)
-                with col2:
-                    st.metric("Rata-rata Waktu", f"{avg_time:.2f} detik")
-                with col3:
-                    st.metric("Tercepat", f"{min_time:.2f} detik")
-                with col4:
-                    st.metric("Terlama", f"{max_time:.2f} detik")
-                
-                # Tampilkan detail
-                st.dataframe(df_ai[['timestamp', 'execution_time']], use_container_width=True)
-
-    def reset_ai_summary_session_state_except_current(self):
-        """Reset session state AI summary untuk pasien baru (tanpa menghapus current_patient_key)"""
-        # Hapus semua kunci yang berkaitan dengan AI summary
-        keys_to_reset = [
-            'ai_summaries_generated',
-            'summaries_a',
-            'summaries_b',
-            'selected_summary_label',
-            'selected_summary_content',
-            'saved_summary_content'
-        ]
-        
-        # Reset kunci utama
-        for key in keys_to_reset:
-            if key in st.session_state:
-                del st.session_state[key]
-        
-        # Hapus juga kunci yang mengandung pattern lama
-        import re
-        if 'current_patient_key' in st.session_state:
-            current_key = st.session_state.current_patient_key
-            # Hapus semua kunci yang mengandung pattern selain current_key
-            for key in list(st.session_state.keys()):
-                if ('patient_' in key or 'summaries_' in key) and key != 'current_patient_key':
-                    del st.session_state[key]
-
-    def create_pelvis_figure(self, data, title, color):
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=data["%cycle"], 
-            y=data["Mean_Lpelvis" if "Mean_Lpelvis" in data.columns else "Mean_Rpelvis"], 
-            mode='lines',
-            name=f'Average {title}<br>(Normal Subjects)',
-            line=dict(color=color),
-            hoverinfo='text',
-            text=[f"Average Normal Subjects: {cycle}%, {val:.2f}°" for cycle, val in zip(data["%cycle"], data["Mean_Lpelvis" if "Mean_Lpelvis" in data.columns else "Mean_Rpelvis"])]
-        ))
-        fig.add_trace(go.Scatter(
-            x=data["%cycle"], 
-            y=data["your left pelvis" if "your left pelvis" in data.columns else "your right pelvis"], 
-            mode='lines',
-            name='Patient',
-            line=dict(color='black')
-        ))
-        fig.add_trace(go.Scatter(
-            x=data["%cycle"], 
-            y=data["Mean_Lpelvis" if "Mean_Lpelvis" in data.columns else "Mean_Rpelvis"] + data["std_Lpelvis" if "std_Lpelvis" in data.columns else "std_Rpelvis"], 
-            mode='lines',
-            name='Upper Bound',
-            line=dict(color=color, width=0),
-            showlegend=False,
-            hoverinfo='skip'
-        ))
-        fig.add_trace(go.Scatter(
-            x=data["%cycle"], 
-            y=data["Mean_Lpelvis" if "Mean_Lpelvis" in data.columns else "Mean_Rpelvis"] - data["std_Lpelvis" if "std_Lpelvis" in data.columns else "std_Rpelvis"], 
-            mode='lines',
-            name='Standard Error Area',
-            line=dict(color=color, width=0),
-            fill='tonexty',
-            fillcolor=f'rgba({255 if color=="orange" else 0}, {165 if color=="orange" else 255}, {0 if color=="orange" else 255}, 0.2)',
-            showlegend=True,
-            hoverinfo='text',
-            text=[f"Upper Bound: {cycle}%, {valup:.2f}°<br>Lower Bound: {cycle}%, {vallow:.2f}°" for cycle, vallow, valup in zip(data["%cycle"], data["Mean_Lpelvis" if "Mean_Lpelvis" in data.columns else "Mean_Rpelvis"] - data["std_Lpelvis" if "std_Lpelvis" in data.columns else "std_Rpelvis"], data["Mean_Lpelvis" if "Mean_Lpelvis" in data.columns else "Mean_Rpelvis"] + data["std_Lpelvis" if "std_Lpelvis" in data.columns else "std_Rpelvis"])]
-        ))
-        fig.update_layout(
-            title=title,
-            xaxis_title="%Cycle",
-            yaxis_title="Value",
-            template="plotly_dark",
-            title_x=0.5,
-            hovermode="x unified"
-        )
-        return fig
-
-    def create_joint_figure(self, data, title, color):
-        mean_col = [col for col in data.columns if col.startswith('Mean_')][0]
-        std_col = [col for col in data.columns if col.startswith('std_')][0]
-        patient_col = [col for col in data.columns if col.startswith('your ')][0]
-        
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=data["%cycle"], 
-            y=data[mean_col], 
-            mode='lines',
-            name=f'Average {title}<br>(Normal Subjects)',
-            line=dict(color=color),
-            hoverinfo='text',
-            text=[f"Average Normal Subjects: {cycle}%, {val:.2f}°" for cycle, val in zip(data["%cycle"], data[mean_col])]
-        ))
-        fig.add_trace(go.Scatter(
-            x=data["%cycle"], 
-            y=data[patient_col], 
-            mode='lines',
-            name='Patient',
-            line=dict(color='black')
-        ))
-        fig.add_trace(go.Scatter(
-            x=data["%cycle"], 
-            y=data[mean_col] + data[std_col], 
-            mode='lines',
-            name='Upper Bound',
-            line=dict(color=color, width=0),
-            showlegend=False,
-            hoverinfo='skip'
-        ))
-        fig.add_trace(go.Scatter(
-            x=data["%cycle"], 
-            y=data[mean_col] - data[std_col], 
-            mode='lines',
-            name='Standard Error Area',
-            line=dict(color=color, width=0),
-            fill='tonexty',
-            fillcolor=f'rgba({255 if color=="orange" else 0}, {165 if color=="orange" else 255}, {0 if color=="orange" else 255}, 0.2)',
-            showlegend=False,
-            hoverinfo='text',
-            text=[f"Upper Bound: {cycle}%, {valup:.2f}°<br>Lower Bound: {cycle}%, {vallow:.2f}°" for cycle, vallow, valup in zip(data["%cycle"], data[mean_col] - data[std_col], data[mean_col] + data[std_col])]
-        ))
-        fig.update_layout(
-            title=title,
-            xaxis_title="%Cycle",
-            yaxis_title="Value",
-            template="plotly_dark",
-            title_x=0.5,
-            hovermode="x unified"
-        )
-        return fig
-
-    def show_normal_dashboard(self):
-        # st.markdown("---")
-        
-        # Tampilkan grafik normal tanpa data pasien
-        px.defaults.template = 'plotly_dark'
-        px.defaults.color_continuous_scale = 'reds'
-        
-        # Koneksi ke MongoDB
-        client = get_mongo_client()
-        db = client['GaitDB']
-        collection = db['gait_data']
-
-        # Membaca data dari MongoDB
-        cursor = collection.find().limit(100)
-        data = list(cursor)
-        if len(data) == 0:
-            st.error("Database Normal Belum Ada. Silahkan Upload Data Normal pada Menu 'Input Baseline Data Gait'")
-            st.info("📝 Untuk melihat dashboard analisis gait, Anda perlu mengupload data subjek normal terlebih dahulu.")
-            return
-            
-        # Normalisasi data untuk DataFrame
-        df = pd.json_normalize(data)
-        # Mengubah nama kolom untuk mempermudah akses
-        df.columns = df.columns.str.replace('Trial Information.', '')
-        df.columns = df.columns.str.replace('Subject Parameters.', '')
-        df.columns = df.columns.str.replace('Body Measurements.', '')
-        df.columns = df.columns.str.replace('Norm Kinematics.', '')
-
-        # ====== FILTER DI ATAS ======
-        st.markdown("<div class='filter-box'>", unsafe_allow_html=True)
-        st.markdown("### Filter Data")
-
-        col1, col2, col3 = st.columns([2, 2, 2])
-        
-        with col1:
-            # Filter usia
-            min_age = df['Age'].min()
-            max_age = df['Age'].max()
-            age_range = st.slider(
-                'Filter by Age Range:',
-                min_value=min_age,
-                max_value=max_age,
-                value=(min_age, max_age)
-            )
-
-        with col2:
-            # filter BMI
-            bmi_options = ["All BMI Classification"] + list(df["BMI Classification"].value_counts().keys().sort_values())
-            classbmi = st.selectbox(label="BMI Classification", options=bmi_options)
-
-        with col3:
-            # filter gender
-            gender_mapping = {
-                "L": "Pria",
-                "P": "Wanita"
-            }
-            df["Gender"] = df["Gender"].map(gender_mapping)
-            gender_options = ["All Gender"] + list(df["Gender"].value_counts().keys().sort_values())
-            gender = st.selectbox(label="Gender", options=gender_options)
-
-        st.markdown("</div>", unsafe_allow_html=True)
-        # st.markdown("---")
-            
-        # Apply filters
-        filtered_df = df[(df['Age'] >= age_range[0]) & (df['Age'] <= age_range[1])]
-        if classbmi != "All BMI Classification":
-            filtered_df = filtered_df[filtered_df['BMI Classification'] == classbmi]
-        if gender != "All Gender":
-            filtered_df = filtered_df[filtered_df["Gender"] == gender]
-            
-        if filtered_df.empty:
-            st.error(f"There is no data with gender {gender} classified as {classbmi}.")
-        else:
-            st.markdown(f"**Total Records:** {len(filtered_df)}")
-
-            st.session_state.filtered_normal_df = filtered_df
-            # Tampilkan grafik normal saja (tanpa data pasien)
-            self.show_normal_charts_only(filtered_df)
-            
     def show_normal_charts_only(self, filtered_df):
         # Pelvis
         percentage_cycle = pd.DataFrame(filtered_df['Percentage of Gait Cycle'].tolist())
@@ -2608,8 +1455,7 @@ class DokterPage:
             tab1.subheader("PELVIS")
             tab1.write(
                 'Pelvis (dalam bahasa Indonesia: panggul) adalah struktur tulang yang berbentuk cekungan di bawah perut, '
-                'di antara tulang pinggul, dan di atas paha.'
-            )
+                'di antara tulang pinggul, dan di atas paha.')
             col1, col2 = tab1.columns(2)
             with col1:
                 st.plotly_chart(fig1, use_container_width=True)
@@ -2620,8 +1466,7 @@ class DokterPage:
             tab2.subheader("KNEE")
             tab2.write(
                 'Knee (dalam bahasa Indonesia: lutut) adalah bagian tubuh manusia yang terletak di antara paha dan betis, '
-                'berfungsi sebagai sendi yang menghubungkan tulang femur (paha) dengan tulang tibia (betis).'
-            )
+                'berfungsi sebagai sendi yang menghubungkan tulang femur (paha) dengan tulang tibia (betis).')
             col1, col2 = tab2.columns(2)
             with col1:
                 st.plotly_chart(fig3, use_container_width=True)
@@ -2631,8 +1476,7 @@ class DokterPage:
         with tab3:
             tab3.subheader("HIP")
             tab3.write(
-                'Hip (dalam bahasa Indonesia: pinggul) adalah bagian tubuh yang terletak di bawah perut, menghubungkan tubuh bagian atas dengan kaki.'
-            )
+                'Hip (dalam bahasa Indonesia: pinggul) adalah bagian tubuh yang terletak di bawah perut, menghubungkan tubuh bagian atas dengan kaki.')
             col1, col2 = tab3.columns(2)
             with col1:
                 st.plotly_chart(fig5, use_container_width=True)
@@ -2642,13 +1486,822 @@ class DokterPage:
         with tab4:
             tab4.subheader("ANKLE")
             tab4.write(
-                'Ankle (dalam bahasa Indonesia: pergelangan kaki) adalah sendi yang terletak di antara kaki bagian bawah (tulang tibia dan fibula) dan bagian atas kaki (tulang talus).'
-            )
+                'Ankle (dalam bahasa Indonesia: pergelangan kaki) adalah sendi yang terletak di antara kaki bagian bawah (tulang tibia dan fibula) dan bagian atas kaki (tulang talus).')
             col1, col2 = tab4.columns(2)
             with col1:
                 st.plotly_chart(fig7, use_container_width=True)
             with col2:
                 st.plotly_chart(fig8, use_container_width=True)
+
+    def create_pelvis_figure(self, data, title, color):
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=data["%cycle"], 
+            y=data["Mean_Lpelvis" if "Mean_Lpelvis" in data.columns else "Mean_Rpelvis"], 
+            mode='lines',
+            name=f'Average {title}<br>(Normal Subjects)',
+            line=dict(color=color),
+            hoverinfo='text',
+            text=[f"Average Normal Subjects: {cycle}%, {val:.2f}°" for cycle, val in zip(data["%cycle"], data["Mean_Lpelvis" if "Mean_Lpelvis" in data.columns else "Mean_Rpelvis"])]
+        ))
+        fig.add_trace(go.Scatter(
+            x=data["%cycle"], 
+            y=data["your left pelvis" if "your left pelvis" in data.columns else "your right pelvis"], 
+            mode='lines',
+            name='Patient',
+            line=dict(color='black')
+        ))
+        fig.add_trace(go.Scatter(
+            x=data["%cycle"], 
+            y=data["Mean_Lpelvis" if "Mean_Lpelvis" in data.columns else "Mean_Rpelvis"] + data["std_Lpelvis" if "std_Lpelvis" in data.columns else "std_Rpelvis"], 
+            mode='lines',
+            name='Upper Bound',
+            line=dict(color=color, width=0),
+            showlegend=False,
+            hoverinfo='skip'
+        ))
+        fig.add_trace(go.Scatter(
+            x=data["%cycle"], 
+            y=data["Mean_Lpelvis" if "Mean_Lpelvis" in data.columns else "Mean_Rpelvis"] - data["std_Lpelvis" if "std_Lpelvis" in data.columns else "std_Rpelvis"], 
+            mode='lines',
+            name='Standard Error Area',
+            line=dict(color=color, width=0),
+            fill='tonexty',
+            fillcolor=f'rgba({255 if color=="orange" else 0}, {165 if color=="orange" else 255}, {0 if color=="orange" else 255}, 0.2)',
+            showlegend=True,
+            hoverinfo='text',
+            text=[f"Upper Bound: {cycle}%, {valup:.2f}°<br>Lower Bound: {cycle}%, {vallow:.2f}°" for cycle, vallow, valup in zip(data["%cycle"], data["Mean_Lpelvis" if "Mean_Lpelvis" in data.columns else "Mean_Rpelvis"] - data["std_Lpelvis" if "std_Lpelvis" in data.columns else "std_Rpelvis"], data["Mean_Lpelvis" if "Mean_Lpelvis" in data.columns else "Mean_Rpelvis"] + data["std_Lpelvis" if "std_Lpelvis" in data.columns else "std_Rpelvis"])]
+        ))
+        fig.update_layout(
+            title=title,
+            xaxis_title="%Cycle",
+            yaxis_title="Value",
+            template="plotly_dark",
+            title_x=0.5,
+            hovermode="x unified"
+        )
+        return fig
+
+    def create_joint_figure(self, data, title, color):
+        mean_col = [col for col in data.columns if col.startswith('Mean_')][0]
+        std_col = [col for col in data.columns if col.startswith('std_')][0]
+        patient_col = [col for col in data.columns if col.startswith('your ')][0]
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=data["%cycle"], 
+            y=data[mean_col], 
+            mode='lines',
+            name=f'Average {title}<br>(Normal Subjects)',
+            line=dict(color=color),
+            hoverinfo='text',
+            text=[f"Average Normal Subjects: {cycle}%, {val:.2f}°" for cycle, val in zip(data["%cycle"], data[mean_col])]
+        ))
+        fig.add_trace(go.Scatter(
+            x=data["%cycle"], 
+            y=data[patient_col], 
+            mode='lines',
+            name='Patient',
+            line=dict(color='black')
+        ))
+        fig.add_trace(go.Scatter(
+            x=data["%cycle"], 
+            y=data[mean_col] + data[std_col], 
+            mode='lines',
+            name='Upper Bound',
+            line=dict(color=color, width=0),
+            showlegend=False,
+            hoverinfo='skip'
+        ))
+        fig.add_trace(go.Scatter(
+            x=data["%cycle"], 
+            y=data[mean_col] - data[std_col], 
+            mode='lines',
+            name='Standard Error Area',
+            line=dict(color=color, width=0),
+            fill='tonexty',
+            fillcolor=f'rgba({255 if color=="orange" else 0}, {165 if color=="orange" else 255}, {0 if color=="orange" else 255}, 0.2)',
+            showlegend=False,
+            hoverinfo='text',
+            text=[f"Upper Bound: {cycle}%, {valup:.2f}°<br>Lower Bound: {cycle}%, {vallow:.2f}°" for cycle, vallow, valup in zip(data["%cycle"], data[mean_col] - data[std_col], data[mean_col] + data[std_col])]
+        ))
+        fig.update_layout(
+            title=title,
+            xaxis_title="%Cycle",
+            yaxis_title="Value",
+            template="plotly_dark",
+            title_x=0.5,
+            hovermode="x unified"
+        )
+        return fig
+                
+    # Gait Per Fase
+    def get_gait_phase(self, percentage):
+        if 0 <= percentage <= 2:
+            return "Initial Contact"
+        elif 2 < percentage <= 10:
+            return "Loading Response"
+        elif 10 < percentage <= 30:
+            return "Mid-Stance"
+        elif 30 < percentage <= 50:
+            return "Terminal Stance"
+        elif 50 < percentage <= 60:
+            return "Pre-Swing"
+        elif 60 < percentage <= 73:
+            return "Initial Swing"
+        elif 73 < percentage <= 87:
+            return "Mid-Swing"
+        elif 87 < percentage <= 100:
+            return "Terminal Swing"
+        else:
+            return "Unknown"
+
+    def get_phase_indices(self, percentage_list):
+        phases = {
+            'Initial Contact (0-2%)': (0, 2),
+            'Loading Response (2-10%)': (2, 10),
+            'Mid-Stance (10-30%)': (10, 30),
+            'Terminal Stance (30-50%)': (30, 50),
+            'Pre-Swing (50-60%)': (50, 60),
+            'Initial Swing (60-73%)': (60, 73),
+            'Mid-Swing (73-87%)': (73, 87),
+            'Terminal Swing (87-100%)': (87, 100)
+        }
+        
+        phase_indices = {}
+        for phase, (start, end) in phases.items():
+            indices = [i for i, p in enumerate(percentage_list) if start <= p <= end]
+            phase_indices[phase] = indices
+        return phase_indices
+
+    # MAE untuk setiap fase gait
+    def calculate_mae_per_phase(self, patient_values, normal_values, phase_indices):
+        mae_per_phase = {}
+        for phase, indices in phase_indices.items():
+            if indices:
+                patient_phase = [patient_values[i] for i in indices]
+                normal_phase = [normal_values[i] for i in indices]
+                mae = np.mean(np.abs(np.array(patient_phase) - np.array(normal_phase)))
+                mae_per_phase[phase] = mae
+        return mae_per_phase
+        
+    # Upper bound dan Lower bound
+    def calculate_bounds_from_normal_data(self, filtered_df):
+        bounds = {}
+        joints = {
+            'LPelvisAngles_X': [],
+            'RPelvisAngles_X': [],
+            'LHipAngles_X': [],
+            'RHipAngles_X': [],
+            'LKneeAngles_X': [],
+            'RKneeAngles_X': [],
+            'LAnkleAngles_X': [],
+            'RAnkleAngles_X': []
+        }
+        
+        for joint in joints.keys():
+            if joint in filtered_df.columns:
+                # Ambil semua nilai untuk joint
+                joint_values = pd.DataFrame(filtered_df[joint].tolist())
+                mean_values = joint_values.mean(axis=0).values
+                std_values = joint_values.std(axis=0).values
+                upper_bound = mean_values + (2 * std_values)
+                lower_bound = mean_values - (2 * std_values)
+                bounds[joint] = {
+                    'upper': np.mean(upper_bound),
+                    'lower': np.mean(lower_bound),
+                    'upper_by_cycle': upper_bound.tolist(),
+                    'lower_by_cycle': lower_bound.tolist(),
+                    'mean_by_cycle': mean_values.tolist()
+                }
+        return bounds
+
+    # Fungsi AI
+    def show_ai_summary_tab_with_phases(self):
+        required_mae = [
+            'mae_pelvis_left', 'mae_pelvis_right',
+            'mae_knee_left', 'mae_knee_right',
+            'mae_hip_left', 'mae_hip_right',
+            'mae_ankle_left', 'mae_ankle_right',
+            'phase_indices']
+        
+        missing_mae = [mae for mae in required_mae if mae not in st.session_state]
+        if missing_mae:
+            st.warning("Data MAE belum lengkap. Silakan upload data pasien terlebih dahulu.")
+            return
+    
+        # INISIALISASI
+        if 'current_patient_key' not in st.session_state:
+            st.session_state.current_patient_key = f"patient_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        current_patient_key = st.session_state.current_patient_key
+        
+        # Ambil data upper bound dan lower bound
+        if 'filtered_normal_df' not in st.session_state:
+            st.info("Untuk menggunakan fitur AI, silakan upload data normal terlebih dahulu di menu 'Input Baseline Data Gait'")
+            if st.button("🔄 Refresh", key="refresh_normal_data"):
+                st.rerun()
+            return
+        
+        filtered_df = st.session_state.filtered_normal_df
+        if filtered_df.empty:
+            st.warning("Data normal kosong. Silakan cek filter yang Anda gunakan.")
+            return
+        
+        # Hitung upper bound dan lower bound
+        bounds_data = self.calculate_bounds_from_normal_data(filtered_df)
+        # Tampilkan tabel MAE
+        st.markdown("### Ringkasan MAE Keseluruhan")
+        mae_overall_data = []
+        
+        # Pelvis
+        pelvis_left = st.session_state.mae_pelvis_left
+        pelvis_right = st.session_state.mae_pelvis_right
+        pelvis_avg = (pelvis_left + pelvis_right) / 2
+        mae_overall_data.append({
+            'Joint': 'Pelvis',
+            'Kiri (°)': f"{pelvis_left:.2f}",
+            'Kanan (°)': f"{pelvis_right:.2f}",
+            'Rata-rata (°)': f"{pelvis_avg:.2f}"
+        })
+        
+        # Knee
+        knee_left = st.session_state.mae_knee_left
+        knee_right = st.session_state.mae_knee_right
+        knee_avg = (knee_left + knee_right) / 2
+        mae_overall_data.append({
+            'Joint': 'Knee',
+            'Kiri (°)': f"{knee_left:.2f}",
+            'Kanan (°)': f"{knee_right:.2f}",
+            'Rata-rata (°)': f"{knee_avg:.2f}"
+        })
+        
+        # Hip
+        hip_left = st.session_state.mae_hip_left
+        hip_right = st.session_state.mae_hip_right
+        hip_avg = (hip_left + hip_right) / 2
+        mae_overall_data.append({
+            'Joint': 'Hip',
+            'Kiri (°)': f"{hip_left:.2f}",
+            'Kanan (°)': f"{hip_right:.2f}",
+            'Rata-rata (°)': f"{hip_avg:.2f}"
+        })
+        
+        # Ankle
+        ankle_left = st.session_state.mae_ankle_left
+        ankle_right = st.session_state.mae_ankle_right
+        ankle_avg = (ankle_left + ankle_right) / 2
+        mae_overall_data.append({
+            'Joint': 'Ankle',
+            'Kiri (°)': f"{ankle_left:.2f}",
+            'Kanan (°)': f"{ankle_right:.2f}",
+            'Rata-rata (°)': f"{ankle_avg:.2f}"
+        })
+        
+        mae_overall_df = pd.DataFrame(mae_overall_data)
+        st.dataframe(mae_overall_df, use_container_width=True, hide_index=True)
+        
+        # TABEL MAE PER FASE GAIT
+        st.markdown("### Detail MAE per Fase Gait")
+        phases_order = [
+            'Initial Contact (0-2%)',
+            'Loading Response (2-10%)',
+            'Mid-Stance (10-30%)',
+            'Terminal Stance (30-50%)',
+            'Pre-Swing (50-60%)',
+            'Initial Swing (60-73%)',
+            'Mid-Swing (73-87%)',
+            'Terminal Swing (87-100%)'
+        ]
+        
+        # Buat data untuk tabel per fase
+        mae_phases_data = []
+        
+        for phase in phases_order:
+            row_data = {
+                'Fase Gait': phase,
+                'Pelvis Kiri (°)': f"{st.session_state.mae_pelvis_left_phases.get(phase, 0):.2f}",
+                'Pelvis Kanan (°)': f"{st.session_state.mae_pelvis_right_phases.get(phase, 0):.2f}",
+                'Knee Kiri (°)': f"{st.session_state.mae_knee_left_phases.get(phase, 0):.2f}",
+                'Knee Kanan (°)': f"{st.session_state.mae_knee_right_phases.get(phase, 0):.2f}",
+                'Hip Kiri (°)': f"{st.session_state.mae_hip_left_phases.get(phase, 0):.2f}",
+                'Hip Kanan (°)': f"{st.session_state.mae_hip_right_phases.get(phase, 0):.2f}",
+                'Ankle Kiri (°)': f"{st.session_state.mae_ankle_left_phases.get(phase, 0):.2f}",
+                'Ankle Kanan (°)': f"{st.session_state.mae_ankle_right_phases.get(phase, 0):.2f}"
+            }
+            mae_phases_data.append(row_data)
+        
+        mae_phases_df = pd.DataFrame(mae_phases_data)
+        st.dataframe(mae_phases_df, use_container_width=True, hide_index=True)
+       
+        # TOMBOL GENERATE AI
+        patient_saved_key = f'saved_summary_content_{current_patient_key}'
+        patient_ai_generated_key = f'ai_summaries_generated_{current_patient_key}'
+        
+        # Jika sudah ada hasil yang disimpan
+        if patient_saved_key in st.session_state and st.session_state[patient_saved_key]:
+            st.markdown("### Hasil Terbaik yang Telah Disimpan")
+            st.info(st.session_state[patient_saved_key])
+            st.markdown("---")
+            
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("Generate Ringkasan Baru", use_container_width=True, type="secondary"):
+                    if patient_saved_key in st.session_state:
+                        del st.session_state[patient_saved_key]
+                    if patient_ai_generated_key in st.session_state:
+                        del st.session_state[patient_ai_generated_key]
+                    if f'summaries_a_{current_patient_key}' in st.session_state:
+                        del st.session_state[f'summaries_a_{current_patient_key}']
+                    if f'summaries_b_{current_patient_key}' in st.session_state:
+                        del st.session_state[f'summaries_b_{current_patient_key}']
+                    if f'selected_summary_label_{current_patient_key}' in st.session_state:
+                        del st.session_state[f'selected_summary_label_{current_patient_key}']
+                    if f'selected_summary_content_{current_patient_key}' in st.session_state:
+                        del st.session_state[f'selected_summary_content_{current_patient_key}']
+                    st.rerun()
+            return
+        
+        # Jika belum ada hasil AI yang digenerate
+        if patient_ai_generated_key not in st.session_state:
+            st.markdown("### Generate Ringkasan AI")
+            st.info("Klik tombol di bawah untuk menghasilkan ringkasan AI berdasarkan data MAE dan batas normal (Upper/Lower Bound) yang telah dihitung.")
+            
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                generate_button = st.button("Generate Ringkasan AI", use_container_width=True, type="primary")
+            
+            if not generate_button:
+                st.stop()
+            
+            # Jika tombol ditekan, generate summaries
+            if generate_button:
+                if gemini_model is None:
+                    st.error("Fitur AI tidak tersedia karena API key Gemini tidak dikonfigurasi.")
+                    return
+                
+                # Hitung overall MAE
+                all_mae_values = [
+                    st.session_state.mae_pelvis_left,
+                    st.session_state.mae_pelvis_right,
+                    st.session_state.mae_knee_left,
+                    st.session_state.mae_knee_right,
+                    st.session_state.mae_hip_left,
+                    st.session_state.mae_hip_right,
+                    st.session_state.mae_ankle_left,
+                    st.session_state.mae_ankle_right]
+                overall_mae = np.mean(all_mae_values)
+    
+                mae_summary = f"""
+                MAE KESELURUHAN (Rata-rata seluruh siklus gait 0-100%):
+                - Pelvis Kiri: {st.session_state.mae_pelvis_left:.2f}°, Pelvis Kanan: {st.session_state.mae_pelvis_right:.2f}°, Rata-rata: {(st.session_state.mae_pelvis_left + st.session_state.mae_pelvis_right)/2:.2f}°
+                - Knee Kiri: {st.session_state.mae_knee_left:.2f}°, Knee Kanan: {st.session_state.mae_knee_right:.2f}°, Rata-rata: {(st.session_state.mae_knee_left + st.session_state.mae_knee_right)/2:.2f}°
+                - Hip Kiri: {st.session_state.mae_hip_left:.2f}°, Hip Kanan: {st.session_state.mae_hip_right:.2f}°, Rata-rata: {(st.session_state.mae_hip_left + st.session_state.mae_hip_right)/2:.2f}°
+                - Ankle Kiri: {st.session_state.mae_ankle_left:.2f}°, Ankle Kanan: {st.session_state.mae_ankle_right:.2f}°, Rata-rata: {(st.session_state.mae_ankle_left + st.session_state.mae_ankle_right)/2:.2f}°
+                Rata-rata Keseluruhan Semua Sendi: {overall_mae:.2f}°
+                """
+                
+                # Siapkan data MAE per fase untuk prompt
+                mae_phases_summary = "\nMAE PER FASE GAIT:\n"
+                
+                for phase in phases_order:
+                    mae_phases_summary += f"\n{phase}:\n"
+                    mae_phases_summary += f"  - Pelvis Kiri: {st.session_state.mae_pelvis_left_phases.get(phase, 0):.2f}°, Pelvis Kanan: {st.session_state.mae_pelvis_right_phases.get(phase, 0):.2f}°\n"
+                    mae_phases_summary += f"  - Knee Kiri: {st.session_state.mae_knee_left_phases.get(phase, 0):.2f}°, Knee Kanan: {st.session_state.mae_knee_right_phases.get(phase, 0):.2f}°\n"
+                    mae_phases_summary += f"  - Hip Kiri: {st.session_state.mae_hip_left_phases.get(phase, 0):.2f}°, Hip Kanan: {st.session_state.mae_hip_right_phases.get(phase, 0):.2f}°\n"
+                    mae_phases_summary += f"  - Ankle Kiri: {st.session_state.mae_ankle_left_phases.get(phase, 0):.2f}°, Ankle Kanan: {st.session_state.mae_ankle_right_phases.get(phase, 0):.2f}°\n"
+                
+                # Siapkan data bounds
+                bounds_summary = "\nBATAS NORMAL (Upper Bound dan Lower Bound):\n"
+                joints_for_bounds = [
+                    ('LPelvisAngles_X', 'Pelvis Kiri'),
+                    ('RPelvisAngles_X', 'Pelvis Kanan'),
+                    ('LKneeAngles_X', 'Knee Kiri'),
+                    ('RKneeAngles_X', 'Knee Kanan'),
+                    ('LHipAngles_X', 'Hip Kiri'),
+                    ('RHipAngles_X', 'Hip Kanan'),
+                    ('LAnkleAngles_X', 'Ankle Kiri'),
+                    ('RAnkleAngles_X', 'Ankle Kanan')
+                ]
+                
+                for key, name in joints_for_bounds:
+                    bound = bounds_data.get(key, {'upper': 0, 'lower': 0})
+                    bounds_summary += f"- {name}: Upper={bound['upper']:.2f}°, Lower={bound['lower']:.2f}°\n"
+                
+                # Gabungkan semua data
+                full_data = mae_summary + mae_phases_summary + bounds_summary
+                
+                # PROMPT A dan B
+                prompt_a = f"""
+                    Anda adalah fisioterapis klinis dan analis biomekanika gait.
+                    
+                    DATA:
+                    {full_data}
+                    
+                    TUGAS:
+                    Lakukan analisis gait dengan fokus pada temuan paling penting dan deviasi signifikan.
+                    
+                    ATURAN WAJIB:
+                    - Maksimal 200 kata per variasi
+                    - Hindari terlalu banyak angka (cukup gunakan: rendah, sedang, tinggi)
+                    - Fokus hanya pada temuan paling mencolok
+                    - Jangan menjelaskan semua fase
+                    - Jangan mengulang isi tabel data mentah
+                    - Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
+                    - Gunakan format **bold** untuk menyoroti sendi yang paling bermasalah, fase gait paling kritis, dan tingkat deviasi (misalnya: tinggi atau sangat tinggi).
+                    - Jangan menggunakan bold secara berlebihan (maksimal 1–3 kata per kalimat).
+
+                                        
+                    OUTPUT:
+                    === VARIASI 1 ===
+                    Ringkasan singkat (2 paragraf):
+                    - Gambaran umum deviasi gait
+                    - Sisi dominan (kanan/kiri)
+                    - Sendi utama yang bermasalah
+                    
+                    === VARIASI 2 ===
+                    Analisis terstruktur + tabel highlight:
+                    
+                    1. Highlight Temuan Utama:
+                    - Sebutkan 3–4 temuan paling signifikan (tanpa detail angka)
+                    
+                    2. Tabel Ringkasan Deviasi:
+                    Buat tabel dengan format:
+                    
+                    | Sendi | Sisi | Fase Paling Bermasalah | Tingkat Deviasi | Hasil (Angka) |
+                    |-------|------|----------------------|-----------------|-------|
+                    
+                    Isi hanya dengan temuan yang paling signifikan saja (maksimal 7 baris).
+                    
+                    Gunakan istilah:
+                    - Rendah
+                    - Sedang
+                    - Tinggi
+                    
+                    === VARIASI 3 ===
+                    Analisis klinis:
+                    - Interpretasi makna deviasi
+                    - Pola kompensasi (jika ada)
+                    - Implikasi terhadap fungsi berjalan
+                    - Tanpa tabel
+                    """
+                
+                prompt_b = f"""
+                Buat laporan hasil gait analysis berdasarkan data berikut:
+                
+                DATA:
+                {full_data}
+                
+                ATURAN WAJIB:
+                - Maksimal 200 kata per variasi
+                - Jangan menampilkan semua angka (cukup highlight yang paling penting)
+                - Gunakan istilah kualitatif: ringan, moderat, tinggi
+                - Fokus pada pola, bukan angka
+                - Hindari penjelasan per fase secara lengkap
+                - Gunakan bahasa formal namun ringkas
+                - Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
+                
+                
+                STRUKTUR:
+                
+                a. HASIL PEMERIKSAAN:
+                - Ringkasan singkat kondisi umum (tanpa list angka panjang)
+                
+                b. INTERPRETASI KLINIS:
+                - Pola utama (asimetris / dominan sisi tertentu)
+                - Sendi paling bermasalah
+                - Fase paling kritis (cukup 1–2 fase saja)
+                
+                c. REKOMENDASI:
+                - Saran umum (tidak terlalu panjang)
+                
+                OUTPUT:
+                === VARIASI 1 ===
+                Fokus temuan utama (ringkas)
+                
+                === VARIASI 2 ===
+                Lebih terstruktur tapi tetap ringkas
+                
+                === VARIASI 3 ===
+                Fokus interpretasi + rekomendasi
+                """
+                
+                # Generate summaries
+                summaries_a = []
+                summaries_b = []
+                
+                try:
+                    with st.spinner("Mohon tunggu... Sistem sedang membuat Ringkasan AI"):
+                        response_a = gemini_model.generate_content(prompt_a)
+                        if response_a.text:
+                            summaries_a = self.parse_ai_response_dropdown(response_a.text, "A")
+                        else:
+                            summaries_a = self.create_default_summaries("A")
+
+                        response_b = gemini_model.generate_content(prompt_b)
+                        if response_b.text:
+                            summaries_b = self.parse_ai_response_dropdown(response_b.text, "B")
+                        else:
+                            summaries_b = self.create_default_summaries("B")
+                                
+                except Exception as e:
+                    st.error(f"Error generating AI summaries: {e}")
+                    summaries_a = self.create_default_summaries("A")
+                    summaries_b = self.create_default_summaries("B")
+                
+                # Simpan ke session state
+                st.session_state[f'summaries_a_{current_patient_key}'] = summaries_a
+                st.session_state[f'summaries_b_{current_patient_key}'] = summaries_b
+                st.session_state[patient_ai_generated_key] = True
+                
+                # Inisialisasi selected summary
+                if f'selected_summary_label_{current_patient_key}' not in st.session_state:
+                    if summaries_a:
+                        st.session_state[f'selected_summary_label_{current_patient_key}'] = summaries_a[0]['label']
+                        st.session_state[f'selected_summary_content_{current_patient_key}'] = summaries_a[0]['value']
+                    elif summaries_b:
+                        st.session_state[f'selected_summary_label_{current_patient_key}'] = summaries_b[0]['label']
+                        st.session_state[f'selected_summary_content_{current_patient_key}'] = summaries_b[0]['value']
+                st.rerun()
+        
+        # Jika sudah digenerate, tampilkan hasil
+        else:
+            # Ambil summaries dari session state
+            summaries_a = st.session_state.get(f'summaries_a_{current_patient_key}', [])
+            summaries_b = st.session_state.get(f'summaries_b_{current_patient_key}', [])
+            # Tampilkan dalam 2 kolom
+            st.markdown("---")
+            st.markdown("## Hasil Prompt")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("### Hasil Prompt A (Analisis Klinis)")
+                if summaries_a:
+                    for i, summary in enumerate(summaries_a, 1):
+                        with st.container():
+                            st.markdown(f"#### Variasi {i}")
+                            st.markdown(summary['value'])
+                            if i < len(summaries_a):
+                                st.markdown("---")
+                else:
+                    st.info("Tidak ada ringkasan yang dihasilkan")
+                    
+            with col2:
+                st.markdown("### Hasil Prompt B (Laporan Hasil)")
+                if summaries_b:
+                    for i, summary in enumerate(summaries_b, 1):
+                        with st.container():
+                            st.markdown(f"#### Variasi {i}")
+                            st.markdown(summary['value'])
+                            if i < len(summaries_b):
+                                st.markdown("---")
+                else:
+                    st.info("Tidak ada ringkasan yang dihasilkan")
+            
+            # Dropdown untuk memilih hasil terbaik
+            st.markdown("---")
+            
+            all_summaries = summaries_a + summaries_b
+            dropdown_options = [summary["label"] for summary in all_summaries]
+            
+            with st.container():
+                col_left, col_center, col_right = st.columns([1, 2, 1])
+                with col_center:
+                    st.markdown("### Pilih Hasil Terbaik")
+                    
+                    def on_dropdown_change():
+                        selected_label = st.session_state.best_summary_dropdown
+                        selected_content = next((s["value"] for s in all_summaries if s["label"] == selected_label), "")
+                        st.session_state[f'selected_summary_label_{current_patient_key}'] = selected_label
+                        st.session_state[f'selected_summary_content_{current_patient_key}'] = selected_content
+                    
+                    selected_label_key = f'selected_summary_label_{current_patient_key}'
+                    current_index = 0
+                    if selected_label_key in st.session_state and st.session_state[selected_label_key] in dropdown_options:
+                        current_index = dropdown_options.index(st.session_state[selected_label_key])
+                    
+                    selected_label = st.selectbox(
+                        "Pilih varian terbaik:",
+                        options=dropdown_options,
+                        index=current_index,
+                        label_visibility="collapsed",
+                        key="best_summary_dropdown",
+                        on_change=on_dropdown_change
+                    )
+                    
+                    selected_content_key = f'selected_summary_content_{current_patient_key}'
+                    if selected_content_key in st.session_state and st.session_state[selected_content_key]:
+                        st.markdown("**Konten yang dipilih:**")
+                        st.info(st.session_state[selected_content_key])
+                    
+                    # Tombol simpan
+                    if st.button("Simpan Hasil Terpilih", use_container_width=True, type="primary", key="save_selected"):
+                        if selected_label_key in st.session_state and st.session_state[selected_label_key]:
+                            parts = st.session_state[selected_label_key].split(" - ")
+                            if len(parts) == 2:
+                                prompt_type = parts[0].replace("Prompt ", "")
+                                variant = parts[1].replace("Varian ", "")
+                                
+                                selected_content = st.session_state[selected_content_key]
+                                
+                                if selected_content:
+                                    mae_data_for_save = []
+                                    for phase in phases_order:
+                                        mae_data_for_save.append({
+                                            'phase': phase,
+                                            'pelvis_left': st.session_state.mae_pelvis_left_phases.get(phase, 0),
+                                            'pelvis_right': st.session_state.mae_pelvis_right_phases.get(phase, 0),
+                                            'knee_left': st.session_state.mae_knee_left_phases.get(phase, 0),
+                                            'knee_right': st.session_state.mae_knee_right_phases.get(phase, 0),
+                                            'hip_left': st.session_state.mae_hip_left_phases.get(phase, 0),
+                                            'hip_right': st.session_state.mae_hip_right_phases.get(phase, 0),
+                                            'ankle_left': st.session_state.mae_ankle_left_phases.get(phase, 0),
+                                            'ankle_right': st.session_state.mae_ankle_right_phases.get(phase, 0)
+                                        })
+                                    
+                                    success = self.save_selected_summary_with_phases(
+                                        prompt_type=prompt_type,
+                                        variant=variant,
+                                        content=selected_content,
+                                        mae_overall={
+                                            'pelvis_left': st.session_state.mae_pelvis_left,
+                                            'pelvis_right': st.session_state.mae_pelvis_right,
+                                            'knee_left': st.session_state.mae_knee_left,
+                                            'knee_right': st.session_state.mae_knee_right,
+                                            'hip_left': st.session_state.mae_hip_left,
+                                            'hip_right': st.session_state.mae_hip_right,
+                                            'ankle_left': st.session_state.mae_ankle_left,
+                                            'ankle_right': st.session_state.mae_ankle_right},
+                                        mae_phases=mae_data_for_save,
+                                        bounds_data=bounds_data)
+                                    
+                                    if success:
+                                        st.session_state[patient_saved_key] = selected_content
+                                        st.success(f"Hasil terpilih ({st.session_state[selected_label_key]}) berhasil disimpan!")
+                                        st.rerun()
+                                    else:
+                                        st.error("Gagal menyimpan ke database")
+                                else:
+                                    st.error("Tidak dapat menemukan konten yang dipilih")
+                            else:
+                                st.error("Format label tidak valid")
+                        else:
+                            st.warning("Silakan pilih varian terlebih dahulu")
+
+
+    def parse_ai_response_dropdown(self, response_text, prompt_type):
+        summaries = []
+        
+        # Split berdasarkan varian
+        variasi_patterns  = [
+            "=== VARIASI 1 ===",
+            "=== VARIASI 2 ===", 
+            "=== VARIASI 3 ===",
+            "VARIASI 1:",
+            "VARIASI 2:",
+            "VARIASI 3:"
+        ]
+        
+        # Cari semua varian
+        for i in range(1, 4):
+            variasi_text = ""
+            
+            # Cari pattern untuk varian i
+            patterns = [
+                f"=== VARIASI {i} ===",
+                f"VARIASI {i}:",
+                f"Variasi {i}:",
+                f"{i}."
+            ]
+            
+            for pattern in patterns:
+                if pattern in response_text:
+                    # Ambil teks setelah pattern
+                    start_idx = response_text.find(pattern) + len(pattern)
+                    # Cari akhir varian (pattern berikutnya atau akhir teks)
+                    end_idx = len(response_text)
+                    for j in range(i+1, 4):
+                        next_patterns = [
+                            f"=== VARIASI {j} ===",
+                            f"VARIASI {j}:",
+                            f"Variasi {j}:",
+                            f"{j}."
+                        ]
+                        for next_pattern in next_patterns:
+                            if next_pattern in response_text[start_idx:]:
+                                pattern_end_idx = response_text.find(next_pattern, start_idx)
+                                if pattern_end_idx < end_idx:
+                                    end_idx = pattern_end_idx
+                                    break
+                    
+                    variasi_text = response_text[start_idx:end_idx].strip()
+                    break
+            
+            # Jika tidak ditemukan dengan pattern, coba split dengan nomor
+            if not variasi_text and i == 1:
+                # Fallback: split berdasarkan nomor
+                parts = response_text.split(f"{i}.")
+                if len(parts) > 1:
+                    variasi_text = parts[1].strip()
+                    if "2." in variasi_text:
+                        variasi_text = variasi_text.split("2.")[0].strip()
+            
+            if variasi_text:
+                summaries.append({
+                    "label": f"Prompt {prompt_type} - Variasi {i}",
+                    "value": variasi_text
+                })
+        
+        # Jika masih kosong, buat default
+        if not summaries:
+            for i in range(1, 4):
+                summaries.append({
+                    "label": f"Prompt {prompt_type} - Variasi {i}",
+                    "value": f"Ringkasan {prompt_type} - Variasi {i} tidak tersedia"
+                })
+        
+        return summaries
+
+    # Membuat default summary jika token habis atau AI gagal
+    def create_default_summaries(self, prompt_type):
+        return [
+            {
+                "label": f"Prompt {prompt_type} - Variasi 1",
+                "value": "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini."
+            },
+            {
+                "label": f"Prompt {prompt_type} - Variasi 2", 
+                "value": "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini."
+            },
+            {
+                "label": f"Prompt {prompt_type} - Variasi 3",
+                "value": "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini."
+            }
+        ]
+
+    # Simpan ringkasan yang dipilih ke database dengan data MAE per fase
+    def save_selected_summary_with_phases(self, prompt_type, variant, content, mae_overall, mae_phases, bounds_data):
+        try:
+            client = get_mongo_client()
+            db = client['GaitDB']
+            collection = db['ai_summaries']
+
+            pasien_id = st.session_state.get('current_pasien_id', None)
+            nama_pasien = st.session_state.get('current_nama_pasien', None)
+            tanggal_pemeriksaan = st.session_state.get('current_tanggal_pemeriksaan', None)
+
+            if not pasien_id and 'norm_kinematics_df' in st.session_state:
+                st.warning("Data pasien tidak ditemukan di session state. Pastikan data pasien sudah diupload.")
+                return False
+            
+            # Data yang akan disimpan
+            summary_data = {
+                'timestamp': datetime.now(),
+                'dokter_id': st.session_state.get('dokter_user_id'),
+                'dokter_nama': st.session_state.get('dokter_nama'),
+                'pasien_id': pasien_id,
+                'nama_pasien': nama_pasien,
+                'tanggal_pemeriksaan': tanggal_pemeriksaan,
+                'prompt_type': prompt_type,
+                'variant': variant,
+                'content': content,
+                'mae_overall': mae_overall,
+                'mae_phases': mae_phases,
+                'bounds_data': bounds_data,
+                'is_best_selected': True
+            }
+            
+            # Simpan ke database
+            result = collection.insert_one(summary_data)
+            return True
+            
+        except Exception as e:
+            st.error(f"Error menyimpan ringkasan: {e}")
+            return False
+            
+    # Reset session state AI summary untuk pasien baru
+    def reset_ai_summary_session_state_except_current(self):
+        keys_to_reset = [
+            'ai_summaries_generated',
+            'summaries_a',
+            'summaries_b',
+            'selected_summary_label',
+            'selected_summary_content',
+            'saved_summary_content'
+        ]
+        
+        # Reset kunci utama
+        for key in keys_to_reset:
+            if key in st.session_state:
+                del st.session_state[key]
+        
+        # Hapus juga kunci yang mengandung pattern lama
+        if 'current_patient_key' in st.session_state:
+            current_key = st.session_state.current_patient_key
+            # Hapus semua kunci yang mengandung pattern selain current_key
+            for key in list(st.session_state.keys()):
+                if ('patient_' in key or 'summaries_' in key) and key != 'current_patient_key':
+                    del st.session_state[key]
+
 
 # # Jalankan aplikasi
 # if __name__ == "__main__":
