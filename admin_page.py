@@ -6,9 +6,6 @@ from css_style import load_css
 import bcrypt
 
 def login_form(role_label: str = "Admin"):
-    # st.set_page_config(page_title="Login Admin Gait", page_icon="⛨", layout="wide")
-    
-    # Load CSS dari file terpisah
     st.markdown(load_css(), unsafe_allow_html=True)
 
     # Tombol kembali
@@ -19,27 +16,19 @@ def login_form(role_label: str = "Admin"):
     # Konten login
     st.markdown("<h2>Sistem Dashboard Gait Analysis</h2>", unsafe_allow_html=True)
     st.markdown("<p class='subtitle'>Selamat Datang di Sistem Dashboard Pemeriksaan Gait</p>", unsafe_allow_html=True)
-    # st.markdown("<hr class='custom'>", unsafe_allow_html=True)
     st.markdown("---")
 
     st.subheader(f"Login - {role_label}")
     username = st.text_input("NIP", placeholder="Masukkan NIP anda")
     password = st.text_input("Password", type="password", placeholder="Masukkan password anda")
-
-    # st.markdown("<a class='forgot' href='#'>Lupa kata sandi?</a>", unsafe_allow_html=True)
-    # st.markdown("<br>", unsafe_allow_html=True)
-
+    
     submit = st.button("Login", use_container_width=True)
 
-    st.markdown(
-        "<p class='footer'>Dengan masuk, Anda menyetujui kebijakan Privasi & Syarat Layanan sistem GAIT ini.</p>",
-        unsafe_allow_html=True,
-    )
-
+    st.markdown("<p class='footer'>Dengan masuk, Anda menyetujui kebijakan Privasi & Syarat Layanan sistem GAIT ini.</p>", unsafe_allow_html=True)
     return username, password, submit
 
 
-# ======================= HALAMAN ADMIN =======================
+# Halaman Admin
 class AdminPage:
     def __init__(self):
         self.admin_user = st.secrets["ADMIN_USERNAME"]
@@ -54,184 +43,70 @@ class AdminPage:
             st.session_state.pasien_list_initialized = False
             st.session_state.pasien_list = []
 
-    # # ---------- Styling ----------
-    # def _inject_css(self):
-    #     st.markdown("""
-    #     <style>
-    #         body { background-color: #f9f9f9; }
-
-    #         /* Sidebar */
-    #         section[data-testid="stSidebar"] {
-    #             background-color: #560000;
-    #         }
-
-    #         .sidebar-title {
-    #             color: white;
-    #             font-size: 18px;
-    #             font-weight: bold;
-    #             padding: 10px 20px;
-    #         }
-
-    #         .sidebar-subtitle {
-    #             color: #ddd;
-    #             font-size: 14px;
-    #             padding-left: 20px;
-    #             margin-bottom: 10px;
-    #         }
-
-    #         .filter-box {
-    #             background-color: #fff;
-    #             padding: 20px;
-    #             border-radius: 10px;
-    #             box-shadow: 0px 1px 3px rgba(0,0,0,0.1);
-    #             margin-bottom: 10px;
-    #         }
-    
-    #         /* Mengubah warna teks di sidebar menjadi putih */
-    #         section[data-testid="stSidebar"] div[class*="stRadio"] label {
-    #             color: white !important;
-    #         }
-            
-    #         section[data-testid="stSidebar"] div[class*="stRadio"] div[role="radiogroup"] {
-    #             color: white !important;
-    #         }
-            
-    #         /* Mengubah warna teks untuk semua elemen di sidebar */
-    #         section[data-testid="stSidebar"] * {
-    #             color: white !important;
-    #         }
-            
-    #         /* Khusus untuk radio button yang dipilih */
-    #         section[data-testid="stSidebar"] div[class*="stRadio"] div[data-testid="stMarkdownContainer"] p {
-    #             color: white !important;
-    #         }
-
-    #         /* FIX: Button sidebar agar tulisan selalu terlihat */
-    #         section[data-testid="stSidebar"] button {
-    #             background-color: #6b0000 !important;
-    #             color: #ffffff !important;
-    #             border-radius: 8px;
-    #             height: 42px;
-    #             font-weight: 600;
-    #             border: none;
-    #         }
-            
-    #         /* Hover */
-    #         section[data-testid="stSidebar"] button:hover {
-    #             background-color: #8a0000 !important;
-    #             color: #ffffff !important;
-    #         }
-            
-    #         /* Tombol aktif (menu terpilih) */
-    #         section[data-testid="stSidebar"] button[kind="primary"] {
-    #             background-color: #ffffff !important;
-    #             color: #560000 !important;
-    #             border: 2px solid #560000 !important;
-    #         }
-    #         section[data-testid="stSidebar"] button * {
-    #             color: inherit !important;
-    #         }
-
-    #         /* Main content area */
-    #         .main .block-container {
-    #             padding-top: 2rem;
-    #             padding-left: 2rem;
-    #             padding-right: 2rem;
-    #         }
-
-    #         /* Stats cards */
-    #         .stats-card {
-    #             background: #ffffff !important;
-    #             color: #000000 !important;
-    #             padding: 20px;
-    #             border-radius: 10px;
-    #             text-align: center;
-    #             border: 1px solid #ddd;
-    #             margin-bottom: 15px;
-    #             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    #         }
-    #         .stats-number {
-    #             font-size: 2rem;
-    #             font-weight: bold;
-    #             margin: 10px 0;
-    #         }
-
-    #         /* Panel styling */
-    #         .panel {
-    #             background-color: #fff;
-    #             border-radius: 10px;
-    #             padding: 20px;
-    #             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    #             margin-bottom: 20px;
-    #         }
-
-    #         /* Account card */
-    #         .account-card {
-    #             background-color: #fff;
-    #             border-radius: 10px;
-    #             padding: 20px;
-    #             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    #             margin-bottom: 20px;
-    #             border-left: 4px solid #560000;
-    #         }
-    #     </style>
-    #     """, unsafe_allow_html=True)
-
+    # Autentikasi admin
     def _authenticate_admin(self, username, password):
-        """Autentikasi admin dari database dengan bcrypt"""
         try:
             client = MongoClient(st.secrets["MONGO_URI"])
             db = client['GaitDB']
             collection = db['users']
             
-            # Cari user dengan role admin
-            admin = collection.find_one({
-                'user_id': username,
-                'role': 'admin'
-            })
-            
+            admin = collection.find_one({'user_id': username, 'role': 'admin'})
             if admin:
                 stored_password = admin.get('password')
-                # Verifikasi password dengan bcrypt
                 if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
                     return {
                         'user_id': admin.get('user_id'),
                         'nama_lengkap': admin.get('nama_lengkap'),
-                        'role': admin.get('role')
-                    }
+                        'role': admin.get('role')}
             return None
             
         except Exception as e:
-            # Log error tapi jangan tampilkan ke user agar tidak mengganggu
             print(f"Database authentication error: {e}")
             return None
-    
-    def _load_pasien_data(self):
-        if not st.session_state.pasien_list_initialized:
-            try:
-                client = MongoClient(st.secrets["MONGO_URI"])
-                db = client['GaitDB']
-                collection = db['users']
-                
-                # Ambil semua data pasien (role = 'pasien')
-                pasien_data = list(collection.find({'role': 'pasien'}))
-                
-                # Reset dan isi session state
-                st.session_state.pasien_list = []
-                for pasien in pasien_data:
-                    st.session_state.pasien_list.append({
-                        "User ID": pasien.get('user_id', ''),
-                        "Nama Lengkap": pasien.get('nama_lengkap', ''),
-                        "Tanggal Lahir": pasien.get('tanggal_lahir', ''),
-                        "Jenis Kelamin": pasien.get('jenis_kelamin', ''),
-                        "Role": pasien.get('role', ''),
-                        "Tanggal Dibuat": pasien.get('tanggal_dibuat', '')
-                    })
-                
-                st.session_state.pasien_list_initialized = True
-                    
-            except Exception as e:
-                st.error(f"Error loading patient data: {e}")
+
+    # ---------- Menu Utama ----------
+    def run(self):
+        st.markdown(load_css(), unsafe_allow_html=True)
+
+        if "menu_admin" not in st.session_state:
+            st.session_state.menu_admin = "Beranda"
+            
+        if 'admin_logged_in' not in st.session_state:
+            st.session_state.admin_logged_in = False
+
+        # Login Page
+        if not st.session_state.admin_logged_in:
+            username, password, submit = login_form("Admin")
+            if submit:
+                admin_data = self._authenticate_admin(username, password)
+                if admin_data:
+                    st.session_state.admin_logged_in = True
+                    st.session_state.admin_user_data = admin_data
+                    st.rerun()
+                elif username == self.admin_user and password == self.admin_pass:
+                    st.session_state.admin_logged_in = True
+                    st.session_state.admin_user_data = {'user_id': self.admin_user, 'nama_lengkap': 'Super Admin', 'role': 'admin'}
+                    st.rerun()
+                else:
+                    st.error("Username atau password salah!")
+            return
+
+        # Setelah login
+        menu = self._sidebar()
+        if menu == "Beranda":
+            self.show_dashboard()
+        elif menu == "Manajemen Pengguna":
+            self.manage_users()
+        elif menu == "Baseline Data Gait":
+            self.manage_normal_data()
+        elif menu == "Riwayat Pemeriksaan Pasien":
+            self.show_examination_history()
+        elif menu == "Logout":
+            st.session_state.admin_logged_in = False
+            st.session_state.pasien_list_initialized = False 
+            if 'admin_user_data' in st.session_state:
+                del st.session_state.admin_user_data
+            st.rerun()
 
     # ---------- Sidebar ----------
     def _sidebar(self):
@@ -249,15 +124,14 @@ class AdminPage:
                                  else "secondary"):
                 st.session_state.menu_admin = menu
                 st.rerun()
-    
+                                     
         return st.session_state.menu_admin
 
-    # ---------- Kartu Admin ----------
-    def _account_card(self):
+    # ---------- Menu Beranda ----------
+    def show_dashboard(self):
         st.markdown("### Beranda Admin")
         st.info("Selamat datang di Sistem Dashboard Pemeriksaan Gait. Gunakan menu di sidebar untuk mengakses menu yang tersedia.")
         
-        # Load data pasien
         self._load_pasien_data()
         
         # Hitung total pasien
@@ -302,6 +176,34 @@ class AdminPage:
                 <div>Total</div>
             </div>
             """, unsafe_allow_html=True)
+
+    # Manajemen Pengguna
+    def _load_pasien_data(self):
+        if not st.session_state.pasien_list_initialized:
+            try:
+                client = MongoClient(st.secrets["MONGO_URI"])
+                db = client['GaitDB']
+                collection = db['users']
+
+                pasien_data = list(collection.find({'role': 'pasien'}))
+                
+                # Reset dan isi session state
+                st.session_state.pasien_list = []
+                for pasien in pasien_data:
+                    st.session_state.pasien_list.append({
+                        "User ID": pasien.get('user_id', ''),
+                        "Nama Lengkap": pasien.get('nama_lengkap', ''),
+                        "Tanggal Lahir": pasien.get('tanggal_lahir', ''),
+                        "Jenis Kelamin": pasien.get('jenis_kelamin', ''),
+                        "Role": pasien.get('role', ''),
+                        "Tanggal Dibuat": pasien.get('tanggal_dibuat', '')
+                    })
+                
+                st.session_state.pasien_list_initialized = True
+                    
+            except Exception as e:
+                st.error(f"Error loading patient data: {e}")
+
 
     # ---------- Data Pasien & Dokter ----------
     # def _panel_data(self):
@@ -1173,58 +1075,3 @@ class AdminPage:
             
         except Exception as e:
             st.error(f"Error mengambil data riwayat pemeriksaan: {e}")
-
-    # ---------- Halaman Utama ----------
-    def run(self):
-        st.markdown(load_css(), unsafe_allow_html=True)
-        # self._inject_css()
-    
-        if "menu_admin" not in st.session_state:
-            st.session_state.menu_admin = "Beranda"
-    
-        if 'admin_logged_in' not in st.session_state:
-            st.session_state.admin_logged_in = False
-
-
-        # Login Page
-        if not st.session_state.admin_logged_in:
-            username, password, submit = login_form("Admin")
-            if submit:
-                admin_data = self._authenticate_admin(username, password)
-                if admin_data:
-                    st.session_state.admin_logged_in = True
-                    st.session_state.admin_user_data = admin_data
-                    st.rerun()
-                # Fallback ke super admin dari secrets  
-                elif username == self.admin_user and password == self.admin_pass:
-                    st.session_state.admin_logged_in = True
-                    st.session_state.admin_user_data = {'user_id': self.admin_user,
-                                                        'nama_lengkap': 'Super Admin',
-                                                        'role': 'admin'}
-                    st.rerun()
-                else:
-                    st.error("Username atau password salah!")
-            return
-
-        # Setelah login
-        menu = self._sidebar()
-        if menu == "Beranda":
-            self._account_card()
-            # st.success("🎉 Selamat datang di Dashboard Admin GAIT Clinic!")
-            # st.info("Gunakan menu di sidebar untuk mengelola data pengguna dan data normal GAIT.")
-            
-        elif menu == "Manajemen Pengguna":
-            self._panel_data()
-            
-        elif menu == "Baseline Data Gait":
-            self._manage_normal_data()
-            
-        elif menu == "Riwayat Pemeriksaan Pasien":
-            self._patient_examination_history()
-            
-        elif menu == "Logout":
-            st.session_state.admin_logged_in = False
-            st.session_state.pasien_list_initialized = False  # Reset flag saat logout
-            if 'admin_user_data' in st.session_state:
-                del st.session_state.admin_user_data
-            st.rerun()
