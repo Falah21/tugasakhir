@@ -578,7 +578,7 @@ class AdminPage:
                 st.info("Tidak ada data yang dapat dihapus")
             
     # ---------- Menu Riwayat Pemeriksaan Pasien ----------
-    def _patient_examination_history(self):
+    def show_examination_history(self):
         st.markdown("### Riwayat Pemeriksaan Pasien")
         
         try:
