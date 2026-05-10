@@ -553,7 +553,7 @@ class DokterPage:
                     st.success(f"Data gait pasien dengan NIK {pasien_user_id} berhasil diupdate!")
                 else:
                     collection.insert_one(examination_data)
-                    st.succes(f"Data pasien dengan NIK {pasien_user_id} berhasil disimpan!")
+                    st.success(f"Data pasien dengan NIK {pasien_user_id} berhasil disimpan!")
                 # Reset ringkasan AI untuk pasien baru
                 self.reset_ai_summary_session_state_except_current()
                 st.session_state.current_patient_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y%m%d_%H%M%S')}" 
