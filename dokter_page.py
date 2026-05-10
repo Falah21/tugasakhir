@@ -545,14 +545,15 @@ class DokterPage:
                 # Cek apakah sudah ada pemeriksaan
                 existing_exam = collection.find_one({'pasien_id': pasien_user_id, 'tanggal_pemeriksaan': tanggal.strftime("%Y-%m-%d")})
                 if existing_exam:
+                    st.warning(f"{nama_pasien} sudah memiliki data pemeriksaan pada tanggal {tanggal.strftime('%d %B %Y')}. Data akan diupdate.")
                     collection.update_one(
                         {'_id': existing_exam['_id']},
                         {'$set': examination_data}
                     )
-                    message = f"Data gait pasien dengan NIK {pasien_user_id} berhasil diupdate!"
+                    st.success(f"Data gait pasien dengan NIK {pasien_user_id} berhasil diupdate!")
                 else:
                     collection.insert_one(examination_data)
-                    message = f"Data gait pasien dengan NIK {pasien_user_id} berhasil disimpan!"
+                    st.succes(f"Data pasien dengan NIK {pasien_user_id} berhasil disimpan!")
                 # Reset ringkasan AI untuk pasien baru
                 self.reset_ai_summary_session_state_except_current()
                 st.session_state.current_patient_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y%m%d_%H%M%S')}" 
