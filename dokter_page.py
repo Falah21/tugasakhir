@@ -1908,10 +1908,11 @@ class DokterPage:
                     - Jangan menjelaskan semua fase
                     - Jangan mengulang isi tabel data mentah
                     - Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
-                    - Gunakan format **bold** untuk menyoroti sendi yang paling bermasalah, fase gait paling kritis, dan tingkat deviasi (misalnya: tinggi atau sangat tinggi).
+                    - Gunakan format **bold** untuk menyoroti sendi yang paling bermasalah, fase gait paling kritis, dan tingkat deviasi.
                     - Jangan menggunakan bold secara berlebihan (maksimal 1–3 kata per kalimat).
-                    - Gunakan data upper bound dan lower bound sebagai dasar interpretasi untuk menentukan apakah parameter gait masih dalam rentang normal atau menunjukkan deviasi di luar batas normal.
-                    
+                    - Gunakan data upper bound dan lower bound untuk menentukan apakah parameter masih dalam rentang normal atau berada di luar batas normal.
+                    - Sebutkan secara singkat jika terdapat sendi atau fase gait yang berada di luar rentang normal.
+                    - Prioritaskan temuan dengan MAE tinggi yang juga berada di luar rentang normal.
                                         
                     OUTPUT:
                     === VARIASI 1 ===
