@@ -1902,7 +1902,7 @@ class DokterPage:
                     Lakukan analisis gait dengan fokus pada temuan paling penting dan deviasi signifikan.
                     
                     ATURAN WAJIB:
-                    - Maksimal 200 kata per variasi
+                    - Maksimal 250 kata per variasi
                     - Hindari terlalu banyak angka (cukup gunakan: rendah, sedang, tinggi)
                     - Fokus hanya pada temuan paling mencolok
                     - Jangan menjelaskan semua fase
@@ -1955,14 +1955,16 @@ class DokterPage:
                 {full_data}
                 
                 ATURAN WAJIB:
-                - Maksimal 200 kata per variasi
+                - Maksimal 250 kata per variasi
                 - Jangan menampilkan semua angka (cukup highlight yang paling penting)
                 - Gunakan istilah kualitatif: ringan, moderat, tinggi
                 - Fokus pada pola, bukan angka
                 - Hindari penjelasan per fase secara lengkap
                 - Gunakan bahasa formal namun ringkas
                 - Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
-                - Gunakan data upper bound dan lower bound sebagai dasar interpretasi untuk menentukan apakah parameter gait masih dalam rentang normal atau menunjukkan deviasi di luar batas normal.
+                - Gunakan data upper bound dan lower bound untuk menentukan apakah parameter masih dalam rentang normal atau berada di luar batas normal.
+                - Sebutkan secara singkat jika terdapat sendi atau fase gait yang berada di luar rentang normal.
+                - Prioritaskan temuan dengan MAE tinggi yang juga berada di luar rentang normal.
                             
                 
                 STRUKTUR:
