@@ -1955,7 +1955,7 @@ class DokterPage:
                 {full_data}
                 
                 ATURAN WAJIB:
-                - Maksimal 250 kata per variasi
+                - Maksimal 200 kata per variasi
                 - Jangan menampilkan semua angka (cukup highlight yang paling penting)
                 - Gunakan istilah kualitatif: ringan, moderat, tinggi
                 - Fokus pada pola, bukan angka
