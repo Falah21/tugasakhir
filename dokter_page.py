@@ -1910,7 +1910,8 @@ class DokterPage:
                     - Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
                     - Gunakan format **bold** untuk menyoroti sendi yang paling bermasalah, fase gait paling kritis, dan tingkat deviasi (misalnya: tinggi atau sangat tinggi).
                     - Jangan menggunakan bold secara berlebihan (maksimal 1–3 kata per kalimat).
-
+                    - Gunakan data upper bound dan lower bound sebagai dasar interpretasi untuk menentukan apakah parameter gait masih dalam rentang normal atau menunjukkan deviasi di luar batas normal.
+                    
                                         
                     OUTPUT:
                     === VARIASI 1 ===
@@ -1960,7 +1961,8 @@ class DokterPage:
                 - Hindari penjelasan per fase secara lengkap
                 - Gunakan bahasa formal namun ringkas
                 - Gunakan hanya data yang diberikan dan jangan menambahkan asumsi di luar data.
-                
+                - Gunakan data upper bound dan lower bound sebagai dasar interpretasi untuk menentukan apakah parameter gait masih dalam rentang normal atau menunjukkan deviasi di luar batas normal.
+                            
                 
                 STRUKTUR:
                 
