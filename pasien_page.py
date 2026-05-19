@@ -156,7 +156,7 @@ class PasienPage:
         
         kinematic_data = self._process_kinematic_data(normal_data, pemeriksaan.get('gait_data', {}).get('Norm Kinematics', {}))
         
-        self._show_dashboard_visualization(kinematic_data, pasien_id=user_id, tanggal_pemeriksaan=selected_date.strftime("%Y-%m-%d"))
+        self._show_dashboard_visualization(kinematic_data, pasien_id=user_id, tanggal_pemeriksaan=selected_date.strftime("%Y-%m-%d"), pemeriksaan=pemeriksaan)
 
     # Menu Profile
     def show_profile(self):
@@ -467,7 +467,7 @@ class PasienPage:
         return fig
 
 
-    def _show_dashboard_visualization(self, kinematic_data, pasien_id=None, tanggal_pemeriksaan=None):
+    def _show_dashboard_visualization(self, kinematic_data, pasien_id=None, tanggal_pemeriksaan=None, pemeriksaan=None):
         # Buat visualisasi untuk setiap joint
         fig1 = self._create_joint_figure(kinematic_data['lpelvis'], "Left Pelvis", 'orange', 
                                        kinematic_data['patient_data'].get('l_pelvis'))
