@@ -576,31 +576,75 @@ class PasienPage:
         if not ai_summaries:
             st.info("Belum ada hasil pemeriksaan dari dokter untuk tanggal ini. Silakan tunggu atau konsultasikan dengan dokter Anda.")
             return
-        
+            
         for i, summary in enumerate(ai_summaries, 1):
-            with st.container():
+            with st.container(border=True):
+        
                 col1, col2 = st.columns(2)
+        
                 with col1:
-                    st.markdown(f"**Pemeriksa:** {summary.get('dokter_nama', 'Tidak diketahui')}")
+                    st.markdown("#### Informasi Pemeriksa")
+        
+                    st.markdown(
+                        f"**Pemeriksa:** {summary.get('dokter_nama', 'Tidak diketahui')}"
+                    )
+        
                     tgl = summary.get('timestamp')
                     if tgl:
                         if isinstance(tgl, datetime):
                             tgl_str = tgl.strftime("%d %B %Y")
                         else:
                             tgl_str = str(tgl)
+        
                         st.markdown(f"**Tanggal Analisis:** {tgl_str}")
-                        
+        
                 with col2:
-                    st.markdown("**Informasi Pasien**")
-                    st.markdown(f"**Berat Badan:** {pemeriksaan.get('berat_badan', '-')} kg")
-                    st.markdown(f"**Tinggi Badan:** {pemeriksaan.get('tinggi_badan', '-')} cm")
-                    st.markdown(f"**BMI:** {pemeriksaan.get('bmi', '-')}")
-                    st.markdown(f"**Klasifikasi BMI:** {pemeriksaan.get('bmi_classification', '-')}")
-                    
-                    
+                    st.markdown("#### Informasi Pasien")
+        
+                    bb = pemeriksaan.get('berat_badan', '-')
+                    tb = pemeriksaan.get('tinggi_badan', '-')
+                    bmi = pemeriksaan.get('bmi', '-')
+                    bmi_class = pemeriksaan.get('bmi_classification', '-')
+        
+                    if isinstance(bmi, (int, float)):
+                        bmi = f"{bmi:.2f}"
+        
+                    st.markdown(f"""
+                    - **Berat Badan:** {bb} kg  
+                    - **Tinggi Badan:** {tb} cm  
+                    - **BMI:** {bmi}  
+                    - **Klasifikasi BMI:** {bmi_class}
+                    """)
+        
                 st.markdown("---")
+        
                 content = summary.get('content', 'Konten tidak tersedia')
                 st.markdown(content)
+        
+        # for i, summary in enumerate(ai_summaries, 1):
+        #     with st.container():
+        #         col1, col2 = st.columns(2)
+        #         with col1:
+        #             st.markdown(f"**Pemeriksa:** {summary.get('dokter_nama', 'Tidak diketahui')}")
+        #             tgl = summary.get('timestamp')
+        #             if tgl:
+        #                 if isinstance(tgl, datetime):
+        #                     tgl_str = tgl.strftime("%d %B %Y")
+        #                 else:
+        #                     tgl_str = str(tgl)
+        #                 st.markdown(f"**Tanggal Analisis:** {tgl_str}")
+                        
+        #         with col2:
+        #             st.markdown("**Informasi Pasien**")
+        #             st.markdown(f"**Berat Badan:** {pemeriksaan.get('berat_badan', '-')} kg")
+        #             st.markdown(f"**Tinggi Badan:** {pemeriksaan.get('tinggi_badan', '-')} cm")
+        #             st.markdown(f"**BMI:** {pemeriksaan.get('bmi', '-')}")
+        #             st.markdown(f"**Klasifikasi BMI:** {pemeriksaan.get('bmi_classification', '-')}")
+                    
+                    
+        #         st.markdown("---")
+        #         content = summary.get('content', 'Konten tidak tersedia')
+        #         st.markdown(content)
                 
                 # Tampilkan MAE Overall jika ada
                 mae_overall = summary.get('mae_overall')
