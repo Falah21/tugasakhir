@@ -5,12 +5,6 @@ from pymongo import MongoClient
 from css_style import load_css
 import bcrypt
 import time
-import os
-os.environ['TZ'] = 'Asia/Jakarta'
-try:
-    time.tzset()
-except:
-    pass
 
 # Optimasi koneksi MongoDB
 def get_mongo_client():
