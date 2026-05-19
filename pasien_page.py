@@ -285,15 +285,15 @@ class PasienPage:
             db = client['GaitDB']
             collection = db['ai_summaries']
             
-            summaries = collection.find({
+            summaries = list(collection.find({
                 'pasien_id': pasien_id,
                 'tanggal_pemeriksaan': tanggal_pemeriksaan,
-                'is_best_selected': True}, sort=[('timestamp', -1)])
+                'is_best_selected': True}).sort('timestamp', -1))
             
             return summaries
         except Exception as e:
             st.error(f"Error mengambil ringkasan AI: {e}")
-            return None
+            return []
             
     # Fungsi Visualisasi
     def _process_kinematic_data(self, filtered_df, patient_kinematics=None):
@@ -565,74 +565,71 @@ class PasienPage:
 
         ai_summaries = self._get_ai_summaries(pasien_id, tanggal_pemeriksaan)
 
-        latest_summary = None
         if ai_summaries:
-            try:
-                latest_summary = next(ai_summaries, None)
-            except:
-                latest_summary = None
-                
-        if not latest_summary:
+            latest_summary = ai_summaries[0]
+        
+        if not ai_summaries:
             st.info("Belum ada hasil pemeriksaan dari dokter untuk tanggal ini. Silakan tunggu atau konsultasikan dengan dokter Anda.")
             return
         
-        with st.container():
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown(f"**Pemeriksa:** {latest_summary.get('dokter_nama', 'Tidak diketahui')}")
-            with col2:
-                tgl = latest_summary.get('timestamp')
-                if tgl:
-                    if isinstance(tgl, datetime):
-                        tgl_str = tgl.strftime("%d %B %Y")
-                    else:
-                        tgl_str = str(tgl)
-                    st.markdown(f"**Tanggal Analisis:** {tgl_str}")
+        for i, summary in enumerate(ai_summaries, 1):
+            with st.container():
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"**Pemeriksa:** {summary.get('dokter_nama', 'Tidak diketahui')}")
+                with col2:
+                    tgl = summary.get('timestamp')
+                    if tgl:
+                        if isinstance(tgl, datetime):
+                            tgl_str = tgl.strftime("%d %B %Y")
+                        else:
+                            tgl_str = str(tgl)
+                        st.markdown(f"**Tanggal Analisis:** {tgl_str}")
                 
-            st.markdown("---")
-            content = latest_summary.get('content', 'Konten tidak tersedia')
-            st.markdown(content)
+                st.markdown("---")
+                content = summary.get('content', 'Konten tidak tersedia')
+                st.markdown(content)
                 
-            # Tampilkan MAE Overall jika ada
-            mae_overall = ai_summaries.get('mae_overall')
-            if mae_overall:
-                st.markdown("**Mean Absolute Error (MAE) - Perbedaan rata-rata sudut Anda vs Normal:**")
+                # Tampilkan MAE Overall jika ada
+                mae_overall = summary.get('mae_overall')
+                if mae_overall:
+                    st.markdown("**Mean Absolute Error (MAE) - Perbedaan rata-rata sudut Anda vs Normal:**")
                         
-                mae_data = []
-                # Pelvis
-                pelvis_avg = (mae_overall.get('pelvis_left', 0) + mae_overall.get('pelvis_right', 0)) / 2
-                mae_data.append({
-                    'Sendi': 'Pelvis (Panggul)',
-                    'Kiri (°)': f"{mae_overall.get('pelvis_left', 0):.2f}",
-                    'Kanan (°)': f"{mae_overall.get('pelvis_right', 0):.2f}",
-                    'Rata-rata (°)': f"{pelvis_avg:.2f}"})
+                    mae_data = []
+                    # Pelvis
+                    pelvis_avg = (mae_overall.get('pelvis_left', 0) + mae_overall.get('pelvis_right', 0)) / 2
+                    mae_data.append({
+                        'Sendi': 'Pelvis (Panggul)',
+                        'Kiri (°)': f"{mae_overall.get('pelvis_left', 0):.2f}",
+                        'Kanan (°)': f"{mae_overall.get('pelvis_right', 0):.2f}",
+                        'Rata-rata (°)': f"{pelvis_avg:.2f}"})
                         
-                # Knee
-                knee_avg = (mae_overall.get('knee_left', 0) + mae_overall.get('knee_right', 0)) / 2
-                mae_data.append({
-                    'Sendi': 'Knee (Lutut)',
-                    'Kiri (°)': f"{mae_overall.get('knee_left', 0):.2f}",
-                    'Kanan (°)': f"{mae_overall.get('knee_right', 0):.2f}",
-                    'Rata-rata (°)': f"{knee_avg:.2f}"})
+                    # Knee
+                    knee_avg = (mae_overall.get('knee_left', 0) + mae_overall.get('knee_right', 0)) / 2
+                    mae_data.append({
+                        'Sendi': 'Knee (Lutut)',
+                        'Kiri (°)': f"{mae_overall.get('knee_left', 0):.2f}",
+                        'Kanan (°)': f"{mae_overall.get('knee_right', 0):.2f}",
+                        'Rata-rata (°)': f"{knee_avg:.2f}"})
                         
-                # Hip
-                hip_avg = (mae_overall.get('hip_left', 0) + mae_overall.get('hip_right', 0)) / 2
-                mae_data.append({
-                    'Sendi': 'Hip (Pinggul)',
-                    'Kiri (°)': f"{mae_overall.get('hip_left', 0):.2f}",
-                    'Kanan (°)': f"{mae_overall.get('hip_right', 0):.2f}",
-                    'Rata-rata (°)': f"{hip_avg:.2f}"})
+                    # Hip
+                    hip_avg = (mae_overall.get('hip_left', 0) + mae_overall.get('hip_right', 0)) / 2
+                    mae_data.append({
+                        'Sendi': 'Hip (Pinggul)',
+                        'Kiri (°)': f"{mae_overall.get('hip_left', 0):.2f}",
+                        'Kanan (°)': f"{mae_overall.get('hip_right', 0):.2f}",
+                        'Rata-rata (°)': f"{hip_avg:.2f}"})
                         
-                # Ankle
-                ankle_avg = (mae_overall.get('ankle_left', 0) + mae_overall.get('ankle_right', 0)) / 2
-                mae_data.append({
-                    'Sendi': 'Ankle (Pergelangan Kaki)',
-                    'Kiri (°)': f"{mae_overall.get('ankle_left', 0):.2f}",
-                    'Kanan (°)': f"{mae_overall.get('ankle_right', 0):.2f}",
-                    'Rata-rata (°)': f"{ankle_avg:.2f}"})
+                    # Ankle
+                    ankle_avg = (mae_overall.get('ankle_left', 0) + mae_overall.get('ankle_right', 0)) / 2
+                    mae_data.append({
+                        'Sendi': 'Ankle (Pergelangan Kaki)',
+                        'Kiri (°)': f"{mae_overall.get('ankle_left', 0):.2f}",
+                        'Kanan (°)': f"{mae_overall.get('ankle_right', 0):.2f}",
+                        'Rata-rata (°)': f"{ankle_avg:.2f}"})
                         
-                df_mae = pd.DataFrame(mae_data)
-                st.dataframe(df_mae, use_container_width=True, hide_index=True)
+                    df_mae = pd.DataFrame(mae_data)
+                    st.dataframe(df_mae, use_container_width=True, hide_index=True)
                 
                 # Pemisah antar ringkasan jika ada lebih dari satu
                 # if i < len(ai_summaries):
