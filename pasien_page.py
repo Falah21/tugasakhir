@@ -285,12 +285,17 @@ class PasienPage:
             db = client['GaitDB']
             collection = db['ai_summaries']
             
-            summaries = list(collection.find({
-                'pasien_id': pasien_id,
-                'tanggal_pemeriksaan': tanggal_pemeriksaan,
-                'is_best_selected': True}).sort('timestamp', -1))
+            summary = collection.find_one(
+                {
+                    'pasien_id': pasien_id,
+                    'tanggal_pemeriksaan': tanggal_pemeriksaan,
+                    'is_best_selected': True
+                },
+                sort=[('timestamp', -1)]  # ambil paling terbaru
+            )
             
-            return summaries
+            return [summary] if summary else []
+            
         except Exception as e:
             st.error(f"Error mengambil ringkasan AI: {e}")
             return []
@@ -565,8 +570,8 @@ class PasienPage:
 
         ai_summaries = self._get_ai_summaries(pasien_id, tanggal_pemeriksaan)
 
-        if ai_summaries:
-            latest_summary = ai_summaries[0]
+        # if ai_summaries:
+        #     latest_summary = ai_summaries[0]
         
         if not ai_summaries:
             st.info("Belum ada hasil pemeriksaan dari dokter untuk tanggal ini. Silakan tunggu atau konsultasikan dengan dokter Anda.")
