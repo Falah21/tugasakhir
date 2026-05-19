@@ -38,7 +38,7 @@ def login_form(role_label: str = "Dokter"):
     st.markdown("---")
 
     st.subheader(f"Login - {role_label}")
-    user_id = st.text_input("NIP", placeholder="Masukkan NIP anda")
+    user_id = st.text_input("NIP", max_chars=18, placeholder="Masukkan NIP anda")
     password = st.text_input("Password", type="password", placeholder="Masukkan password anda")
     submit = st.button("Login", use_container_width=True)
 
