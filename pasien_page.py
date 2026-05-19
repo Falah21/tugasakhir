@@ -566,7 +566,7 @@ class PasienPage:
             self._show_ai_summaries_tab(pasien_id, tanggal_pemeriksaan, pemeriksaan)
 
     def _show_ai_summaries_tab(self, pasien_id, tanggal_pemeriksaan, pemeriksaan):
-        st.write("Berikut adalah hasil analisis dan rekomendasi dari dokter berdasarkan data pemeriksaan Gait Anda:")
+        # st.write("Berikut adalah hasil analisis dan rekomendasi dari dokter berdasarkan data pemeriksaan Gait Anda:")
 
         ai_summaries = self._get_ai_summaries(pasien_id, tanggal_pemeriksaan)
 
@@ -583,7 +583,7 @@ class PasienPage:
                 col1, col2 = st.columns(2)
         
                 with col1:
-                    st.markdown("###### Informasi Pemeriksa")
+                    st.markdown("##### Informasi Pemeriksa")
         
                     st.markdown(
                         f"**Dokter Pemeriksa:** {summary.get('dokter_nama', 'Tidak diketahui')}"
@@ -599,7 +599,7 @@ class PasienPage:
                         st.markdown(f"**Tanggal Analisis:** {tgl_str}")
         
                 with col2:
-                    st.markdown("###### Informasi Pasien")
+                    st.markdown("##### Informasi Pasien")
         
                     bb = pemeriksaan.get('berat_badan', '-')
                     tb = pemeriksaan.get('tinggi_badan', '-')
