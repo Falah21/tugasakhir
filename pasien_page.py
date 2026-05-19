@@ -169,13 +169,15 @@ class PasienPage:
             st.subheader("Data Profil")
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown(f"**NIK:** {profil['User ID']}")
-                st.markdown(f"**Nama Lengkap:** {profil['Nama Lengkap']}")
-                st.markdown(f"**Tanggal Lahir:** {profil['Tanggal Lahir']}")
+                with st.container(border=True):
+                    st.markdown(f"**NIK:** {profil['User ID']}")
+                    st.markdown(f"**Nama Lengkap:** {profil['Nama Lengkap']}")
+                    st.markdown(f"**Tanggal Lahir:** {profil['Tanggal Lahir']}")
             with col2:
-                st.markdown(f"**Jenis Kelamin:** {profil['Jenis Kelamin']}")
-                st.markdown(f"**Role:** {profil['Role']}")
-                st.markdown(f"**Tanggal Pendaftaran:** {profil['Tanggal Dibuat']}")
+                with st.container(border=True):
+                    st.markdown(f"**Jenis Kelamin:** {profil['Jenis Kelamin']}")
+                    st.markdown(f"**Role:** {profil['Role']}")
+                    st.markdown(f"**Tanggal Pendaftaran:** {profil['Tanggal Dibuat']}")
         else:
             st.warning("Data profil tidak ditemukan")
     
