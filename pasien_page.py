@@ -583,10 +583,10 @@ class PasienPage:
                 col1, col2 = st.columns(2)
         
                 with col1:
-                    st.markdown("#### Informasi Pemeriksa")
+                    st.markdown("###### Informasi Pemeriksa")
         
                     st.markdown(
-                        f"**Pemeriksa:** {summary.get('dokter_nama', 'Tidak diketahui')}"
+                        f"**Dokter Pemeriksa:** {summary.get('dokter_nama', 'Tidak diketahui')}"
                     )
         
                     tgl = summary.get('timestamp')
@@ -599,7 +599,7 @@ class PasienPage:
                         st.markdown(f"**Tanggal Analisis:** {tgl_str}")
         
                 with col2:
-                    st.markdown("#### Informasi Pasien")
+                    st.markdown("###### Informasi Pasien")
         
                     bb = pemeriksaan.get('berat_badan', '-')
                     tb = pemeriksaan.get('tinggi_badan', '-')
