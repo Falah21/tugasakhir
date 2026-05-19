@@ -153,6 +153,34 @@ class PasienPage:
             return
 
         st.markdown(f"### Hasil Pemeriksaan - {selected_date.strftime('%d %B %Y')}")
+
+        st.markdown(f"### Hasil Pemeriksaan - {selected_date.strftime('%d %B %Y')}")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric(
+                "Berat Badan",
+                f"{pemeriksaan.get('berat_badan', '-')} kg"
+            )
+        
+        with col2:
+            st.metric(
+                "Tinggi Badan",
+                f"{pemeriksaan.get('tinggi_badan', '-')} cm"
+            )
+        
+        with col3:
+            st.metric(
+                "BMI",
+                f"{pemeriksaan.get('bmi', '-')}"
+            )
+        
+        with col4:
+            st.metric(
+                "Klasifikasi BMI",
+                pemeriksaan.get('bmi_classification', '-')
+            )
         
         kinematic_data = self._process_kinematic_data(normal_data, pemeriksaan.get('gait_data', {}).get('Norm Kinematics', {}))
         
