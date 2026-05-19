@@ -153,34 +153,6 @@ class PasienPage:
             return
 
         st.markdown(f"### Hasil Pemeriksaan - {selected_date.strftime('%d %B %Y')}")
-
-        st.markdown(f"### Hasil Pemeriksaan - {selected_date.strftime('%d %B %Y')}")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric(
-                "Berat Badan",
-                f"{pemeriksaan.get('berat_badan', '-')} kg"
-            )
-        
-        with col2:
-            st.metric(
-                "Tinggi Badan",
-                f"{pemeriksaan.get('tinggi_badan', '-')} cm"
-            )
-        
-        with col3:
-            st.metric(
-                "BMI",
-                f"{pemeriksaan.get('bmi', '-')}"
-            )
-        
-        with col4:
-            st.metric(
-                "Klasifikasi BMI",
-                pemeriksaan.get('bmi_classification', '-')
-            )
         
         kinematic_data = self._process_kinematic_data(normal_data, pemeriksaan.get('gait_data', {}).get('Norm Kinematics', {}))
         
@@ -591,9 +563,9 @@ class PasienPage:
                     st.write(f"**Perbedaan rata-rata sudut pergelangan kaki kanan (Anda vs Normal): {maerankle:.2f}°**")
     
         with tab5:
-            self._show_ai_summaries_tab(pasien_id, tanggal_pemeriksaan)
+            self._show_ai_summaries_tab(pasien_id, tanggal_pemeriksaan, pemeriksaan)
 
-    def _show_ai_summaries_tab(self, pasien_id, tanggal_pemeriksaan):
+    def _show_ai_summaries_tab(self, pasien_id, tanggal_pemeriksaan, pemeriksaan):
         st.write("Berikut adalah hasil analisis dan rekomendasi dari dokter berdasarkan data pemeriksaan Gait Anda:")
 
         ai_summaries = self._get_ai_summaries(pasien_id, tanggal_pemeriksaan)
@@ -610,7 +582,6 @@ class PasienPage:
                 col1, col2 = st.columns(2)
                 with col1:
                     st.markdown(f"**Pemeriksa:** {summary.get('dokter_nama', 'Tidak diketahui')}")
-                with col2:
                     tgl = summary.get('timestamp')
                     if tgl:
                         if isinstance(tgl, datetime):
@@ -618,7 +589,15 @@ class PasienPage:
                         else:
                             tgl_str = str(tgl)
                         st.markdown(f"**Tanggal Analisis:** {tgl_str}")
-                
+                        
+                with col2:
+                    st.markdown("**Informasi Pasien**")
+                    st.markdown(f"**Berat Badan:** {pemeriksaan.get('berat_badan', '-')} kg")
+                    st.markdown(f"**Tinggi Badan:** {pemeriksaan.get('tinggi_badan', '-')} cm")
+                    st.markdown(f"**BMI:** {pemeriksaan.get('bmi', '-')}")
+                    st.markdown(f"**Klasifikasi BMI:** {pemeriksaan.get('bmi_classification', '-')}")
+                    
+                    
                 st.markdown("---")
                 content = summary.get('content', 'Konten tidak tersedia')
                 st.markdown(content)
