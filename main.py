@@ -1,4 +1,12 @@
 import streamlit as st
+from datetime import datetime, date
+import time
+import os
+os.environ['TZ'] = 'Asia/Jakarta'
+try:
+    time.tzset()
+except:
+    pass
 from admin_page import AdminPage
 from pasien_page import PasienPage
 from dokter_page import DokterPage
