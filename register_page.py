@@ -118,7 +118,7 @@ class RegisterPage:
                         
                     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
                     registration_data = {
-                        "user_id": int(user_id),
+                        "user_id": user_id,
                         "nama_lengkap": nama_lengkap,
                         "password": hashed_password.decode('utf-8'),  # simpan hash
                         "role": "pasien",
