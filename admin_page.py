@@ -20,7 +20,7 @@ def login_form(role_label: str = "Admin"):
     st.markdown("---")
 
     st.subheader(f"Login - {role_label}")
-    username = st.text_input("NIP", placeholder="Masukkan NIP anda")
+    username = st.text_input("NIP", max_chars=18, placeholder="Masukkan NIP anda")
     password = st.text_input("Password", type="password", placeholder="Masukkan password anda")
     
     submit = st.button("Login", use_container_width=True)
