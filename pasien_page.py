@@ -285,12 +285,16 @@ class PasienPage:
             db = client['GaitDB']
             collection = db['ai_summaries']
             
-            summaries = list(collection.find({
-                'pasien_id': pasien_id,
-                'tanggal_pemeriksaan': tanggal_pemeriksaan,
-                'is_best_selected': True}).sort('timestamp', -1))
+            summaries = collection.find(
+                {
+                    'pasien_id': pasien_id,
+                    'tanggal_pemeriksaan': tanggal_pemeriksaan,
+                    'is_best_selected': True
+                },
+                sort=[('timestamp', -1)]
+            )
             
-            return summaries
+            return [summaries] if summary else []
         except Exception as e:
             st.error(f"Error mengambil ringkasan AI: {e}")
             return []
