@@ -542,7 +542,11 @@ class DokterPage:
                 st.session_state.current_pasien_id = pasien_user_id
                 st.session_state.current_nama_pasien = nama_pasien
                 st.session_state.current_tanggal_pemeriksaan = tanggal.strftime("%Y-%m-%d")
-                st.session_state.current_patient_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y%m%d_%H%M%S')}"
+                
+                current_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y-%m-%d')}"
+                st.session_state.current_patient_key = current_key
+
+                self.reset_ai_summary_for_patient_and_date(pasien_user_id, tanggal.strftime("%Y-%m-%d"))
                 
                 # Cek apakah sudah ada pemeriksaan
                 existing_exam = collection.find_one({'pasien_id': pasien_user_id, 'tanggal_pemeriksaan': tanggal.strftime("%Y-%m-%d")})
@@ -556,9 +560,10 @@ class DokterPage:
                 else:
                     collection.insert_one(examination_data)
                     st.success(f"Data pasien dengan NIK {pasien_user_id} berhasil disimpan!")
+            
                 # Reset ringkasan AI untuk pasien baru
-                self.reset_ai_summary_session_state_except_current()
-                st.session_state.current_patient_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y%m%d_%H%M%S')}" 
+                # self.reset_ai_summary_session_state_except_current()
+                # st.session_state.current_patient_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y%m%d_%H%M%S')}" 
             except Exception as e:
                 st.error(f"Error dalam memproses file: {e}")     
 
@@ -1695,7 +1700,9 @@ class DokterPage:
     
         # INISIALISASI
         if 'current_patient_key' not in st.session_state:
-            st.session_state.current_patient_key = f"patient_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            st.warning("Belum ada data pasien. Silakan upload data pasien terlebih dahulu.")
+            return
+    
         current_patient_key = st.session_state.current_patient_key
         
         # Ambil data upper bound dan lower bound
@@ -2328,6 +2335,28 @@ class DokterPage:
         # Reset AI summary terkait pasien
         self.reset_ai_summary_session_state_except_current()
 
+    # Reset AI summary untuk pasien dan tanggal tertentu
+    def reset_ai_summary_for_patient_and_date(self, pasien_id, tanggal_pemeriksaan):
+        patient_date_key = f"patient_{pasien_id}_{tanggal_pemeriksaan}"
+        
+        # Kunci-kunci yang perlu dihapus untuk pasien dan tanggal ini
+        keys_to_reset = [
+            f'ai_summaries_generated_{patient_date_key}',
+            f'summaries_a_{patient_date_key}',
+            f'summaries_b_{patient_date_key}',
+            f'selected_summary_label_{patient_date_key}',
+            f'selected_summary_content_{patient_date_key}',
+            f'saved_summary_content_{patient_date_key}'
+        ]
+        
+        for key in keys_to_reset:
+            if key in st.session_state:
+                del st.session_state[key]
+        
+        # Reset kunci utama AI jika perlu
+        if 'ai_summaries_generated' in st.session_state and st.session_state.get('current_patient_key') == patient_date_key:
+            if 'ai_summaries_generated' in st.session_state:
+                del st.session_state['ai_summaries_generated']
 # # Jalankan aplikasi
 # if __name__ == "__main__":
 #     app = TerapisPage()
