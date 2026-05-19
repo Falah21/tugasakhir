@@ -337,12 +337,14 @@ class DokterPage:
         elif st.session_state.dokter_menu == "Riwayat Pemeriksaan":
             self.show_examination_history()
         elif st.session_state.dokter_menu == "Logout":
+            self.reset_patient_data_session_state()
             st.session_state.dokter_logged_in = False
             st.session_state.dokter_user_id = None
             st.session_state.dokter_nama = None
             st.session_state.dokter_role = None
             st.session_state.dokter_menu = "Dashboard"
             st.session_state.role = None
+            
             st.rerun()
 
     # Menu Input Baseline Data Gait
@@ -2308,6 +2310,23 @@ class DokterPage:
                 if ('patient_' in key or 'summaries_' in key) and key != 'current_patient_key':
                     del st.session_state[key]
 
+    def reset_patient_data_session_state(self):
+        patient_keys = [
+            'uploaded_patient_data',
+            'norm_kinematics_df',
+            'current_pasien_id',
+            'current_nama_pasien',
+            'current_tanggal_pemeriksaan',
+            'current_patient_key',
+            'filtered_normal_df'
+        ]
+        
+        for key in patient_keys:
+            if key in st.session_state:
+                del st.session_state[key]
+        
+        # Reset AI summary terkait pasien
+        self.reset_ai_summary_session_state_except_current()
 
 # # Jalankan aplikasi
 # if __name__ == "__main__":
