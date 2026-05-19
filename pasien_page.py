@@ -28,7 +28,7 @@ def login_form_pasien(role_label: str = "Pasien"):
     st.markdown("<h2>Sistem Dashboard Gait Analysis</h2>", unsafe_allow_html=True)
     st.markdown("<p class='subtitle'>Selamat Datang di Sistem Dashboard Pemeriksaan Gait</p>", unsafe_allow_html=True)
     st.subheader(f"Login - {role_label}")
-    user_id = st.text_input("NIK", placeholder="Masukkan NIK anda")
+    user_id = st.text_input("NIK", max_chars=16, placeholder="Masukkan NIK anda")
     password = st.text_input("Password", type="password", placeholder="Masukkan password anda")
     submit = st.button("Login", use_container_width=True)
     st.markdown("<p class='register-link'>Belum punya akun?</p>", unsafe_allow_html=True)
