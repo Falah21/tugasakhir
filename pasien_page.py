@@ -285,19 +285,12 @@ class PasienPage:
             db = client['GaitDB']
             collection = db['ai_summaries']
             
-            summary = collection.find(
-                {
-                    'pasien_id': pasien_id,
-                    'tanggal_pemeriksaan': tanggal_pemeriksaan,
-                    'is_best_selected': True
-                },
-                sort=[('timestamp', -1)]
-            )
+            summaries = list(collection.find({
+                'pasien_id': pasien_id,
+                'tanggal_pemeriksaan': tanggal_pemeriksaan,
+                'is_best_selected': True}).sort('timestamp', -1))
             
-            if summary is None:
-                return []
-            return [summary]
-            
+            return summaries
         except Exception as e:
             st.error(f"Error mengambil ringkasan AI: {e}")
             return []
@@ -577,8 +570,6 @@ class PasienPage:
             return
         
         for i, summary in enumerate(ai_summaries, 1):
-            if summary is None:
-                continue
             with st.container():
                 col1, col2 = st.columns(2)
                 with col1:
