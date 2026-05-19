@@ -564,17 +564,24 @@ class PasienPage:
         st.write("Berikut adalah hasil analisis dan rekomendasi dari dokter berdasarkan data pemeriksaan Gait Anda:")
 
         ai_summaries = self._get_ai_summaries(pasien_id, tanggal_pemeriksaan)
-        
-        if not ai_summaries:
+
+        latest_summary = None
+        if ai_summaries:
+            try:
+                latest_summary = next(ai_summaries, None)
+            except:
+                latest_summary = None
+                
+        if not latest_summary:
             st.info("Belum ada hasil pemeriksaan dari dokter untuk tanggal ini. Silakan tunggu atau konsultasikan dengan dokter Anda.")
             return
         
         with st.container():
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown(f"**Pemeriksa:** {ai_summaries.get('dokter_nama', 'Tidak diketahui')}")
+                st.markdown(f"**Pemeriksa:** {latest_summary.get('dokter_nama', 'Tidak diketahui')}")
             with col2:
-                tgl = ai_summaries.get('timestamp')
+                tgl = latest_summary.get('timestamp')
                 if tgl:
                     if isinstance(tgl, datetime):
                         tgl_str = tgl.strftime("%d %B %Y")
@@ -583,7 +590,7 @@ class PasienPage:
                     st.markdown(f"**Tanggal Analisis:** {tgl_str}")
                 
             st.markdown("---")
-            content = ai_summaries.get('content', 'Konten tidak tersedia')
+            content = latest_summary.get('content', 'Konten tidak tersedia')
             st.markdown(content)
                 
             # Tampilkan MAE Overall jika ada
