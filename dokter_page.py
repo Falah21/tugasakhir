@@ -1048,7 +1048,7 @@ class DokterPage:
                 sort=[('timestamp', -1)]
             ))
             
-            return [summaries] if summaries else []
+            return summaries if summaries else []
             
         except Exception as e:
             st.error(f"Error mengambil ringkasan AI: {e}")
