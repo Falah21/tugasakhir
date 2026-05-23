@@ -633,6 +633,541 @@ class DokterPage:
         except Exception as e:
             st.error(f"Error mengambil data riwayat: {e}")
 
+    # Tambahkan method ini di dalam class DokterPage
+    
+    def show_patient_detail_history(self):
+        st.subheader("Detail Riwayat Pemeriksaan Pasien")
+        
+        try:
+            client = get_mongo_client()
+            db = client['GaitDB']
+            users_collection = db['users']
+            examinations_collection = db['patient_examinations']
+            
+            # Ambil semua data pasien
+            pasien_data = list(users_collection.find(
+                {'role': 'pasien'}, 
+                {'user_id': 1, 'nama_lengkap': 1, 'tanggal_lahir': 1, 'jenis_kelamin': 1}
+            ))
+            
+            if not pasien_data:
+                st.info("Belum ada data pasien terdaftar.")
+                return
+            
+            # Pilih pasien
+            pasien_options = {f"{p['user_id']} - {p['nama_lengkap']}": p['user_id'] for p in pasien_data}
+            selected_label = st.selectbox(
+                "Pilih Pasien", 
+                options=list(pasien_options.keys()),
+                key="detail_pasien_select"
+            )
+            
+            if selected_label:
+                pasien_id = pasien_options[selected_label]
+                
+                # Ambil data profil pasien
+                profil_pasien = next((p for p in pasien_data if p['user_id'] == pasien_id), None)
+                
+                if profil_pasien:
+                    with st.expander("📋 Profil Pasien", expanded=True):
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.markdown(f"**NIK:** {profil_pasien['user_id']}")
+                            st.markdown(f"**Nama Lengkap:** {profil_pasien['nama_lengkap']}")
+                        with col2:
+                            st.markdown(f"**Tanggal Lahir:** {profil_pasien.get('tanggal_lahir', '-')}")
+                            st.markdown(f"**Jenis Kelamin:** {profil_pasien.get('jenis_kelamin', '-')}")
+                        with col3:
+                            st.markdown(f"**Usia:** {self._calculate_age(profil_pasien.get('tanggal_lahir', ''))} tahun")
+                
+                dokter_id = st.session_state.get('dokter_user_id')
+                examinations = list(examinations_collection.find({
+                    'pasien_id': pasien_id,
+                    'dokter_id': dokter_id
+                }).sort('tanggal_pemeriksaan', -1))
+                
+                if not examinations:
+                    st.warning(f"Belum ada riwayat pemeriksaan untuk pasien {selected_label}.")
+                    return
+                
+                # Pilih tanggal pemeriksaan
+                tanggal_options = {f"{e['tanggal_pemeriksaan']} - {e.get('dokter_nama', 'Dokter')}": e for e in examinations}
+                selected_tanggal_label = st.selectbox(
+                    "Pilih Tanggal Pemeriksaan", 
+                    options=list(tanggal_options.keys()),
+                    key="detail_tanggal_select"
+                )
+                
+                if selected_tanggal_label:
+                    selected_exam = tanggal_options[selected_tanggal_label]
+                    self._show_patient_examination_detail(selected_exam, pasien_id)
+                    
+        except Exception as e:
+            st.error(f"Error mengambil data riwayat: {e}")
+    
+    def _calculate_age(self, birth_date_str):
+        """Menghitung usia dari tanggal lahir"""
+        if not birth_date_str or birth_date_str == '-':
+            return "-"
+        try:
+            from datetime import datetime
+            birth_date = datetime.strptime(birth_date_str, "%Y-%m-%d")
+            today = datetime.now()
+            age = today.year - birth_date.year
+            if today.month < birth_date.month or (today.month == birth_date.month and today.day < birth_date.day):
+                age -= 1
+            return age
+        except:
+            return "-"
+    
+    def _show_patient_examination_detail(self, examination, pasien_id):
+        """Menampilkan detail lengkap pemeriksaan pasien"""
+        
+        tanggal = examination.get('tanggal_pemeriksaan')
+        st.markdown(f"### 📊 Hasil Pemeriksaan - {tanggal}")
+        
+        # Informasi pemeriksaan
+        with st.expander("ℹ️ Informasi Pemeriksaan", expanded=False):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"**Tanggal Pemeriksaan:** {tanggal}")
+                st.markdown(f"**Dokter Pemeriksa:** {examination.get('dokter_nama', '-')}")
+                st.markdown(f"**Upload Data:** {examination.get('upload_date', '-')}")
+            with col2:
+                st.markdown(f"**Tinggi Badan:** {examination.get('tinggi_badan', '-')} cm")
+                st.markdown(f"**Berat Badan:** {examination.get('berat_badan', '-')} kg")
+                st.markdown(f"**BMI:** {examination.get('bmi', '-'):.2f}" if examination.get('bmi') else "**BMI:** -")
+                st.markdown(f"**Klasifikasi BMI:** {examination.get('bmi_classification', '-')}")
+        
+        # Ambil data gait dari pemeriksaan
+        gait_data = examination.get('gait_data', {})
+        norm_kinematics = gait_data.get('Norm Kinematics', {})
+        
+        if not norm_kinematics:
+            st.warning("Data kinematik tidak tersedia untuk pemeriksaan ini.")
+            return
+        
+        # Ambil data normal untuk perbandingan
+        normal_data = self._get_normal_data_for_comparison()
+        if normal_data is None:
+            st.error("Data normal belum tersedia. Silakan hubungi administrator.")
+            return
+        
+        # Proses data kinematik
+        kinematic_data = self._process_kinematic_data_for_detail(normal_data, norm_kinematics)
+        
+        # Tampilkan visualisasi
+        self._show_detail_visualization(kinematic_data, pasien_id, tanggal, examination)
+    
+    def _get_normal_data_for_comparison(self):
+        """Mengambil data normal dari database untuk perbandingan"""
+        try:
+            client = get_mongo_client()
+            db = client['GaitDB']
+            collection = db['gait_data']
+            
+            cursor = collection.find().limit(100)
+            data = list(cursor)
+            
+            if len(data) == 0:
+                return None
+            
+            df = pd.json_normalize(data)
+            df.columns = df.columns.str.replace('Trial Information.', '')
+            df.columns = df.columns.str.replace('Subject Parameters.', '')
+            df.columns = df.columns.str.replace('Body Measurements.', '')
+            df.columns = df.columns.str.replace('Norm Kinematics.', '')
+            
+            return df
+        except Exception as e:
+            st.error(f"Error mengambil data normal: {e}")
+            return None
+    
+    def _process_kinematic_data_for_detail(self, filtered_df, patient_kinematics):
+        """Memproses data kinematik untuk detail pemeriksaan"""
+        # Pelvis
+        l_pelvis_angles = pd.DataFrame(filtered_df['LPelvisAngles_X'].tolist())
+        r_pelvis_angles = pd.DataFrame(filtered_df['RPelvisAngles_X'].tolist())
+        
+        mean_l_pelvis = l_pelvis_angles.mean(axis=0).values
+        std_l_pelvis = l_pelvis_angles.std(axis=0)/np.sqrt(l_pelvis_angles.shape[0])
+        mean_r_pelvis = r_pelvis_angles.mean(axis=0).values
+        std_r_pelvis = r_pelvis_angles.std(axis=0)/np.sqrt(r_pelvis_angles.shape[0])
+        
+        lpelvis = pd.DataFrame({
+            "%cycle": list(range(101)),
+            'mean': mean_l_pelvis,
+            'std': std_l_pelvis
+        })
+        
+        rpelvis = pd.DataFrame({
+            "%cycle": list(range(101)),
+            'mean': mean_r_pelvis,
+            'std': std_r_pelvis
+        })
+        
+        # Knee
+        l_knee_angles = pd.DataFrame(filtered_df['LKneeAngles_X'].tolist())
+        r_knee_angles = pd.DataFrame(filtered_df['RKneeAngles_X'].tolist())
+        
+        mean_l_knee = l_knee_angles.mean(axis=0).values
+        std_l_knee = l_knee_angles.std(axis=0) / np.sqrt(l_knee_angles.shape[0])
+        mean_r_knee = r_knee_angles.mean(axis=0).values
+        std_r_knee = r_knee_angles.std(axis=0) / np.sqrt(r_knee_angles.shape[0])
+        
+        lknee = pd.DataFrame({
+            "%cycle": list(range(101)),
+            'mean': mean_l_knee,
+            'std': std_l_knee
+        })
+        
+        rknee = pd.DataFrame({
+            "%cycle": list(range(101)),
+            'mean': mean_r_knee,
+            'std': std_r_knee
+        })
+        
+        # Hip
+        l_hip_angles = pd.DataFrame(filtered_df['LHipAngles_X'].tolist())
+        r_hip_angles = pd.DataFrame(filtered_df['RHipAngles_X'].tolist())
+        
+        mean_l_hip = l_hip_angles.mean(axis=0).values
+        std_l_hip = l_hip_angles.std(axis=0) / np.sqrt(l_hip_angles.shape[0])
+        mean_r_hip = r_hip_angles.mean(axis=0).values
+        std_r_hip = r_hip_angles.std(axis=0) / np.sqrt(r_hip_angles.shape[0])
+        
+        lhip = pd.DataFrame({
+            "%cycle": list(range(101)),
+            'mean': mean_l_hip,
+            'std': std_l_hip
+        })
+        
+        rhip = pd.DataFrame({
+            "%cycle": list(range(101)),
+            'mean': mean_r_hip,
+            'std': std_r_hip
+        })
+        
+        # Ankle
+        l_ankle_angles = pd.DataFrame(filtered_df['LAnkleAngles_X'].tolist())
+        r_ankle_angles = pd.DataFrame(filtered_df['RAnkleAngles_X'].tolist())
+        
+        mean_l_ankle = l_ankle_angles.mean(axis=0).values
+        std_l_ankle = l_ankle_angles.std(axis=0) / np.sqrt(l_ankle_angles.shape[0])
+        mean_r_ankle = r_ankle_angles.mean(axis=0).values
+        std_r_ankle = r_ankle_angles.std(axis=0) / np.sqrt(r_ankle_angles.shape[0])
+        
+        lankle = pd.DataFrame({
+            "%cycle": list(range(101)),
+            'mean': mean_l_ankle,
+            'std': std_l_ankle
+        })
+        
+        rankle = pd.DataFrame({
+            "%cycle": list(range(101)),
+            'mean': mean_r_ankle,
+            'std': std_r_ankle
+        })
+        
+        # Data pasien
+        patient_data = {
+            'l_pelvis': patient_kinematics.get('LPelvisAngles_X', []),
+            'r_pelvis': patient_kinematics.get('RPelvisAngles_X', []),
+            'l_knee': patient_kinematics.get('LKneeAngles_X', []),
+            'r_knee': patient_kinematics.get('RKneeAngles_X', []),
+            'l_hip': patient_kinematics.get('LHipAngles_X', []),
+            'r_hip': patient_kinematics.get('RHipAngles_X', []),
+            'l_ankle': patient_kinematics.get('LAnkleAngles_X', []),
+            'r_ankle': patient_kinematics.get('RAnkleAngles_X', [])
+        }
+        
+        return {
+            'lpelvis': lpelvis, 'rpelvis': rpelvis,
+            'lknee': lknee, 'rknee': rknee,
+            'lhip': lhip, 'rhip': rhip,
+            'lankle': lankle, 'rankle': rankle,
+            'patient_data': patient_data
+        }
+    
+    def _create_joint_figure_for_detail(self, data, title, color, patient_data=None):
+        """Membuat figure untuk visualisasi joint"""
+        fig = go.Figure()
+        
+        # Data normal (rata-rata)
+        fig.add_trace(go.Scatter(
+            x=data["%cycle"], 
+            y=data["mean"], 
+            mode='lines',
+            name=f'Rata-rata Subjek Normal',
+            line=dict(color=color),
+            hoverinfo='text',
+            text=[f"Rata-rata Normal: {cycle}%, {val:.2f}°" for cycle, val in zip(data["%cycle"], data["mean"])]
+        ))
+        
+        # Data pasien jika ada
+        if patient_data is not None and len(patient_data) > 0:
+            fig.add_trace(go.Scatter(
+                x=data["%cycle"], 
+                y=patient_data, 
+                mode='lines',
+                name='Data Pasien',
+                line=dict(color='black', width=3)
+            ))
+        
+        # Area standar error
+        fig.add_trace(go.Scatter(
+            x=data["%cycle"], 
+            y=data["mean"] + data["std"], 
+            mode='lines',
+            name='Upper Bound',
+            line=dict(color=color, width=0),
+            showlegend=False,
+            hoverinfo='skip'
+        ))
+        fig.add_trace(go.Scatter(
+            x=data["%cycle"], 
+            y=data["mean"] - data["std"], 
+            mode='lines',
+            name='Standard Error Area',
+            line=dict(color=color, width=0),
+            fill='tonexty',
+            fillcolor=f'rgba({255 if color=="orange" else 0}, {165 if color=="orange" else 255}, {0 if color=="orange" else 255}, 0.2)',
+            showlegend=True,
+            hoverinfo='text',
+            text=[f"Batas Atas: {cycle}%, {valup:.2f}°<br>Batas Bawah: {cycle}%, {vallow:.2f}° for cycle, vallow, valup in zip(data["%cycle"], data["mean"] - data["std"], data["mean"] + data["std"])]))
+        
+        fig.update_layout(
+            title=title,
+            xaxis_title="% Siklus Gait",
+            yaxis_title="Sudut (Derajat)",
+            template="plotly_white",
+            title_x=0.5,
+            hovermode="x unified",
+            height=400
+        )
+        return fig
+    
+    def _show_detail_visualization(self, kinematic_data, pasien_id, tanggal_pemeriksaan, pemeriksaan):
+        """Menampilkan visualisasi detail pemeriksaan"""
+        
+        # Buat visualisasi untuk setiap joint
+        fig1 = self._create_joint_figure_for_detail(kinematic_data['lpelvis'], "Left Pelvis", 'orange', 
+                                               kinematic_data['patient_data'].get('l_pelvis'))
+        fig2 = self._create_joint_figure_for_detail(kinematic_data['rpelvis'], "Right Pelvis", 'darkblue', 
+                                               kinematic_data['patient_data'].get('r_pelvis'))
+        fig3 = self._create_joint_figure_for_detail(kinematic_data['lknee'], "Left Knee", 'orange', 
+                                               kinematic_data['patient_data'].get('l_knee'))
+        fig4 = self._create_joint_figure_for_detail(kinematic_data['rknee'], "Right Knee", 'darkblue', 
+                                               kinematic_data['patient_data'].get('r_knee'))
+        fig5 = self._create_joint_figure_for_detail(kinematic_data['lhip'], "Left Hip", 'orange', 
+                                               kinematic_data['patient_data'].get('l_hip'))
+        fig6 = self._create_joint_figure_for_detail(kinematic_data['rhip'], "Right Hip", 'darkblue', 
+                                               kinematic_data['patient_data'].get('r_hip'))
+        fig7 = self._create_joint_figure_for_detail(kinematic_data['lankle'], "Left Ankle", 'orange', 
+                                               kinematic_data['patient_data'].get('l_ankle'))
+        fig8 = self._create_joint_figure_for_detail(kinematic_data['rankle'], "Right Ankle", 'darkblue', 
+                                               kinematic_data['patient_data'].get('r_ankle'))
+        
+        # Tampilkan dalam tabs
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["PELVIS", "KNEE", "HIP", "ANKLE", "HASIL AI"])
+        
+        with tab1:
+            st.subheader("PELVIS")
+            st.write('Pelvis (dalam bahasa Indonesia: panggul) adalah struktur tulang yang berbentuk cekungan di bawah perut, di antara tulang pinggul, dan di atas paha.')
+            
+            # Hitung mean differences
+            if kinematic_data['patient_data'].get('l_pelvis') and len(kinematic_data['patient_data']['l_pelvis']) > 0:
+                maelpelvis = np.mean(np.abs(np.array(kinematic_data['patient_data']['l_pelvis']) - kinematic_data['lpelvis']["mean"]))
+                maerpelvis = np.mean(np.abs(np.array(kinematic_data['patient_data']['r_pelvis']) - kinematic_data['rpelvis']["mean"]))
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.plotly_chart(fig1, use_container_width=True)
+                if kinematic_data['patient_data'].get('l_pelvis') and len(kinematic_data['patient_data']['l_pelvis']) > 0:
+                    st.write(f"**Perbedaan rata-rata sudut pelvis kiri (Pasien vs Normal): {maelpelvis:.2f}°**")
+            with col2:
+                st.plotly_chart(fig2, use_container_width=True)
+                if kinematic_data['patient_data'].get('r_pelvis') and len(kinematic_data['patient_data']['r_pelvis']) > 0:
+                    st.write(f"**Perbedaan rata-rata sudut pelvis kanan (Pasien vs Normal): {maerpelvis:.2f}°**")
+                
+        with tab2:
+            st.subheader("KNEE")
+            st.write('Knee (dalam bahasa Indonesia: lutut) adalah bagian tubuh manusia yang terletak di antara paha dan betis, berfungsi sebagai sendi yang menghubungkan tulang femur (paha) dengan tulang tibia (betis).')
+            
+            if kinematic_data['patient_data'].get('l_knee') and len(kinematic_data['patient_data']['l_knee']) > 0:
+                maelknee = np.mean(np.abs(np.array(kinematic_data['patient_data']['l_knee']) - kinematic_data['lknee']["mean"]))
+                maerknee = np.mean(np.abs(np.array(kinematic_data['patient_data']['r_knee']) - kinematic_data['rknee']["mean"]))
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.plotly_chart(fig3, use_container_width=True)
+                if kinematic_data['patient_data'].get('l_knee') and len(kinematic_data['patient_data']['l_knee']) > 0:
+                    st.write(f"**Perbedaan rata-rata sudut lutut kiri (Pasien vs Normal): {maelknee:.2f}°**")
+            with col2:
+                st.plotly_chart(fig4, use_container_width=True)
+                if kinematic_data['patient_data'].get('r_knee') and len(kinematic_data['patient_data']['r_knee']) > 0:
+                    st.write(f"**Perbedaan rata-rata sudut lutut kanan (Pasien vs Normal): {maerknee:.2f}°**")
+        
+        with tab3:
+            st.subheader("HIP")
+            st.write('Hip (dalam bahasa Indonesia: pinggul) adalah bagian tubuh yang terletak di bawah perut, menghubungkan tubuh bagian atas dengan kaki.')
+            
+            if kinematic_data['patient_data'].get('l_hip') and len(kinematic_data['patient_data']['l_hip']) > 0:
+                maelhip = np.mean(np.abs(np.array(kinematic_data['patient_data']['l_hip']) - kinematic_data['lhip']["mean"]))
+                maerhip = np.mean(np.abs(np.array(kinematic_data['patient_data']['r_hip']) - kinematic_data['rhip']["mean"]))
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.plotly_chart(fig5, use_container_width=True)
+                if kinematic_data['patient_data'].get('l_hip') and len(kinematic_data['patient_data']['l_hip']) > 0:
+                    st.write(f"**Perbedaan rata-rata sudut pinggul kiri (Pasien vs Normal): {maelhip:.2f}°**")
+            with col2:
+                st.plotly_chart(fig6, use_container_width=True)
+                if kinematic_data['patient_data'].get('r_hip') and len(kinematic_data['patient_data']['r_hip']) > 0:
+                    st.write(f"**Perbedaan rata-rata sudut pinggul kanan (Pasien vs Normal): {maerhip:.2f}°**")
+        
+        with tab4:
+            st.subheader("ANKLE")
+            st.write('Ankle (dalam bahasa Indonesia: pergelangan kaki) adalah sendi yang terletak di antara kaki bagian bawah (tulang tibia dan fibula) dan bagian atas kaki (tulang talus).')
+            
+            if kinematic_data['patient_data'].get('l_ankle') and len(kinematic_data['patient_data']['l_ankle']) > 0:
+                maelankle = np.mean(np.abs(np.array(kinematic_data['patient_data']['l_ankle']) - kinematic_data['lankle']["mean"]))
+                maerankle = np.mean(np.abs(np.array(kinematic_data['patient_data']['r_ankle']) - kinematic_data['rankle']["mean"]))
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.plotly_chart(fig7, use_container_width=True)
+                if kinematic_data['patient_data'].get('l_ankle') and len(kinematic_data['patient_data']['l_ankle']) > 0:
+                    st.write(f"**Perbedaan rata-rata sudut pergelangan kaki kiri (Pasien vs Normal): {maelankle:.2f}°**")
+            with col2:
+                st.plotly_chart(fig8, use_container_width=True)
+                if kinematic_data['patient_data'].get('r_ankle') and len(kinematic_data['patient_data']['r_ankle']) > 0:
+                    st.write(f"**Perbedaan rata-rata sudut pergelangan kaki kanan (Pasien vs Normal): {maerankle:.2f}°**")
+        
+        with tab5:
+            self._show_ai_summaries_for_detail(pasien_id, tanggal_pemeriksaan, pemeriksaan)
+    
+    def _get_ai_summaries_for_detail(self, pasien_id, tanggal_pemeriksaan):
+        """Mengambil ringkasan AI dari database"""
+        try:
+            client = get_mongo_client()
+            db = client['GaitDB']
+            collection = db['ai_summaries']
+            
+            summaries = list(collection.find(
+                {
+                    'pasien_id': pasien_id,
+                    'tanggal_pemeriksaan': tanggal_pemeriksaan
+                },
+                sort=[('timestamp', -1)]
+            ))
+            
+            return summaries
+            
+        except Exception as e:
+            st.error(f"Error mengambil ringkasan AI: {e}")
+            return []
+    
+    def _show_ai_summaries_for_detail(self, pasien_id, tanggal_pemeriksaan, pemeriksaan):
+        """Menampilkan ringkasan AI untuk detail pemeriksaan"""
+        
+        ai_summaries = self._get_ai_summaries_for_detail(pasien_id, tanggal_pemeriksaan)
+        
+        if not ai_summaries:
+            st.info("Belum ada hasil analisis AI untuk pemeriksaan ini.")
+            return
+        
+        # Tampilkan semua ringkasan AI
+        for i, summary in enumerate(ai_summaries, 1):
+            with st.container(border=True):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("##### Informasi Pemeriksa")
+                    st.markdown(f"**Dokter Pemeriksa:** {summary.get('dokter_nama', 'Tidak diketahui')}")
+                    
+                    tgl = summary.get('timestamp')
+                    if tgl:
+                        if isinstance(tgl, datetime):
+                            tgl_str = tgl.strftime("%d %B %Y")
+                        else:
+                            tgl_str = str(tgl)
+                        st.markdown(f"**Tanggal Analisis:** {tgl_str}")
+                    
+                    st.markdown(f"**Prompt Type:** {summary.get('prompt_type', '-')}")
+                    st.markdown(f"**Variant:** {summary.get('variant', '-')}")
+                    
+                with col2:
+                    st.markdown("##### Informasi Pasien")
+                    bb = pemeriksaan.get('berat_badan', '-')
+                    tb = pemeriksaan.get('tinggi_badan', '-')
+                    bmi = pemeriksaan.get('bmi', '-')
+                    bmi_class = pemeriksaan.get('bmi_classification', '-')
+                    
+                    if isinstance(bmi, (int, float)):
+                        bmi = f"{bmi:.2f}"
+                    
+                    st.markdown(f"""
+                    - **Berat Badan:** {bb} kg  
+                    - **Tinggi Badan:** {tb} cm  
+                    - **BMI:** {bmi}  
+                    - **Klasifikasi BMI:** {bmi_class}
+                    """)
+                
+                st.markdown("---")
+                
+                content = summary.get('content', 'Konten tidak tersedia')
+                st.markdown(content)
+                
+                # Tampilkan MAE Overall jika ada
+                mae_overall = summary.get('mae_overall')
+                if mae_overall:
+                    st.markdown("**Mean Absolute Error (MAE) - Perbedaan rata-rata sudut Pasien vs Normal:**")
+                    
+                    mae_data = []
+                    # Pelvis
+                    pelvis_avg = (mae_overall.get('pelvis_left', 0) + mae_overall.get('pelvis_right', 0)) / 2
+                    mae_data.append({
+                        'Sendi': 'Pelvis (Panggul)',
+                        'Kiri (°)': f"{mae_overall.get('pelvis_left', 0):.2f}",
+                        'Kanan (°)': f"{mae_overall.get('pelvis_right', 0):.2f}",
+                        'Rata-rata (°)': f"{pelvis_avg:.2f}"
+                    })
+                    
+                    # Knee
+                    knee_avg = (mae_overall.get('knee_left', 0) + mae_overall.get('knee_right', 0)) / 2
+                    mae_data.append({
+                        'Sendi': 'Knee (Lutut)',
+                        'Kiri (°)': f"{mae_overall.get('knee_left', 0):.2f}",
+                        'Kanan (°)': f"{mae_overall.get('knee_right', 0):.2f}",
+                        'Rata-rata (°)': f"{knee_avg:.2f}"
+                    })
+                    
+                    # Hip
+                    hip_avg = (mae_overall.get('hip_left', 0) + mae_overall.get('hip_right', 0)) / 2
+                    mae_data.append({
+                        'Sendi': 'Hip (Pinggul)',
+                        'Kiri (°)': f"{mae_overall.get('hip_left', 0):.2f}",
+                        'Kanan (°)': f"{mae_overall.get('hip_right', 0):.2f}",
+                        'Rata-rata (°)': f"{hip_avg:.2f}"
+                    })
+                    
+                    # Ankle
+                    ankle_avg = (mae_overall.get('ankle_left', 0) + mae_overall.get('ankle_right', 0)) / 2
+                    mae_data.append({
+                        'Sendi': 'Ankle (Pergelangan Kaki)',
+                        'Kiri (°)': f"{mae_overall.get('ankle_left', 0):.2f}",
+                        'Kanan (°)': f"{mae_overall.get('ankle_right', 0):.2f}",
+                        'Rata-rata (°)': f"{ankle_avg:.2f}"
+                    })
+                    
+                    df_mae = pd.DataFrame(mae_data)
+                    st.dataframe(df_mae, use_container_width=True, hide_index=True)
+                
+                # Pemisah antar ringkasan jika ada lebih dari satu
+                if i < len(ai_summaries):
+                    st.markdown("---")
+
     def show_dashboard(self):
         st.markdown("## Dashboard Gait Analysis")
 
