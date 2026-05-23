@@ -569,11 +569,10 @@ class DokterPage:
 
     # Menu Riwayat Pemeriksaan Pasien
     def show_examination_history(self):
-        """Menampilkan riwayat pemeriksaan dengan 2 tab"""
         st.subheader("Riwayat Pemeriksaan")
         
         # Buat 2 tab
-        tab1, tab2 = st.tabs(["📋 Riwayat Pemeriksaan", "🔍 Detail Riwayat Pasien"])
+        tab1, tab2 = st.tabs(["Riwayat Pemeriksaan", "Detail Riwayat Pasien"])
         
         with tab1:
             self._show_examination_list()
@@ -582,7 +581,6 @@ class DokterPage:
             self.show_patient_detail_history()
 
     def _show_examination_list(self):
-        """Menampilkan daftar riwayat pemeriksaan (tab pertama)"""
         try:
             client = get_mongo_client()
             db = client['GaitDB']
@@ -619,7 +617,7 @@ class DokterPage:
             
             df = pd.DataFrame(table_data)
             
-            st.markdown("### Filter Riwayat")
+            st.markdown("#### Filter Riwayat")
             col1, col2 = st.columns(2)
             
             with col1:
@@ -649,11 +647,9 @@ class DokterPage:
     
         except Exception as e:
             st.error(f"Error mengambil data riwayat: {e}")
-
-    # Tambahkan method ini di dalam class DokterPage
     
     def show_patient_detail_history(self):
-        st.subheader("Detail Riwayat Pemeriksaan Pasien")
+        st.markdown("#### Detail Riwayat Pemeriksaan Pasien")
         
         try:
             client = get_mongo_client()
@@ -662,10 +658,7 @@ class DokterPage:
             examinations_collection = db['patient_examinations']
             
             # Ambil semua data pasien
-            pasien_data = list(users_collection.find(
-                {'role': 'pasien'}, 
-                {'user_id': 1, 'nama_lengkap': 1, 'tanggal_lahir': 1, 'jenis_kelamin': 1}
-            ))
+            pasien_data = list(users_collection.find({'role': 'pasien'}, {'user_id': 1, 'nama_lengkap': 1, 'tanggal_lahir': 1, 'jenis_kelamin': 1}))
             
             if not pasien_data:
                 st.info("Belum ada data pasien terdaftar.")
@@ -673,47 +666,36 @@ class DokterPage:
             
             # Pilih pasien
             pasien_options = {f"{p['user_id']} - {p['nama_lengkap']}": p['user_id'] for p in pasien_data}
-            selected_label = st.selectbox(
-                "Pilih Pasien", 
-                options=list(pasien_options.keys()),
-                key="detail_pasien_select"
-            )
+            selected_label = st.selectbox("Pilih Pasien", options=list(pasien_options.keys()), key="detail_pasien_select")
             
             if selected_label:
                 pasien_id = pasien_options[selected_label]
                 
-                # Ambil data profil pasien
-                profil_pasien = next((p for p in pasien_data if p['user_id'] == pasien_id), None)
+                # # Ambil data profil pasien
+                # profil_pasien = next((p for p in pasien_data if p['user_id'] == pasien_id), None)
                 
-                if profil_pasien:
-                    with st.expander("📋 Profil Pasien", expanded=True):
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.markdown(f"**NIK:** {profil_pasien['user_id']}")
-                            st.markdown(f"**Nama Lengkap:** {profil_pasien['nama_lengkap']}")
-                        with col2:
-                            st.markdown(f"**Tanggal Lahir:** {profil_pasien.get('tanggal_lahir', '-')}")
-                            st.markdown(f"**Jenis Kelamin:** {profil_pasien.get('jenis_kelamin', '-')}")
-                        with col3:
-                            st.markdown(f"**Usia:** {self._calculate_age(profil_pasien.get('tanggal_lahir', ''))} tahun")
+                # if profil_pasien:
+                #     with st.expander("📋 Profil Pasien", expanded=True):
+                #         col1, col2, col3 = st.columns(3)
+                #         with col1:
+                #             st.markdown(f"**NIK:** {profil_pasien['user_id']}")
+                #             st.markdown(f"**Nama Lengkap:** {profil_pasien['nama_lengkap']}")
+                #         with col2:
+                #             st.markdown(f"**Tanggal Lahir:** {profil_pasien.get('tanggal_lahir', '-')}")
+                #             st.markdown(f"**Jenis Kelamin:** {profil_pasien.get('jenis_kelamin', '-')}")
+                #         with col3:
+                #             st.markdown(f"**Usia:** {self._calculate_age(profil_pasien.get('tanggal_lahir', ''))} tahun")
                 
                 dokter_id = st.session_state.get('dokter_user_id')
-                examinations = list(examinations_collection.find({
-                    'pasien_id': pasien_id,
-                    'dokter_id': dokter_id
-                }).sort('tanggal_pemeriksaan', -1))
+                examinations = list(examinations_collection.find({'pasien_id': pasien_id, 'dokter_id': dokter_id}).sort('tanggal_pemeriksaan', -1))
                 
                 if not examinations:
-                    st.warning(f"Belum ada riwayat pemeriksaan untuk pasien {selected_label}.")
+                    st.warning(f"Belum ada riwayat pemeriksaan untuk pasien ini.")
                     return
                 
                 # Pilih tanggal pemeriksaan
-                tanggal_options = {f"{e['tanggal_pemeriksaan']} - {e.get('dokter_nama', 'Dokter')}": e for e in examinations}
-                selected_tanggal_label = st.selectbox(
-                    "Pilih Tanggal Pemeriksaan", 
-                    options=list(tanggal_options.keys()),
-                    key="detail_tanggal_select"
-                )
+                tanggal_options = {f"{e['tanggal_pemeriksaan']}": e for e in examinations}
+                selected_tanggal_label = st.selectbox("Pilih Tanggal Pemeriksaan", options=list(tanggal_options.keys()), key="detail_tanggal_select")
                 
                 if selected_tanggal_label:
                     selected_exam = tanggal_options[selected_tanggal_label]
@@ -721,35 +703,18 @@ class DokterPage:
                     
         except Exception as e:
             st.error(f"Error mengambil data riwayat: {e}")
-    
-    def _calculate_age(self, birth_date_str):
-        """Menghitung usia dari tanggal lahir"""
-        if not birth_date_str or birth_date_str == '-':
-            return "-"
-        try:
-            from datetime import datetime
-            birth_date = datetime.strptime(birth_date_str, "%Y-%m-%d")
-            today = datetime.now()
-            age = today.year - birth_date.year
-            if today.month < birth_date.month or (today.month == birth_date.month and today.day < birth_date.day):
-                age -= 1
-            return age
-        except:
-            return "-"
-    
+
     def _show_patient_examination_detail(self, examination, pasien_id):
-        """Menampilkan detail lengkap pemeriksaan pasien"""
         
         tanggal = examination.get('tanggal_pemeriksaan')
-        st.markdown(f"### 📊 Hasil Pemeriksaan - {tanggal}")
+        st.markdown(f"#### Hasil Pemeriksaan - {tanggal}")
         
         # Informasi pemeriksaan
-        with st.expander("ℹ️ Informasi Pemeriksaan", expanded=False):
+        with st.expander("Informasi Pemeriksaan", expanded=True):
             col1, col2 = st.columns(2)
             with col1:
                 st.markdown(f"**Tanggal Pemeriksaan:** {tanggal}")
                 st.markdown(f"**Dokter Pemeriksa:** {examination.get('dokter_nama', '-')}")
-                st.markdown(f"**Upload Data:** {examination.get('upload_date', '-')}")
             with col2:
                 st.markdown(f"**Tinggi Badan:** {examination.get('tinggi_badan', '-')} cm")
                 st.markdown(f"**Berat Badan:** {examination.get('berat_badan', '-')} kg")
@@ -777,7 +742,6 @@ class DokterPage:
         self._show_detail_visualization(kinematic_data, pasien_id, tanggal, examination)
     
     def _get_normal_data_for_comparison(self):
-        """Mengambil data normal dari database untuk perbandingan"""
         try:
             client = get_mongo_client()
             db = client['GaitDB']
@@ -801,7 +765,6 @@ class DokterPage:
             return None
     
     def _process_kinematic_data_for_detail(self, filtered_df, patient_kinematics):
-        """Memproses data kinematik untuk detail pemeriksaan"""
         # Pelvis
         l_pelvis_angles = pd.DataFrame(filtered_df['LPelvisAngles_X'].tolist())
         r_pelvis_angles = pd.DataFrame(filtered_df['RPelvisAngles_X'].tolist())
@@ -907,7 +870,6 @@ class DokterPage:
         }
     
     def _create_joint_figure_for_detail(self, data, title, color, patient_data=None):
-        """Membuat figure untuk visualisasi joint"""
         fig = go.Figure()
         
         # Data normal (rata-rata)
@@ -974,7 +936,6 @@ class DokterPage:
         return fig
     
     def _show_detail_visualization(self, kinematic_data, pasien_id, tanggal_pemeriksaan, pemeriksaan):
-        """Menampilkan visualisasi detail pemeriksaan"""
         
         # Buat visualisasi untuk setiap joint
         fig1 = self._create_joint_figure_for_detail(kinematic_data['lpelvis'], "Left Pelvis", 'orange', 
@@ -1074,7 +1035,6 @@ class DokterPage:
             self._show_ai_summaries_for_detail(pasien_id, tanggal_pemeriksaan, pemeriksaan)
     
     def _get_ai_summaries_for_detail(self, pasien_id, tanggal_pemeriksaan):
-        """Mengambil ringkasan AI dari database"""
         try:
             client = get_mongo_client()
             db = client['GaitDB']
@@ -1088,14 +1048,13 @@ class DokterPage:
                 sort=[('timestamp', -1)]
             ))
             
-            return summaries
+            return [summaries] if summaries else []
             
         except Exception as e:
             st.error(f"Error mengambil ringkasan AI: {e}")
             return []
     
     def _show_ai_summaries_for_detail(self, pasien_id, tanggal_pemeriksaan, pemeriksaan):
-        """Menampilkan ringkasan AI untuk detail pemeriksaan"""
         
         ai_summaries = self._get_ai_summaries_for_detail(pasien_id, tanggal_pemeriksaan)
         
@@ -1106,42 +1065,6 @@ class DokterPage:
         # Tampilkan semua ringkasan AI
         for i, summary in enumerate(ai_summaries, 1):
             with st.container(border=True):
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.markdown("##### Informasi Pemeriksa")
-                    st.markdown(f"**Dokter Pemeriksa:** {summary.get('dokter_nama', 'Tidak diketahui')}")
-                    
-                    tgl = summary.get('timestamp')
-                    if tgl:
-                        if isinstance(tgl, datetime):
-                            tgl_str = tgl.strftime("%d %B %Y")
-                        else:
-                            tgl_str = str(tgl)
-                        st.markdown(f"**Tanggal Analisis:** {tgl_str}")
-                    
-                    st.markdown(f"**Prompt Type:** {summary.get('prompt_type', '-')}")
-                    st.markdown(f"**Variant:** {summary.get('variant', '-')}")
-                    
-                with col2:
-                    st.markdown("##### Informasi Pasien")
-                    bb = pemeriksaan.get('berat_badan', '-')
-                    tb = pemeriksaan.get('tinggi_badan', '-')
-                    bmi = pemeriksaan.get('bmi', '-')
-                    bmi_class = pemeriksaan.get('bmi_classification', '-')
-                    
-                    if isinstance(bmi, (int, float)):
-                        bmi = f"{bmi:.2f}"
-                    
-                    st.markdown(f"""
-                    - **Berat Badan:** {bb} kg  
-                    - **Tinggi Badan:** {tb} cm  
-                    - **BMI:** {bmi}  
-                    - **Klasifikasi BMI:** {bmi_class}
-                    """)
-                
-                st.markdown("---")
-                
                 content = summary.get('content', 'Konten tidak tersedia')
                 st.markdown(content)
                 
