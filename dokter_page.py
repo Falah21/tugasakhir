@@ -951,7 +951,16 @@ class DokterPage:
             fillcolor=f'rgba({255 if color=="orange" else 0}, {165 if color=="orange" else 255}, {0 if color=="orange" else 255}, 0.2)',
             showlegend=True,
             hoverinfo='text',
-            text=[f"Batas Atas: {cycle}%, {valup:.2f}°<br>Batas Bawah: {cycle}%, {vallow:.2f}° for cycle, vallow, valup in zip(data["%cycle"], data["mean"] - data["std"], data["mean"] + data["std"])]))
+            text=[
+                f"Batas Atas: {cycle}%, {valup:.2f}°<br>"
+                f"Batas Bawah: {cycle}%, {vallow:.2f}°"
+                for cycle, vallow, valup in zip(
+                    data["%cycle"],
+                    data["mean"] - data["std"],
+                    data["mean"] + data["std"]
+                )
+            ]
+        ))
         
         fig.update_layout(
             title=title,
