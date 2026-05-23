@@ -711,7 +711,7 @@ class DokterPage:
         
         # Informasi pemeriksaan
         with st.container(border=True):
-            st.markdown("**Informasi Pasien**)
+            st.markdown("##### Informasi Pasien)
             col1, col2 = st.columns(2)
             with col1:
                 st.markdown(f"**Tinggi Badan:** {examination.get('tinggi_badan', '-')} cm")
