@@ -522,7 +522,7 @@ class DokterPage:
                     'nama_pasien': nama_pasien,
                     'dokter_id': st.session_state.get('dokter_user_id', 'unknown'),
                     'dokter_nama': st.session_state.get('dokter_nama', 'unknown'),
-                    'tanggal_pemeriksaan': tanggal.strftime("%d-%m-%Y"),
+                    'tanggal_pemeriksaan': tanggal.strftime("%d %B %Y"),
                     'upload_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     'tinggi_badan': tinggi_badan,
                     'berat_badan': berat_badan,
@@ -541,15 +541,15 @@ class DokterPage:
     
                 st.session_state.current_pasien_id = pasien_user_id
                 st.session_state.current_nama_pasien = nama_pasien
-                st.session_state.current_tanggal_pemeriksaan = tanggal.strftime("%d-%m-%Y")
+                st.session_state.current_tanggal_pemeriksaan = tanggal.strftime("%d %B %Y")
                 
-                current_key = f"patient_{pasien_user_id}_{tanggal.strftime('%d-%m-%Y')}"
+                current_key = f"patient_{pasien_user_id}_{tanggal.strftime('%d %B %Y')}"
                 st.session_state.current_patient_key = current_key
 
-                self.reset_ai_summary_for_patient_and_date(pasien_user_id, tanggal.strftime("%d-%m-%Y"))
+                self.reset_ai_summary_for_patient_and_date(pasien_user_id, tanggal.strftime("%d %B %Y"))
                 
                 # Cek apakah sudah ada pemeriksaan
-                existing_exam = collection.find_one({'pasien_id': pasien_user_id, 'tanggal_pemeriksaan': tanggal.strftime("%d-%m-%Y")})
+                existing_exam = collection.find_one({'pasien_id': pasien_user_id, 'tanggal_pemeriksaan': tanggal.strftime("%d %B %Y")})
                 if existing_exam:
                     st.warning(f"{nama_pasien} sudah memiliki data pemeriksaan pada tanggal {tanggal.strftime('%d %B %Y')}. Data akan diupdate.")
                     collection.update_one(
