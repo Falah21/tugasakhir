@@ -710,14 +710,13 @@ class DokterPage:
         st.markdown(f"#### Hasil Pemeriksaan - {tanggal}")
         
         # Informasi pemeriksaan
-        with st.expander("Informasi Pemeriksaan", expanded=True):
+        with st.container(border=True):
+            st.markdown("**Informasi Pasien**)
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown(f"**Tanggal Pemeriksaan:** {tanggal}")
-                st.markdown(f"**Dokter Pemeriksa:** {examination.get('dokter_nama', '-')}")
-            with col2:
                 st.markdown(f"**Tinggi Badan:** {examination.get('tinggi_badan', '-')} cm")
                 st.markdown(f"**Berat Badan:** {examination.get('berat_badan', '-')} kg")
+            with col2:
                 st.markdown(f"**BMI:** {examination.get('bmi', '-'):.2f}" if examination.get('bmi') else "**BMI:** -")
                 st.markdown(f"**Klasifikasi BMI:** {examination.get('bmi_classification', '-')}")
         
