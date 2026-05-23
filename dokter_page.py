@@ -569,7 +569,20 @@ class DokterPage:
 
     # Menu Riwayat Pemeriksaan Pasien
     def show_examination_history(self):
-        st.subheader("Riwayat Pemeriksaan") 
+        """Menampilkan riwayat pemeriksaan dengan 2 tab"""
+        st.subheader("Riwayat Pemeriksaan")
+        
+        # Buat 2 tab
+        tab1, tab2 = st.tabs(["📋 Riwayat Pemeriksaan", "🔍 Detail Riwayat Pasien"])
+        
+        with tab1:
+            self._show_examination_list()
+        
+        with tab2:
+            self.show_patient_detail_history()
+
+    def _show_examination_list(self):
+        """Menampilkan daftar riwayat pemeriksaan (tab pertama)"""
         try:
             client = get_mongo_client()
             db = client['GaitDB']
@@ -581,15 +594,14 @@ class DokterPage:
             if not dokter_id:
                 st.error("Data dokter tidak ditemukan. Silakan login kembali.")
                 return
-
+    
             # Ambil data pemeriksaan hanya untuk dokter yang login
-            # Gunakan filter berdasarkan dokter_id
             examinations = list(collection.find({'dokter_id': dokter_id}).sort('upload_date', -1))
             
             if not examinations:
                 st.info(f"Belum ada riwayat pemeriksaan pasien untuk Dr. {dokter_nama}.")
                 return
-
+    
             # Siapkan data untuk tabel
             table_data = []
             for exam in examinations:
@@ -614,7 +626,7 @@ class DokterPage:
                 filter_nik = st.text_input("Filter berdasarkan NIK Pasien:")
             with col2:
                 filter_nama = st.text_input("Filter berdasarkan Nama Pasien:")
-
+    
             filtered_df = df.copy()
             if filter_nik:
                 filtered_df = filtered_df[filtered_df['NIK Pasien'].str.contains(filter_nik, case=False, na=False)]
@@ -624,12 +636,17 @@ class DokterPage:
             if not filtered_df.empty:
                 st.dataframe(filtered_df, use_container_width=True)
                 st.markdown(f"**Menampilkan {len(filtered_df)} dari {len(df)} data pemeriksaan**")
-
+    
                 csv = filtered_df.to_csv(index=False)
-                st.download_button(label="Download Riwayat sebagai CSV", data=csv, file_name=f"riwayat_pemeriksaan_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv")
+                st.download_button(
+                    label="Download Riwayat sebagai CSV", 
+                    data=csv, 
+                    file_name=f"riwayat_pemeriksaan_{datetime.now().strftime('%Y%m%d')}.csv", 
+                    mime="text/csv"
+                )
             else:
                 st.info("Tidak ada data yang sesuai dengan filter.")
-
+    
         except Exception as e:
             st.error(f"Error mengambil data riwayat: {e}")
 
