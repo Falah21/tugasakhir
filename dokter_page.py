@@ -2381,7 +2381,132 @@ class DokterPage:
         
         mae_phases_df = pd.DataFrame(mae_phases_data)
         st.dataframe(mae_phases_df, use_container_width=True, hide_index=True)
-       
+
+        st.markdown("### Tabel Hasil Kinematika")
+        st.markdown("*Perbandingan nilai sudut pasien dengan nilai rujukan (baseline) pada setiap fase gait*")
+
+        # Ambil data pasien dan data normal
+        if 'norm_kinematics_df' not in st.session_state or st.session_state.norm_kinematics_df is None:
+            st.warning("Data kinematika pasien tidak tersedia.")
+            return
+        
+        if 'filtered_normal_df' not in st.session_state or st.session_state.filtered_normal_df is None:
+            st.warning("Data normal (baseline) tidak tersedia. Silakan filter data normal terlebih dahulu.")
+            return
+        
+        patient_df = st.session_state.norm_kinematics_df
+        normal_df = st.session_state.filtered_normal_df
+        
+        # Hitung mean nilai normal
+        l_pelvis_normal = pd.DataFrame(normal_df['LPelvisAngles_X'].tolist()).mean(axis=0).values
+        r_pelvis_normal = pd.DataFrame(normal_df['RPelvisAngles_X'].tolist()).mean(axis=0).values
+        l_knee_normal = pd.DataFrame(normal_df['LKneeAngles_X'].tolist()).mean(axis=0).values
+        r_knee_normal = pd.DataFrame(normal_df['RKneeAngles_X'].tolist()).mean(axis=0).values
+        l_hip_normal = pd.DataFrame(normal_df['LHipAngles_X'].tolist()).mean(axis=0).values
+        r_hip_normal = pd.DataFrame(normal_df['RHipAngles_X'].tolist()).mean(axis=0).values
+        l_ankle_normal = pd.DataFrame(normal_df['LAnkleAngles_X'].tolist()).mean(axis=0).values
+        r_ankle_normal = pd.DataFrame(normal_df['RAnkleAngles_X'].tolist()).mean(axis=0).values
+        
+        # Fungsi untuk mendapatkan nilai rata-rata per fase
+        def get_phase_average(values, phase_indices_dict, phase_name):
+            indices = phase_indices_dict.get(phase_name, [])
+            if indices:
+                phase_values = [values[i] for i in indices if i < len(values)]
+                if phase_values:
+                    return np.mean(phase_values)
+            return 0.0
+        
+        # Dapatkan indeks fase
+        percentage_cycle = list(range(101))
+        phase_indices_dict = self.get_phase_indices(percentage_cycle)
+        
+        # Buat tabel untuk KIRI dan KANAN
+        sendi_list = ['Pelvis', 'Knee', 'Hip', 'Ankle']
+        
+        # Tabel KAKI KIRI
+        st.markdown("#### 👈 KAKI KIRI")
+        left_kinematics_data = []
+        
+        for sendi in sendi_list:
+            # Ambil nilai pasien dan normal sesuai sendi
+            if sendi == 'Pelvis':
+                patient_values = patient_df['LPelvisAngles_X'].values
+                normal_values = l_pelvis_normal
+            elif sendi == 'Knee':
+                patient_values = patient_df['LKneeAngles_X'].values
+                normal_values = l_knee_normal
+            elif sendi == 'Hip':
+                patient_values = patient_df['LHipAngles_X'].values
+                normal_values = l_hip_normal
+            else:  # Ankle
+                patient_values = patient_df['LAnkleAngles_X'].values
+                normal_values = l_ankle_normal
+            
+            # Hitung untuk setiap fase
+            for phase in phases_order:
+                phase_short = phase.split(' (')[0]  # Ambil nama fase tanpa persentase
+                patient_phase_avg = get_phase_average(patient_values, phase_indices_dict, phase)
+                normal_phase_avg = get_phase_average(normal_values, phase_indices_dict, phase)
+                deviasi = patient_phase_avg - normal_phase_avg
+                
+                left_kinematics_data.append({
+                    'Fase Gait': phase_short,
+                    'Sendi': sendi,
+                    'Rata-rata Nilai Pasien (°)': f"{patient_phase_avg:.2f}",
+                    'Nilai Rujukan (°)': f"{normal_phase_avg:.2f}",
+                    'Deviasi (°)': f"{deviasi:+.2f}"
+                })
+        
+        df_left_kinematics = pd.DataFrame(left_kinematics_data)
+        # Pivot tabel agar lebih mudah dibaca
+        df_left_pivot = df_left_kinematics.pivot(index='Fase Gait', columns='Sendi', values=['Rata-rata Nilai Pasien (°)', 'Nilai Rujukan (°)', 'Deviasi (°)'])
+        # Flatten column names
+        df_left_pivot.columns = [f'{col[1]} - {col[0]}' for col in df_left_pivot.columns]
+        df_left_pivot = df_left_pivot.reset_index()
+        
+        st.dataframe(df_left_pivot, use_container_width=True)
+        
+        # Tabel KAKI KANAN
+        st.markdown("#### 👉 KAKI KANAN")
+        right_kinematics_data = []
+        
+        for sendi in sendi_list:
+            # Ambil nilai pasien dan normal sesuai sendi
+            if sendi == 'Pelvis':
+                patient_values = patient_df['RPelvisAngles_X'].values
+                normal_values = r_pelvis_normal
+            elif sendi == 'Knee':
+                patient_values = patient_df['RKneeAngles_X'].values
+                normal_values = r_knee_normal
+            elif sendi == 'Hip':
+                patient_values = patient_df['RHipAngles_X'].values
+                normal_values = r_hip_normal
+            else:  # Ankle
+                patient_values = patient_df['RAnkleAngles_X'].values
+                normal_values = r_ankle_normal
+            
+            # Hitung untuk setiap fase
+            for phase in phases_order:
+                phase_short = phase.split(' (')[0]
+                patient_phase_avg = get_phase_average(patient_values, phase_indices_dict, phase)
+                normal_phase_avg = get_phase_average(normal_values, phase_indices_dict, phase)
+                deviasi = patient_phase_avg - normal_phase_avg
+                
+                right_kinematics_data.append({
+                    'Fase Gait': phase_short,
+                    'Sendi': sendi,
+                    'Rata-rata Nilai Pasien (°)': f"{patient_phase_avg:.2f}",
+                    'Nilai Rujukan (°)': f"{normal_phase_avg:.2f}",
+                    'Deviasi (°)': f"{deviasi:+.2f}"
+                })
+        
+        df_right_kinematics = pd.DataFrame(right_kinematics_data)
+        df_right_pivot = df_right_kinematics.pivot(index='Fase Gait', columns='Sendi', values=['Rata-rata Nilai Pasien (°)', 'Nilai Rujukan (°)', 'Deviasi (°)'])
+        df_right_pivot.columns = [f'{col[1]} - {col[0]}' for col in df_right_pivot.columns]
+        df_right_pivot = df_right_pivot.reset_index()
+        
+        st.dataframe(df_right_pivot, use_container_width=True)
+    
         # TOMBOL GENERATE AI
         patient_saved_key = f'saved_summary_content_{current_patient_key}'
         patient_ai_generated_key = f'ai_summaries_generated_{current_patient_key}'
