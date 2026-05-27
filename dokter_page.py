@@ -2175,12 +2175,12 @@ class DokterPage:
         # Definisikan fase gait dengan persentase yang benar
         gait_phases = {
             'Initial Contact (0-2%)': (0, 2),
-            'Loading Response (2-12%)': (2, 12),
-            'Mid Stance (12-31%)': (12, 31),
-            'Terminal Stance (31-50%)': (31, 50),
-            'Pre-Swing (50-62%)': (50, 62),
-            'Initial Swing (62-75%)': (62, 75),
-            'Mid Swing (75-87%)': (75, 87),
+            'Loading Response (2-10%)': (2, 10),
+            'Mid Stance (10-30%)': (10, 30),
+            'Terminal Stance (30-50%)': (30, 50),
+            'Pre-Swing (50-60%)': (50, 60),
+            'Initial Swing (60-73%)': (60, 73),
+            'Mid Swing (73-87%)': (73, 87),
             'Terminal Swing (87-100%)': (87, 100)
         }
         
