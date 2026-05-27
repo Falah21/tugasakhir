@@ -1181,7 +1181,7 @@ class DokterPage:
         right_table_data = []
         for phase in phases:
             start_pct, end_pct = phase_ranges[phase]
-            
+            first_row = True
             for joint_name, left_col, right_col, normal_left_key, normal_right_key in joints:
                 # Ambil data pasien untuk fase ini (nilai rata-rata dalam rentang fase)
                 patient_values = patient_df[right_col].values
@@ -1205,12 +1205,14 @@ class DokterPage:
                             mae_value = np.mean(np.abs(np.array(patient_phase) - np.array(normal_phase)))
                 
                 right_table_data.append({
-                    "Fase Gait": phase if phase == phases[0] or (len(right_table_data) > 0 and right_table_data[-1]["Fase Gait"] != phase) else "",
+                    "Fase Gait": phase if first_row else "",
                     "Sendi": joint_name,
                     "Rata-Rata Nilai Pasien": f"{patient_avg:.1f}°",
                     "Nilai Rujukan (Baseline)": f"{normal_avg:.1f}°",
                     "Deviasi (MAE)": f"{mae_value:.2f}°"
                 })
+                
+                first_row = False
         
         df_right = pd.DataFrame(right_table_data)
         st.dataframe(df_right, use_container_width=True, hide_index=True)
@@ -1223,7 +1225,7 @@ class DokterPage:
         left_table_data = []
         for phase in phases:
             start_pct, end_pct = phase_ranges[phase]
-            
+            first_row = True
             for joint_name, left_col, right_col, normal_left_key, normal_right_key in joints:
                 # Ambil data pasien untuk fase ini (nilai rata-rata dalam rentang fase)
                 patient_values = patient_df[left_col].values
@@ -1247,12 +1249,13 @@ class DokterPage:
                             mae_value = np.mean(np.abs(np.array(patient_phase) - np.array(normal_phase)))
                 
                 left_table_data.append({
-                    "Fase Gait": phase if phase == phases[0] or (len(left_table_data) > 0 and left_table_data[-1]["Fase Gait"] != phase) else "",
+                    "Fase Gait": phase if first_row else "",
                     "Sendi": joint_name,
                     "Rata-Rata Nilai Pasien": f"{patient_avg:.1f}°",
                     "Nilai Rujukan (Baseline)": f"{normal_avg:.1f}°",
                     "Deviasi (MAE)": f"{mae_value:.2f}°"
                 })
+                first_row = False
         
         df_left = pd.DataFrame(left_table_data)
         st.dataframe(df_left, use_container_width=True, hide_index=True)
