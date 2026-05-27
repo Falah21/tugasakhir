@@ -2167,6 +2167,102 @@ class DokterPage:
                 }
         return bounds
 
+    def create_kinematic_table(self, patient_kinematics, normal_data, phase_indices):
+        """
+        Membuat tabel hasil kinematika yang berisi perbandingan nilai pasien dengan nilai rujukan
+        untuk setiap fase gait dan sendi, dipisah untuk kaki kanan dan kiri
+        """
+        # Definisikan fase gait dengan persentase yang benar
+        gait_phases = {
+            'Initial Contact (0-2%)': (0, 2),
+            'Loading Response (2-12%)': (2, 12),
+            'Mid Stance (12-31%)': (12, 31),
+            'Terminal Stance (31-50%)': (31, 50),
+            'Pre-Swing (50-62%)': (50, 62),
+            'Initial Swing (62-75%)': (62, 75),
+            'Mid Swing (75-87%)': (75, 87),
+            'Terminal Swing (87-100%)': (87, 100)
+        }
+        
+        # Sendi yang akan dianalisis
+        joints = ['Pelvis', 'Hip', 'Knee', 'Ankle']
+        sides = ['Kiri', 'Kanan']
+        
+        # Siapkan data untuk tabel
+        table_data = []
+        
+        for side in sides:
+            for joint in joints:
+                # Tentukan nama kolom di patient_kinematics
+                if side == 'Kiri':
+                    patient_col = f'l_{joint.lower()}'
+                    normal_col = f'mean_l_{joint.lower()}'
+                else:
+                    patient_col = f'r_{joint.lower()}'
+                    normal_col = f'mean_r_{joint.lower()}'
+                
+                # Ambil data pasien
+                patient_values = patient_kinematics.get(patient_col, [])
+                
+                # Untuk setiap fase gait
+                for phase_name, (start, end) in gait_phases.items():
+                    # Ambil indeks untuk fase ini
+                    indices = [i for i in range(101) if start <= i <= end]
+                    
+                    if indices and len(patient_values) > max(indices):
+                        # Hitung rata-rata nilai pasien untuk fase ini
+                        patient_phase_values = [patient_values[i] for i in indices]
+                        patient_avg = np.mean(patient_phase_values)
+                        
+                        # Dapatkan nilai rujukan (normal)
+                        if normal_col in normal_data:
+                            normal_values = normal_data[normal_col]
+                            normal_phase_values = [normal_values[i] for i in indices]
+                            normal_avg = np.mean(normal_phase_values)
+                            
+                            # Hitung deviasi (MAE)
+                            mae = np.mean(np.abs(np.array(patient_phase_values) - np.array(normal_phase_values)))
+                            
+                            table_data.append({
+                                'Sisi': side,
+                                'Sendi': joint,
+                                'Fase Gait': phase_name,
+                                'Rata-Rata Nilai Pasien (°)': round(patient_avg, 2),
+                                'Nilai Rujukan (°)': round(normal_avg, 2),
+                                'Deviasi/MAE (°)': round(mae, 2)
+                            })
+        
+        return pd.DataFrame(table_data)
+
+    def calculate_normal_means(self, filtered_df):
+        """Menghitung nilai rata-rata normal untuk setiap sendi per siklus gait"""
+        normal_means = {}
+        
+        # Pelvis
+        l_pelvis_angles = pd.DataFrame(filtered_df['LPelvisAngles_X'].tolist())
+        r_pelvis_angles = pd.DataFrame(filtered_df['RPelvisAngles_X'].tolist())
+        normal_means['mean_l_pelvis'] = l_pelvis_angles.mean(axis=0).values
+        normal_means['mean_r_pelvis'] = r_pelvis_angles.mean(axis=0).values
+        
+        # Knee
+        l_knee_angles = pd.DataFrame(filtered_df['LKneeAngles_X'].tolist())
+        r_knee_angles = pd.DataFrame(filtered_df['RKneeAngles_X'].tolist())
+        normal_means['mean_l_knee'] = l_knee_angles.mean(axis=0).values
+        normal_means['mean_r_knee'] = r_knee_angles.mean(axis=0).values
+        
+        # Hip
+        l_hip_angles = pd.DataFrame(filtered_df['LHipAngles_X'].tolist())
+        r_hip_angles = pd.DataFrame(filtered_df['RHipAngles_X'].tolist())
+        normal_means['mean_l_hip'] = l_hip_angles.mean(axis=0).values
+        normal_means['mean_r_hip'] = r_hip_angles.mean(axis=0).values
+        
+        # Ankle
+        l_ankle_angles = pd.DataFrame(filtered_df['LAnkleAngles_X'].tolist())
+        r_ankle_angles = pd.DataFrame(filtered_df['RAnkleAngles_X'].tolist())
+        normal_means['mean_l_ankle'] = l_ankle_angles.mean(axis=0).values
+        normal_means['mean_r_ankle'] = r_ankle_angles.mean(axis=0).values
+        
+        return normal_means
     # Fungsi AI
     def show_ai_summary_tab_with_phases(self):
         required_mae = [
