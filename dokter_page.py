@@ -1736,12 +1736,14 @@ class DokterPage:
                 st.write(f"**MAE Keseluruhan Right Ankle: {maerankle:.2f}°**")
 
         with tab5:
-            # Tampilkan tabel MAE per fase yang sudah ada
+            # 1. Ringkasan MAE Keseluruhan
+            self.show_mae_overall_summary()
+            # 2. Detail MAE per Fase Gait
             self._show_mae_phases_table()
-            # Tampilkan tabel kinematika gait yang baru
+            # 3. Hasil Kinematika Gait
             self._show_gait_kinematics_table()
             # Tampilkan AI summaries
-            self.show_ai_summary_tab_with_phases()
+            self.show_ai_generation_section()
 
     def show_normal_charts_only(self, filtered_df):
         # Pelvis
