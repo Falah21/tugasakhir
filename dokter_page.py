@@ -2927,39 +2927,87 @@ class DokterPage:
             
             dropdown_options = [summary["label"] for summary in summaries]
 
-            def on_dropdown_change():
-                selected_label = st.session_state.best_summary_dropdown
-                selected_content = next((s["value"] for s in summaries if s["label"] == selected_label), "")
-                st.session_state[f'selected_summary_label_{current_patient_key}'] = selected_label
-                st.session_state[f'selected_summary_content_{current_patient_key}'] = selected_content
-
-                selected_label_key = f'selected_summary_label_{current_patient_key}'
-                current_index = 0
-                if selected_label_key in st.session_state and st.session_state[selected_label_key] in dropdown_options:
-                    current_index = dropdown_options.index(st.session_state[selected_label_key])
-
-                selected_label = st.selectbox(
-                    "Pilih variasi terbaik:",
-                    options=dropdown_options,
-                    index=current_index,
-                    label_visibility="collapsed",
-                    key="best_summary_dropdown",
-                    on_change=on_dropdown_change
+            selected_label_key = f'selected_summary_label_{current_patient_key}'
+            
+            current_index = 0
+            if (
+                selected_label_key in st.session_state
+                and st.session_state[selected_label_key] in dropdown_options
+            ):
+                current_index = dropdown_options.index(
+                    st.session_state[selected_label_key]
                 )
-                selected_content_key = f'selected_summary_content_{current_patient_key}'
-                if selected_content_key in st.session_state and st.session_state[selected_content_key]:
-                    st.markdown("**Konten yang dipilih:**")
-                    st.info(st.session_state[selected_content_key])
-
+            
+            
+            def on_dropdown_change():
+            
+                selected_label = st.session_state.best_summary_dropdown
+            
+                selected_content = next(
+                    (s["value"] for s in summaries if s["label"] == selected_label),
+                    ""
+                )
+            
+                st.session_state[
+                    f'selected_summary_label_{current_patient_key}'
+                ] = selected_label
+            
+                st.session_state[
+                    f'selected_summary_content_{current_patient_key}'
+                ] = selected_content
+            
+            
+            selected_label = st.selectbox(
+                "Pilih variasi terbaik:",
+                options=dropdown_options,
+                index=current_index,
+                label_visibility="collapsed",
+                key="best_summary_dropdown",
+                on_change=on_dropdown_change
+            )
+            
+            selected_content_key = f'selected_summary_content_{current_patient_key}'
+            
+            # Set default content pertama kali
+            if (
+                selected_content_key not in st.session_state
+                and summaries
+            ):
+                st.session_state[selected_content_key] = summaries[0]["value"]
+                st.session_state[selected_label_key] = summaries[0]["label"]
+            
+            if (
+                selected_content_key in st.session_state
+                and st.session_state[selected_content_key]
+            ):
+            
+                st.markdown("**Konten yang dipilih:**")
+            
+                st.info(st.session_state[selected_content_key])
+            
                 # Tombol simpan
-                if st.button("Simpan Hasil Terpilih", use_container_width=True, type="primary", key="save_selected_ai"):
-                    if selected_label_key in st.session_state and st.session_state[selected_label_key]:
+                if st.button(
+                    "Simpan Hasil Terpilih",
+                    use_container_width=True,
+                    type="primary",
+                    key="save_selected_ai"
+                ):
+            
+                    if (
+                        selected_label_key in st.session_state
+                        and st.session_state[selected_label_key]
+                    ):
+            
                         variant = st.session_state[selected_label_key]
+            
                         selected_content = st.session_state[selected_content_key]
-
+            
                         if selected_content:
+            
                             mae_data_for_save = []
+            
                             for phase in phases_order:
+            
                                 mae_data_for_save.append({
                                     'phase': phase,
                                     'pelvis_left': st.session_state.mae_pelvis_left_phases.get(phase, 0),
@@ -2971,7 +3019,7 @@ class DokterPage:
                                     'ankle_left': st.session_state.mae_ankle_left_phases.get(phase, 0),
                                     'ankle_right': st.session_state.mae_ankle_right_phases.get(phase, 0)
                                 })
-                                
+            
                             success = self.save_selected_summary_single_prompt(
                                 variant=variant,
                                 content=selected_content,
@@ -2988,15 +3036,25 @@ class DokterPage:
                                 mae_phases=mae_data_for_save,
                                 bounds_data=bounds_data
                             )
-
+            
                             if success:
-                                st.session_state[patient_saved_key] = selected_content
-                                st.success(f"Hasil terpilih ({variant}) berhasil disimpan!")
+            
+                                st.session_state[
+                                    patient_saved_key
+                                ] = selected_content
+            
+                                st.success(
+                                    f"Hasil terpilih ({variant}) berhasil disimpan!"
+                                )
+            
                                 st.rerun()
+            
                             else:
                                 st.error("Gagal menyimpan ke database")
+            
                         else:
                             st.error("Tidak dapat menemukan konten yang dipilih")
+            
                     else:
                         st.warning("Silakan pilih variasi terlebih dahulu")
 
