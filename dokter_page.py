@@ -672,7 +672,7 @@ class DokterPage:
                 st.info("Silakan pilih pasien terlebih dahulu untuk melihat riwayat pemeriksaan.")
                 return
                 
-                pasien_id = selected_label.split(" - ")[0].strip()
+            pasien_id = selected_label.split(" - ")[0].strip()
                 
                 # # Ambil data profil pasien
                 # profil_pasien = next((p for p in pasien_data if p['user_id'] == pasien_id), None)
@@ -689,20 +689,20 @@ class DokterPage:
                 #         with col3:
                 #             st.markdown(f"**Usia:** {self._calculate_age(profil_pasien.get('tanggal_lahir', ''))} tahun")
                 
-                dokter_id = st.session_state.get('dokter_user_id')
-                examinations = list(examinations_collection.find({'pasien_id': pasien_id, 'dokter_id': dokter_id}).sort('tanggal_pemeriksaan', -1))
+            dokter_id = st.session_state.get('dokter_user_id')
+            examinations = list(examinations_collection.find({'pasien_id': pasien_id, 'dokter_id': dokter_id}).sort('tanggal_pemeriksaan', -1))
                 
-                if not examinations:
-                    st.warning(f"Belum ada riwayat pemeriksaan untuk pasien ini.")
-                    return
+            if not examinations:
+                st.warning(f"Belum ada riwayat pemeriksaan untuk pasien ini.")
+                return
                 
-                # Pilih tanggal pemeriksaan
-                tanggal_options = {f"{e['tanggal_pemeriksaan']}": e for e in examinations}
-                selected_tanggal_label = st.selectbox("Pilih Tanggal Pemeriksaan", options=list(tanggal_options.keys()), key="detail_tanggal_select")
+            # Pilih tanggal pemeriksaan
+            tanggal_options = {f"{e['tanggal_pemeriksaan']}": e for e in examinations}
+            selected_tanggal_label = st.selectbox("Pilih Tanggal Pemeriksaan", options=list(tanggal_options.keys()), key="detail_tanggal_select")
                 
-                if selected_tanggal_label:
-                    selected_exam = tanggal_options[selected_tanggal_label]
-                    self._show_patient_examination_detail(selected_exam, pasien_id)
+            if selected_tanggal_label:
+                selected_exam = tanggal_options[selected_tanggal_label]
+                self._show_patient_examination_detail(selected_exam, pasien_id)
                     
         except Exception as e:
             st.error(f"Error mengambil data riwayat: {e}")
