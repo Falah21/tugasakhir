@@ -1039,7 +1039,7 @@ class DokterPage:
             # Tampilkan tabel kinematika gait yang baru
             self._show_gait_kinematics_table()
             # Tampilkan AI summaries
-            self._show_ai_summaries_for_detail(pasien_id, tanggal_pemeriksaan, pemeriksaan)
+            self._show_ai_summaries_for_detail(pasien_id, tanggal_pemeriksaan)
     
     def _show_mae_phases_table(self):
         """Menampilkan tabel MAE per fase gait yang sudah ada"""
@@ -1264,7 +1264,7 @@ class DokterPage:
         st.dataframe(df_left, use_container_width=True, hide_index=True)
         st.markdown("---")
     
-    def _get_ai_summaries_for_detail(self, pasien_id, tanggal_pemeriksaan, pemeriksaan):
+    def _get_ai_summaries_for_detail(self, pasien_id, tanggal_pemeriksaan):
         try:
             client = get_mongo_client()
             db = client['GaitDB']
@@ -1284,7 +1284,7 @@ class DokterPage:
             st.error(f"Error mengambil ringkasan AI: {e}")
             return []
     
-    def _show_ai_summaries_for_detail(self, pasien_id, tanggal_pemeriksaan, pemeriksaan):
+    def _show_ai_summaries_for_detail(self, pasien_id, tanggal_pemeriksaan):
         
         ai_summaries = self._get_ai_summaries_for_detail(pasien_id, tanggal_pemeriksaan)
         
