@@ -706,7 +706,7 @@ class DokterPage:
                     
         except Exception as e:
             st.error(f"Error mengambil data riwayat: {e}")
-
+    
     def _show_patient_examination_detail(self, examination, pasien_id):
         
         tanggal = examination.get('tanggal_pemeriksaan')
@@ -737,11 +737,135 @@ class DokterPage:
             st.error("Data normal belum tersedia. Silakan hubungi administrator.")
             return
         
-        # Proses data kinematik
+        # Buat DataFrame dari norm_kinematics pasien yang tersimpan
+        rows = []
+        for i in range(len(norm_kinematics.get("Percentage of Gait Cycle", []))):
+            row = {
+                "%cycle": norm_kinematics["Percentage of Gait Cycle"][i],
+                "LPelvisAngles_X": norm_kinematics["LPelvisAngles_X"][i],
+                "RPelvisAngles_X": norm_kinematics["RPelvisAngles_X"][i],
+                "LHipAngles_X": norm_kinematics["LHipAngles_X"][i],
+                "RHipAngles_X": norm_kinematics["RHipAngles_X"][i],
+                "LKneeAngles_X": norm_kinematics["LKneeAngles_X"][i],
+                "RKneeAngles_X": norm_kinematics["RKneeAngles_X"][i],
+                "LAnkleAngles_X": norm_kinematics["LAnkleAngles_X"][i],
+                "RAnkleAngles_X": norm_kinematics["RAnkleAngles_X"][i],
+            }
+            rows.append(row)
+        
+        patient_kinematics_df = pd.DataFrame(rows)
+        
+        # Simpan sementara ke session state untuk keperluan fungsi yang sudah ada
+        temp_norm_kinematics_df = st.session_state.get('norm_kinematics_df', None)
+        temp_filtered_normal_df = st.session_state.get('filtered_normal_df', None)
+        
+        st.session_state.norm_kinematics_df = patient_kinematics_df
+        st.session_state.filtered_normal_df = normal_data
+        
+        # Proses data kinematik dan hitung MAE
         kinematic_data = self._process_kinematic_data_for_detail(normal_data, norm_kinematics)
+        
+        # Hitung MAE dan simpan ke session state
+        percentage_cycle = list(range(101))
+        phase_indices = self.get_phase_indices(percentage_cycle)
+        
+        # Hitung MAE untuk setiap sendi
+        # Pelvis
+        l_pelvis_normal = pd.DataFrame(normal_data['LPelvisAngles_X'].tolist()).mean(axis=0).values
+        r_pelvis_normal = pd.DataFrame(normal_data['RPelvisAngles_X'].tolist()).mean(axis=0).values
+        
+        mae_pelvis_left_phases = self.calculate_mae_per_phase(
+            np.array(norm_kinematics.get('LPelvisAngles_X', [])), 
+            l_pelvis_normal, 
+            phase_indices
+        )
+        mae_pelvis_right_phases = self.calculate_mae_per_phase(
+            np.array(norm_kinematics.get('RPelvisAngles_X', [])), 
+            r_pelvis_normal, 
+            phase_indices
+        )
+        
+        # Knee
+        l_knee_normal = pd.DataFrame(normal_data['LKneeAngles_X'].tolist()).mean(axis=0).values
+        r_knee_normal = pd.DataFrame(normal_data['RKneeAngles_X'].tolist()).mean(axis=0).values
+        
+        mae_knee_left_phases = self.calculate_mae_per_phase(
+            np.array(norm_kinematics.get('LKneeAngles_X', [])), 
+            l_knee_normal, 
+            phase_indices
+        )
+        mae_knee_right_phases = self.calculate_mae_per_phase(
+            np.array(norm_kinematics.get('RKneeAngles_X', [])), 
+            r_knee_normal, 
+            phase_indices
+        )
+        
+        # Hip
+        l_hip_normal = pd.DataFrame(normal_data['LHipAngles_X'].tolist()).mean(axis=0).values
+        r_hip_normal = pd.DataFrame(normal_data['RHipAngles_X'].tolist()).mean(axis=0).values
+        
+        mae_hip_left_phases = self.calculate_mae_per_phase(
+            np.array(norm_kinematics.get('LHipAngles_X', [])), 
+            l_hip_normal, 
+            phase_indices
+        )
+        mae_hip_right_phases = self.calculate_mae_per_phase(
+            np.array(norm_kinematics.get('RHipAngles_X', [])), 
+            r_hip_normal, 
+            phase_indices
+        )
+        
+        # Ankle
+        l_ankle_normal = pd.DataFrame(normal_data['LAnkleAngles_X'].tolist()).mean(axis=0).values
+        r_ankle_normal = pd.DataFrame(normal_data['RAnkleAngles_X'].tolist()).mean(axis=0).values
+        
+        mae_ankle_left_phases = self.calculate_mae_per_phase(
+            np.array(norm_kinematics.get('LAnkleAngles_X', [])), 
+            l_ankle_normal, 
+            phase_indices
+        )
+        mae_ankle_right_phases = self.calculate_mae_per_phase(
+            np.array(norm_kinematics.get('RAnkleAngles_X', [])), 
+            r_ankle_normal, 
+            phase_indices
+        )
+        
+        # MAE Keseluruhan
+        st.session_state.mae_pelvis_left = np.mean(list(mae_pelvis_left_phases.values())) if mae_pelvis_left_phases else 0
+        st.session_state.mae_pelvis_right = np.mean(list(mae_pelvis_right_phases.values())) if mae_pelvis_right_phases else 0
+        st.session_state.mae_knee_left = np.mean(list(mae_knee_left_phases.values())) if mae_knee_left_phases else 0
+        st.session_state.mae_knee_right = np.mean(list(mae_knee_right_phases.values())) if mae_knee_right_phases else 0
+        st.session_state.mae_hip_left = np.mean(list(mae_hip_left_phases.values())) if mae_hip_left_phases else 0
+        st.session_state.mae_hip_right = np.mean(list(mae_hip_right_phases.values())) if mae_hip_right_phases else 0
+        st.session_state.mae_ankle_left = np.mean(list(mae_ankle_left_phases.values())) if mae_ankle_left_phases else 0
+        st.session_state.mae_ankle_right = np.mean(list(mae_ankle_right_phases.values())) if mae_ankle_right_phases else 0
+        
+        # MAE per fase
+        st.session_state.mae_pelvis_left_phases = mae_pelvis_left_phases
+        st.session_state.mae_pelvis_right_phases = mae_pelvis_right_phases
+        st.session_state.mae_knee_left_phases = mae_knee_left_phases
+        st.session_state.mae_knee_right_phases = mae_knee_right_phases
+        st.session_state.mae_hip_left_phases = mae_hip_left_phases
+        st.session_state.mae_hip_right_phases = mae_hip_right_phases
+        st.session_state.mae_ankle_left_phases = mae_ankle_left_phases
+        st.session_state.mae_ankle_right_phases = mae_ankle_right_phases
+        st.session_state.phase_indices = phase_indices
         
         # Tampilkan visualisasi
         self._show_detail_visualization(kinematic_data, pasien_id, tanggal, examination)
+        
+        # Kembalikan session state seperti semula
+        if temp_norm_kinematics_df is not None:
+            st.session_state.norm_kinematics_df = temp_norm_kinematics_df
+        else:
+            if 'norm_kinematics_df' in st.session_state:
+                del st.session_state.norm_kinematics_df
+        
+        if temp_filtered_normal_df is not None:
+            st.session_state.filtered_normal_df = temp_filtered_normal_df
+        else:
+            if 'filtered_normal_df' in st.session_state:
+                del st.session_state.filtered_normal_df
     
     def _get_normal_data_for_comparison(self):
         try:
