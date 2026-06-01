@@ -665,11 +665,14 @@ class DokterPage:
                 return
             
             # Pilih pasien
-            pasien_options = {f"{p['user_id']} - {p['nama_lengkap']}": p['user_id'] for p in pasien_data}
-            selected_label = st.selectbox("Pilih Pasien", options=list(pasien_options.keys()), key="detail_pasien_select")
+            pasien_options = ["Silakan pilih pasien"] + [f"{p['user_id']} - {p['nama_lengkap']}" for p in pasien_data]
+            selected_label = st.selectbox("Pilih Pasien", options=pasien_options, key="detail_pasien_select", index=0)
             
-            if selected_label:
-                pasien_id = pasien_options[selected_label]
+            if selected_label == "Silakan pilih pasien" or not selected_label:
+                st.info("Silakan pilih pasien terlebih dahulu untuk melihat riwayat pemeriksaan.")
+                return
+                
+                pasien_id = selected_label.split(" - ")[0].strip()
                 
                 # # Ambil data profil pasien
                 # profil_pasien = next((p for p in pasien_data if p['user_id'] == pasien_id), None)
