@@ -2918,7 +2918,11 @@ class DokterPage:
                 return
 
             st.markdown("### Hasil Generate AI")
-            for summary in summaries:
+            # for summary in summaries:
+            #     st.markdown(summary['value'])
+            #     st.markdown("---")
+            for idx, summary in enumerate(summaries, 1):
+                st.markdown(f"#### Opsi {idx}")
                 st.markdown(summary['value'])
                 st.markdown("---")
 
