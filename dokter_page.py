@@ -3060,7 +3060,7 @@ class DokterPage:
                 2. Tabel Ringkasan Deviasi
                 | Sendi | Sisi | Fase Paling Bermasalah | Tingkat Deviasi | Hasil |
                 |-------|------|------------------------|-----------------|-------|
-                Isi maksimal 5–7 baris.
+                Isi maksimal 5 baris.
                 
                 3. Interpretasi Klinis
                 Buat dalam bentuk bullet point per sendi.
