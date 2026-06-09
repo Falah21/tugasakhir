@@ -2875,8 +2875,8 @@ class DokterPage:
                         del st.session_state[patient_saved_key]
                     if patient_ai_generated_key in st.session_state:
                         del st.session_state[patient_ai_generated_key]
-                    if f'selected_summary_content_{current_patient_key}' in st.session_state:
-                        del st.session_state[f'selected_summary_content_{current_patient_key}']
+                    if f'ai_summary_content_{current_patient_key}' in st.session_state:
+                        del st.session_state[f'ai_summary_content_{current_patient_key}']
                     st.rerun()
             return
         
@@ -3006,9 +3006,8 @@ class DokterPage:
                 
                 try:
                     with st.spinner("Mohon tunggu... Sistem sedang membuat Ringkasan AI"):
-                        for i in range(3):
-                            response = gemini_model.generate_content(final_prompt)
-                            summary_content = response.text
+                        response = gemini_model.generate_content(final_prompt)
+                        summary_content = response.text
                             
                 except Exception as e:
                     st.error(f"Error generating AI summaries: {e}")
@@ -3017,11 +3016,6 @@ class DokterPage:
                 # Simpan ke session state
                 st.session_state[f'ai_summary_content_{current_patient_key}'] = summary_content
                 st.session_state[patient_ai_generated_key] = True
-                
-                # Inisialisasi selected summary
-                if f'selected_summary_label_{current_patient_key}' not in st.session_state and summaries:
-                    st.session_state[f'selected_summary_label_{current_patient_key}'] = summaries[0]['label']
-                    st.session_state[f'selected_summary_content_{current_patient_key}'] = summaries[0]['value']
                 st.rerun()
         
         # Jika sudah digenerate, tampilkan hasil
@@ -3047,6 +3041,7 @@ class DokterPage:
             if st.button("Simpan Hasil Ringkasan", use_container_width=True, type="primary", key="save_ai_summary"):
               if summary_content:
                 mae_data_for_save = []
+                  
                 for phase in phases_order:
                   mae_data_for_save.append({
                     'phase': phase,
@@ -3059,6 +3054,7 @@ class DokterPage:
                     'ankle_left': st.session_state.mae_ankle_left_phases.get(phase, 0),
                     'ankle_right': st.session_state.mae_ankle_right_phases.get(phase, 0)
                   })
+                    
                 success = self.save_single_summary(
                   content=summary_content,
                   mae_overall={
@@ -3074,6 +3070,7 @@ class DokterPage:
                   mae_phases=mae_data_for_save,
                   bounds_data=bounds_data
                 )
+                  
                 if success:
                   st.session_state[patient_saved_key] = summary_content
                   st.success("Ringkasan AI berhasil disimpan!")
@@ -3082,86 +3079,6 @@ class DokterPage:
                   st.error("Gagal menyimpan ke database")
             else:
               st.error("Tidak dapat menemukan konten yang dipilih")
-
-    # def parse_ai_response_dropdown(self, response_text):
-    #     summaries = []
-    #     # Pattern untuk mencari ketiga variasi
-    #     for i in range(1, 4):
-    #         variasi_text = ""
-            
-    #         # Coba cari dengan pattern "=== VARIASI i ==="
-    #         pattern = f"=== VARIASI {i} ==="
-    #         if pattern in response_text:
-    #             start_idx = response_text.find(pattern) + len(pattern)
-                
-    #             # Cari akhir variasi (pattern berikutnya atau akhir teks)
-    #             end_idx = len(response_text)
-    #             for j in range(i+1, 4):
-    #                 next_pattern = f"=== VARIASI {j} ==="
-    #                 if next_pattern in response_text[start_idx:]:
-    #                     pattern_end_idx = response_text.find(next_pattern, start_idx)
-    #                     if pattern_end_idx < end_idx:
-    #                         end_idx = pattern_end_idx
-    #                         break
-                
-    #             variasi_text = response_text[start_idx:end_idx].strip()
-            
-    #         # Fallback: coba cari dengan "VARIASI i:" tanpa tanda ===
-    #         if not variasi_text:
-    #             alt_pattern = f"VARIASI {i}:"
-    #             if alt_pattern in response_text:
-    #                 start_idx = response_text.find(alt_pattern) + len(alt_pattern)
-    #                 variasi_text = response_text[start_idx:].strip()
-    #                 # Potong jika ada variasi berikutnya
-    #                 for j in range(i+1, 4):
-    #                     next_alt = f"VARIASI {j}:"
-    #                     if next_alt in variasi_text:
-    #                         variasi_text = variasi_text.split(next_alt)[0].strip()
-    #                         break
-            
-    #         # Fallback 2: coba split dengan angka dan titik
-    #         if not variasi_text:
-    #             parts = response_text.split(f"{i}.")
-    #             if len(parts) > 1:
-    #                 variasi_text = parts[1].strip()
-    #                 # Potong jika ada angka berikutnya
-    #                 for j in range(i+1, 4):
-    #                     if f"{j}." in variasi_text:
-    #                         variasi_text = variasi_text.split(f"{j}.")[0].strip()
-    #                         break
-            
-    #         if variasi_text:
-    #             summaries.append({
-    #                 "label": f"Variasi {i}",
-    #                 "value": variasi_text
-    #             })
-        
-    #     # Jika tidak ditemukan, buat default
-    #     if not summaries:
-    #         for i in range(1, 4):
-    #             summaries.append({
-    #                 "label": f"Variasi {i}",
-    #                 "value": f"Ringkasan Variasi {i} tidak tersedia. Silakan generate ulang."
-    #             })
-        
-    #     return summaries
-    
-    # Membuat default summary jika token habis atau AI gagal
-    def create_default_summaries(self):
-        return [
-            {
-                "label": f"Variasi 1",
-                "value": "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini."
-            },
-            {
-                "label": f"Variasi 2", 
-                "value": "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini."
-            },
-            {
-                "label": f"Variasi 3",
-                "value": "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini."
-            }
-        ]
 
     # Simpan ringkasan yang dipilih ke database dengan data MAE per fase
     def save_single_summary(self, content, mae_overall, mae_phases, bounds_data):
@@ -3207,8 +3124,6 @@ class DokterPage:
             'ai_summaries_generated',
             'summaries_a',
             'summaries_b',
-            'selected_summary_label',
-            'selected_summary_content',
             'saved_summary_content'
         ]
         
