@@ -423,9 +423,14 @@ class DokterPage:
                     except Exception as e:
                         st.error(f"Error dalam memproses file: {e}")
 
-    # Menu Input Pemeriksaan Pasien                
+    # Menu Input Pemeriksaan Pasien
     def input_data_gait_pasien(self):
         st.subheader("Input Pemeriksaan Pasien")
+        
+        # Inisialisasi timer di session state jika belum ada
+        if 'upload_times' not in st.session_state:
+            st.session_state.upload_times = []
+        
         with st.form(key="form_pemeriksaan_pasien"):
             try:
                 client = get_mongo_client()
@@ -462,6 +467,9 @@ class DokterPage:
         
         # Proses setelah submit
         if submit_button:
+            # MULAI TIMER UPLOAD
+            start_time = time.time()
+            
             if selected_pasien == "Pilih Data Pasien yang akan diperiksa":
                 st.warning("Silakan pilih pasien terlebih dahulu sebelum mengupload file.")
                 return
@@ -491,6 +499,11 @@ class DokterPage:
             parts = selected_pasien.split(" - ")
             pasien_user_id = parts[0].strip()
             nama_pasien = parts[1].strip()
+            
+            # Catat ukuran file
+            file_size_bytes = len(uploaded_file.getvalue())
+            file_size_kb = file_size_bytes / 1024
+            file_size_mb = file_size_kb / 1024
             
             try:              
                 # Proses file dengan GaitAnalysisData
@@ -530,6 +543,7 @@ class DokterPage:
                     'bmi_classification': bmi_class,
                     'file_info': {
                         'file_name': uploaded_file.name,
+                        'file_size_mb': round(file_size_mb, 2),
                         'upload_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")},
                     'gait_data': processed_data,
                     'norm_kinematics': rows
@@ -550,22 +564,44 @@ class DokterPage:
                 
                 # Cek apakah sudah ada pemeriksaan
                 existing_exam = collection.find_one({'pasien_id': pasien_user_id, 'tanggal_pemeriksaan': tanggal.strftime("%Y-%m-%d")})
+                
+                # AKHIRI TIMER UPLOAD
+                end_time = time.time()
+                upload_time = end_time - start_time
+                
+                # Hitung kecepatan upload (Mbps)
+                file_size_bits = file_size_bytes * 8
+                upload_speed_mbps = (file_size_bits / upload_time) / 1_000_000 if upload_time > 0 else 0
+                
+                # Simpan ke session state
+                st.session_state.upload_times.append({
+                    'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'pasien': nama_pasien,
+                    'file_size_mb': round(file_size_mb, 2),
+                    'execution_time': round(upload_time, 3),
+                    'upload_speed_mbps': round(upload_speed_mbps, 2)
+                })
+                
                 if existing_exam:
-                    st.warning(f"{nama_pasien} sudah memiliki data pemeriksaan pada tanggal {tanggal.strftime('%d %B %Y')}. Data akan diupdate.")
                     collection.update_one(
                         {'_id': existing_exam['_id']},
                         {'$set': examination_data}
                     )
-                    st.success(f"Data gait pasien dengan NIK {pasien_user_id} berhasil diupdate!")
+                    st.success(f"✅ Data gait pasien dengan NIK {pasien_user_id} berhasil diupdate!")
                 else:
                     collection.insert_one(examination_data)
-                    st.success(f"Data pasien dengan NIK {pasien_user_id} berhasil disimpan!")
-            
-                # Reset ringkasan AI untuk pasien baru
-                # self.reset_ai_summary_session_state_except_current()
-                # st.session_state.current_patient_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y%m%d_%H%M%S')}" 
+                    st.success(f"✅ Data pasien dengan NIK {pasien_user_id} berhasil disimpan!")
+                
+                # Tampilkan informasi waktu
+                st.info(f"⏱️ **Waktu Upload & Proses Data:** {upload_time:.2f} detik | "
+                       f"📁 Ukuran File: {file_size_mb:.2f} MB | "
+                       f"📡 Kecepatan Upload: {upload_speed_mbps:.2f} Mbps")
+                
+                # Tampilkan statistik upload
+                self._show_upload_statistics()
+                
             except Exception as e:
-                st.error(f"Error dalam memproses file: {e}")     
+                st.error(f"Error dalam memproses file: {e}")
 
     # Menu Riwayat Pemeriksaan Pasien
     def show_examination_history(self):
@@ -1490,8 +1526,15 @@ class DokterPage:
             st.warning("ℹ️ Tidak ada data pasien yang diupload. Silakan upload data pasien di menu 'Input Pemeriksan Pasien' untuk melihat analisis perbandingan.")
             self.show_normal_dashboard()
 
-    # Proses dashboard dengan data pasien
-    def process_dashboard_with_patient(self):       
+    # Proses dashboard dengan data pasien (dengan timer render)
+    def process_dashboard_with_patient(self):
+        # MULAI TIMER RENDER
+        render_start_time = time.time()
+        
+        # Inisialisasi render_times di session state
+        if 'render_times' not in st.session_state:
+            st.session_state.render_times = []
+        
         px.defaults.template = 'plotly_dark'
         px.defaults.color_continuous_scale = 'reds'
 
@@ -1499,7 +1542,7 @@ class DokterPage:
         db = client['GaitDB']
         collection = db['gait_data']
 
-        cursor = collection.find().limit(100)  # Batasi data
+        cursor = collection.find().limit(100)
         data = list(cursor)
         
         if len(data) == 0:
@@ -1549,7 +1592,30 @@ class DokterPage:
         st.session_state.filtered_normal_df = filtered_df
 
         norm_kinematics_df = st.session_state.norm_kinematics_df
+        
+        # Proses visualisasi
         self.create_visualizations(filtered_df, norm_kinematics_df)
+        
+        # AKHIRI TIMER RENDER
+        render_end_time = time.time()
+        render_time = render_end_time - render_start_time
+        
+        # Hitung jumlah data points yang diproses
+        data_points = len(filtered_df) * 101 * 8  # 8 joint, 101 titik per joint
+        
+        # Simpan ke session state
+        st.session_state.render_times.append({
+            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'total_records': len(filtered_df),
+            'data_points': data_points,
+            'execution_time': round(render_time, 3)
+        })
+        
+        st.info(f"⏱️ **Waktu Render Visualisasi Dashboard:** {render_time:.2f} detik | "
+               f"📊 Data Points: {data_points:,}")
+        
+        # Tampilkan statistik render
+        self._show_render_statistics()
 
     # dashboard baseline data normal (tanpa pemeriksaan pasien)
     def show_normal_dashboard(self):
@@ -2809,7 +2875,7 @@ class DokterPage:
         df_left = pd.DataFrame(left_table_data)
         st.dataframe(df_left, use_container_width=True, hide_index=True)
 
-    # Fungsi AI
+    # Generate AI Summary (dengan timer)
     def show_ai_generation_section(self):
         # Validasi data yang dibutuhkan untuk AI
         required_keys = [
@@ -2833,6 +2899,10 @@ class DokterPage:
             st.warning("Belum ada data pasien. Silakan upload data pasien terlebih dahulu.")
             return
     
+        # Inisialisasi ai_generation_times
+        if 'ai_generation_times' not in st.session_state:
+            st.session_state.ai_generation_times = []
+        
         current_patient_key = st.session_state.current_patient_key
         
         # Ambil data upper bound dan lower bound
@@ -2862,11 +2932,17 @@ class DokterPage:
             'Mid-Swing (73-87%)',
             'Terminal Swing (87-100%)'
         ]
+        
         # Jika sudah ada hasil yang disimpan
         if patient_saved_key in st.session_state and st.session_state[patient_saved_key]:
             st.markdown("#### Hasil Ringkasan AI")
             st.info(st.session_state[patient_saved_key])
             st.markdown("---")
+            
+            # Tampilkan statistik AI terakhir
+            if st.session_state.ai_generation_times:
+                last_ai = st.session_state.ai_generation_times[-1]
+                st.caption(f"⏱️ Generate terakhir: {last_ai['execution_time']:.2f} detik")
             
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
@@ -2897,6 +2973,9 @@ class DokterPage:
                 if gemini_model is None:
                     st.error("Fitur AI tidak tersedia karena API key Gemini tidak dikonfigurasi.")
                     return
+                
+                # MULAI TIMER AI
+                ai_start_time = time.time()
                 
                 # Hitung overall MAE
                 all_mae_values = [
@@ -3002,8 +3081,6 @@ class DokterPage:
                 - Fokus pada kemungkinan gangguan biomekanik atau kompensasi gerak.
                 """
                 
-                # Generate summaries
-                
                 try:
                     with st.spinner("Mohon tunggu... Sistem sedang membuat Ringkasan AI"):
                         response = gemini_model.generate_content(final_prompt)
@@ -3013,9 +3090,27 @@ class DokterPage:
                     st.error(f"Error generating AI summaries: {e}")
                     summary_content = "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini atau coba lagi nanti."
                 
+                # AKHIRI TIMER AI
+                ai_end_time = time.time()
+                ai_generation_time = ai_end_time - ai_start_time
+                
                 # Simpan ke session state
+                st.session_state.ai_generation_times.append({
+                    'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'execution_time': round(ai_generation_time, 3),
+                    'prompt_length': len(final_prompt),
+                    'response_length': len(summary_content)
+                })
+                
                 st.session_state[f'ai_summary_content_{current_patient_key}'] = summary_content
                 st.session_state[patient_ai_generated_key] = True
+                
+                # Tampilkan waktu generate
+                st.success(f"✅ Ringkasan AI berhasil digenerate! ⏱️ Waktu: {ai_generation_time:.2f} detik")
+                
+                # Tampilkan statistik AI
+                self._show_ai_generation_statistics()
+                
                 st.rerun()
         
         # Jika sudah digenerate, tampilkan hasil
@@ -3033,6 +3128,11 @@ class DokterPage:
             st.markdown("### Hasil Ringkasan AI")
             st.markdown(summary_content)
             st.markdown("---")
+
+            # Tampilkan waktu generate terakhir
+            if st.session_state.ai_generation_times:
+                last_ai = st.session_state.ai_generation_times[-1]
+                st.caption(f"⏱️ Waktu generate terakhir: {last_ai['execution_time']:.2f} detik")
 
             # Dropdown untuk memilih dan menyimpan hasil terbaik
             st.markdown("### Simpan Hasil")
@@ -3076,6 +3176,86 @@ class DokterPage:
                     st.rerun()
                 else:
                     st.error("Gagal menyimpan ke database")
+
+    # ==================== FUNGSI STATISTIK ====================
+    def _show_upload_statistics(self):
+        """Menampilkan statistik waktu upload"""
+        if 'upload_times' in st.session_state and st.session_state.upload_times:
+            with st.expander("📊 Statistik Riwayat Upload", expanded=False):
+                df_uploads = pd.DataFrame(st.session_state.upload_times)
+                
+                if not df_uploads.empty:
+                    # Hitung statistik
+                    avg_time = df_uploads['execution_time'].mean()
+                    min_time = df_uploads['execution_time'].min()
+                    max_time = df_uploads['execution_time'].max()
+                    total_uploads = len(df_uploads)
+                    avg_speed = df_uploads['upload_speed_mbps'].mean()
+                    
+                    col1, col2, col3, col4, col5 = st.columns(5)
+                    with col1:
+                        st.metric("Total Upload", total_uploads)
+                    with col2:
+                        st.metric("Rata-rata Waktu", f"{avg_time:.2f} dtk")
+                    with col3:
+                        st.metric("Upload Tercepat", f"{min_time:.2f} dtk")
+                    with col4:
+                        st.metric("Upload Terlama", f"{max_time:.2f} dtk")
+                    with col5:
+                        st.metric("Rata-rata Kecepatan", f"{avg_speed:.2f} Mbps")
+                    
+                    st.dataframe(df_uploads[['timestamp', 'pasien', 'file_size_mb', 'execution_time', 'upload_speed_mbps']], 
+                                use_container_width=True)
+
+    def _show_render_statistics(self):
+        """Menampilkan statistik waktu render visualisasi"""
+        if 'render_times' in st.session_state and st.session_state.render_times:
+            with st.expander("📊 Statistik Waktu Render Dashboard", expanded=False):
+                df_render = pd.DataFrame(st.session_state.render_times)
+                
+                if not df_render.empty:
+                    avg_time = df_render['execution_time'].mean()
+                    min_time = df_render['execution_time'].min()
+                    max_time = df_render['execution_time'].max()
+                    total_renders = len(df_render)
+                    
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Total Render", total_renders)
+                    with col2:
+                        st.metric("Rata-rata Waktu", f"{avg_time:.2f} dtk")
+                    with col3:
+                        st.metric("Tercepat", f"{min_time:.2f} dtk")
+                    with col4:
+                        st.metric("Terlama", f"{max_time:.2f} dtk")
+                    
+                    st.dataframe(df_render[['timestamp', 'total_records', 'execution_time']], 
+                                use_container_width=True)
+
+    def _show_ai_generation_statistics(self):
+        """Menampilkan statistik waktu generate AI"""
+        if 'ai_generation_times' in st.session_state and st.session_state.ai_generation_times:
+            with st.expander("📊 Statistik Waktu Generate AI", expanded=False):
+                df_ai = pd.DataFrame(st.session_state.ai_generation_times)
+                
+                if not df_ai.empty:
+                    avg_time = df_ai['execution_time'].mean()
+                    min_time = df_ai['execution_time'].min()
+                    max_time = df_ai['execution_time'].max()
+                    total_generations = len(df_ai)
+                    
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Total Generate", total_generations)
+                    with col2:
+                        st.metric("Rata-rata Waktu", f"{avg_time:.2f} dtk")
+                    with col3:
+                        st.metric("Tercepat", f"{min_time:.2f} dtk")
+                    with col4:
+                        st.metric("Terlama", f"{max_time:.2f} dtk")
+                    
+                    st.dataframe(df_ai[['timestamp', 'execution_time', 'response_length']], 
+                                use_container_width=True)
 
     # Simpan ringkasan yang dipilih ke database dengan data MAE per fase
     def save_single_summary(self, content, mae_overall, mae_phases, bounds_data):
