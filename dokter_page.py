@@ -3039,46 +3039,43 @@ class DokterPage:
           
             # Tombol simpan
             if st.button("Simpan Hasil Ringkasan", use_container_width=True, type="primary", key="save_ai_summary"):
-              if summary_content:
                 mae_data_for_save = []
                   
                 for phase in phases_order:
-                  mae_data_for_save.append({
-                    'phase': phase,
-                    'pelvis_left': st.session_state.mae_pelvis_left_phases.get(phase, 0),
-                    'pelvis_right': st.session_state.mae_pelvis_right_phases.get(phase, 0),
-                    'knee_left': st.session_state.mae_knee_left_phases.get(phase, 0),
-                    'knee_right': st.session_state.mae_knee_right_phases.get(phase, 0),
-                    'hip_left': st.session_state.mae_hip_left_phases.get(phase, 0),
-                    'hip_right': st.session_state.mae_hip_right_phases.get(phase, 0),
-                    'ankle_left': st.session_state.mae_ankle_left_phases.get(phase, 0),
-                    'ankle_right': st.session_state.mae_ankle_right_phases.get(phase, 0)
-                  })
+                    mae_data_for_save.append({
+                        'phase': phase,
+                        'pelvis_left': st.session_state.mae_pelvis_left_phases.get(phase, 0),
+                        'pelvis_right': st.session_state.mae_pelvis_right_phases.get(phase, 0),
+                        'knee_left': st.session_state.mae_knee_left_phases.get(phase, 0),
+                        'knee_right': st.session_state.mae_knee_right_phases.get(phase, 0),
+                        'hip_left': st.session_state.mae_hip_left_phases.get(phase, 0),
+                        'hip_right': st.session_state.mae_hip_right_phases.get(phase, 0),
+                        'ankle_left': st.session_state.mae_ankle_left_phases.get(phase, 0),
+                        'ankle_right': st.session_state.mae_ankle_right_phases.get(phase, 0)
+                    })
                     
                 success = self.save_single_summary(
-                  content=summary_content,
-                  mae_overall={
-                    'pelvis_left': st.session_state.mae_pelvis_left,
-                    'pelvis_right': st.session_state.mae_pelvis_right,
-                    'knee_left': st.session_state.mae_knee_left,
-                    'knee_right': st.session_state.mae_knee_right,
-                    'hip_left': st.session_state.mae_hip_left,
-                    'hip_right': st.session_state.mae_hip_right,
-                 '   ankle_left': st.session_state.mae_ankle_left,
-                    'ankle_right': st.session_state.mae_ankle_right
-                  },
-                  mae_phases=mae_data_for_save,
-                  bounds_data=bounds_data
+                    content=summary_content,
+                    mae_overall={
+                        'pelvis_left': st.session_state.mae_pelvis_left,
+                        'pelvis_right': st.session_state.mae_pelvis_right,
+                        'knee_left': st.session_state.mae_knee_left,
+                        'knee_right': st.session_state.mae_knee_right,
+                        'hip_left': st.session_state.mae_hip_left,
+                        'hip_right': st.session_state.mae_hip_right,
+                        'ankle_left': st.session_state.mae_ankle_left,
+                        'ankle_right': st.session_state.mae_ankle_right
+                    },
+                    mae_phases=mae_data_for_save,
+                    bounds_data=bounds_data
                 )
                   
                 if success:
-                  st.session_state[patient_saved_key] = summary_content
-                  st.success("Ringkasan AI berhasil disimpan!")
-                  st.rerun()
+                    st.session_state[patient_saved_key] = summary_content
+                    st.success("Ringkasan AI berhasil disimpan!")
+                    st.rerun()
                 else:
-                  st.error("Gagal menyimpan ke database")
-            else:
-              st.error("Tidak dapat menemukan konten yang dipilih")
+                    st.error("Gagal menyimpan ke database")
 
     # Simpan ringkasan yang dipilih ke database dengan data MAE per fase
     def save_single_summary(self, content, mae_overall, mae_phases, bounds_data):
@@ -3122,8 +3119,6 @@ class DokterPage:
     def reset_ai_summary_session_state_except_current(self):
         keys_to_reset = [
             'ai_summaries_generated',
-            'summaries_a',
-            'summaries_b',
             'saved_summary_content'
         ]
         
@@ -3165,10 +3160,6 @@ class DokterPage:
         # Kunci-kunci yang perlu dihapus untuk pasien dan tanggal ini
         keys_to_reset = [
             f'ai_summaries_generated_{patient_date_key}',
-            f'summaries_a_{patient_date_key}',
-            f'summaries_b_{patient_date_key}',
-            f'selected_summary_label_{patient_date_key}',
-            f'selected_summary_content_{patient_date_key}',
             f'saved_summary_content_{patient_date_key}'
         ]
         
