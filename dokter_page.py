@@ -2995,7 +2995,7 @@ class DokterPage:
                 - Jelaskan apakah gerakan tampak lebih atau kurang dibanding pola normal
                 - Sertakan jika parameter berada di luar rentang normal
                 
-                4. Indikasi
+                4. Kesimpulan
                 Buat dalam bentuk bullet point singkat.
                 - Jelaskan indikasi fungsional berdasarkan pola gait
                 - Hindari diagnosis medis
