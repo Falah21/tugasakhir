@@ -3041,7 +3041,7 @@ class DokterPage:
                 ATURAN WAJIB:
                 - Maksimal 300 kata
                 - Fokus pada temuan paling signifikan
-                - Hindari terlalu banyak angka
+                - Hindari terlalu banyak angka (cukup gunakan: rendah, sedang, tinggi)
                 - Gunakan istilah klinis yang profesional dan mudah dipahami
                 - Gunakan hanya data yang diberikan
                 - Jangan menetapkan diagnosis medis pasti
