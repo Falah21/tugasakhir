@@ -16,6 +16,7 @@ from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 import google.generativeai as genai
 from css_style import load_css
+from bson import ObjectId
 
 # Konfigurasi Gemini API
 if "GEMINI_API_KEY" in st.secrets:
@@ -32,18 +33,17 @@ def login_form(role_label: str = "Dokter"):
         st.session_state.role = None
         st.rerun()
 
-    # 
     st.markdown("<h2>Sistem Dashboard Gait Analysis</h2>", unsafe_allow_html=True)
     st.markdown("<p class='subtitle'>Selamat Datang di Sistem Dashboard Pemeriksaan Gait</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     st.subheader(f"Login - {role_label}")
-    user_id = st.text_input("NIP", max_chars=18, placeholder="Masukkan NIP anda")
+    nomor_identitas = st.text_input("Nomor Identitas", max_chars=18, placeholder="Masukkan NIK/NIP anda")
     password = st.text_input("Password", type="password", placeholder="Masukkan password anda")
     submit = st.button("Login", use_container_width=True)
 
     st.markdown("<p class='footer'>Dengan masuk, Anda menyetujui kebijakan Privasi & Syarat Layanan sistem GAIT ini.</p>", unsafe_allow_html=True)
-    return user_id, password, submit
+    return nomor_identitas, password, submit
     
 # Optimasi koneksi MongoDB
 def get_mongo_client():
@@ -53,13 +53,36 @@ def get_mongo_client():
         connectTimeoutMS=5000,
         socketTimeoutMS=5000)
 
+# Fungsi untuk dapetin user berdasarkan ObjectId
+def get_user_by_id(user_id):
+    try:
+        client = get_mongo_client()
+        db = client['tugasakhir']
+        collection = db['users']
+        try:
+            user = collection.find_one({'_id': ObjectId(user_id)})
+        except:
+            user = collection.find_one({'_id': user_id})
+        
+        if user:
+            return {
+                '_id': str(user['_id']),
+                'nomor_identitas': user.get('nomor_identitas', ''),
+                'nama_lengkap': user.get('nama_lengkap', ''),
+                'role': user.get('role', ''),
+            }
+        return None
+    except Exception as e:
+        print(f"Error getting user by ID: {e}")
+        return None
+
 # GaitAnalysisData untuk Data Normal
 class GaitAnalysisDataNormal:
     def __init__(self, content, usia, jenis_kelamin):
         try:
             self.df = pd.read_excel(io.BytesIO(content), sheet_name=[0, 1]) # Membaca file Excel
             self.suin = self.df[0]  # Lembar pertama untuk data mentah
-            self.normkin = self.df[1].iloc[:, :31]  # Lembar kedua untuk normskin
+            self.normkin = self.df[1].iloc[:, :31]  # Lembar kedua untuk normkin
         except Exception as e:
             st.error(f"Error reading the Excel file: {e}")
             return
@@ -254,21 +277,22 @@ class GaitAnalysisData:
         }
         
 class DokterPage:
-    def _check_dokter_login(self, user_id, password):
+    def _check_dokter_login(self, nomor_identitas, password):
         try:
             client = get_mongo_client()
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['users']
             
-            # Cari user dengan role dokter
-            dokter = collection.find_one({'user_id': user_id, 'role': 'dokter'})
+            # Cari user dengan role dokter berdasarkan nomor_identitas
+            dokter = collection.find_one({'nomor_identitas': nomor_identitas, 'role': 'dokter'})
             
             if dokter:
                 stored_password = dokter.get('password') # Ambil password hash dari database
                 # Verifikasi password dengan bcrypt
                 if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
                     return {
-                        'user_id': dokter.get('user_id'),
+                        '_id': str(dokter.get('_id')),
+                        'nomor_identitas': dokter.get('nomor_identitas'),
                         'nama_lengkap': dokter.get('nama_lengkap'),
                         'role': dokter.get('role'),
                         'tanggal_lahir': dokter.get('tanggal_lahir', ''),
@@ -300,13 +324,13 @@ class DokterPage:
 
         # jika belum login → tampilkan form login
         if not st.session_state.dokter_logged_in:
-            username, password, submit = login_form("Dokter")
+            nomor_identitas, password, submit = login_form("Dokter")
             if submit:
                 # Cek login dari database
-                user_data = self._check_dokter_login(username, password)
+                user_data = self._check_dokter_login(nomor_identitas, password)
                 if user_data:
                     st.session_state.dokter_logged_in = True
-                    st.session_state.dokter_user_id = user_data['user_id']
+                    st.session_state.dokter_user_id = user_data['_id']
                     st.session_state.dokter_nama = user_data['nama_lengkap']
                     st.session_state.dokter_role = user_data['role']
                     st.success(f"Login berhasil! Selamat datang dr. {user_data['nama_lengkap']}")
@@ -324,8 +348,14 @@ class DokterPage:
         for menu in menu_list:
             if st.sidebar.button(menu, use_container_width=True, type="primary" 
                                  if st.session_state.dokter_menu == menu else "secondary"):
-                                     st.session_state.dokter_menu = menu
-                                     st.rerun()
+                # # Track ketika user mengklik Dashboard
+                # if menu == "Dashboard":
+                #     st.session_state.dashboard_click_timestamp = time.time()
+                #     st.session_state.dashboard_render_start = time.time()
+                #     st.session_state.last_click_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                #     st.session_state.last_menu_click = "Dashboard"
+                st.session_state.dokter_menu = menu
+                st.rerun()
 
         # Navigasi Utama
         if st.session_state.dokter_menu == "Dashboard":
@@ -346,6 +376,17 @@ class DokterPage:
             st.session_state.role = None
             
             st.rerun()
+    
+    # # Di bagian inisialisasi session state (di dalam run() atau di awal file)
+    # def init_session_state():
+    #     if 'dashboard_render_start' not in st.session_state:
+    #         st.session_state.dashboard_render_start = None
+    #     if 'dashboard_render_times' not in st.session_state:
+    #         st.session_state.dashboard_render_times = []
+    #     if 'last_dashboard_render_time' not in st.session_state:
+    #         st.session_state.last_dashboard_render_time = None
+    #     if 'dashboard_click_timestamp' not in st.session_state:
+    #         st.session_state.dashboard_click_timestamp = None
 
     # Menu Input Baseline Data Gait
     def input_data_gait_normal(self):
@@ -400,7 +441,7 @@ class DokterPage:
                             else:
                                 try:
                                     client = get_mongo_client()
-                                    db = client['GaitDB']
+                                    db = client['tugasakhir']
                                     collection = db['gait_data']
                                     data_dict["upload_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                     
@@ -427,50 +468,55 @@ class DokterPage:
     def input_data_gait_pasien(self):
         st.subheader("Input Pemeriksaan Pasien")
         
-        # Inisialisasi timer di session state jika belum ada
-        if 'upload_times' not in st.session_state:
-            st.session_state.upload_times = []
-        
         with st.form(key="form_pemeriksaan_pasien"):
             try:
                 client = get_mongo_client()
-                db = client['GaitDB']
+                db = client['tugasakhir']
                 collection = db['users']
                 
                 # Ambil semua data pasien
-                pasien_data = list(collection.find({'role': 'pasien'}, {'user_id': 1, 'nama_lengkap': 1}))
+                pasien_data = list(collection.find({'role': 'pasien'}, {'_id': 1, 'nomor_identitas': 1, 'nama_lengkap': 1}))
         
-                # Buat opsi dropdown
+                # Buat opsi dropdown - HANYA menampilkan nomor identitas dan nama
                 pasien_options = ["Pilih Data Pasien yang akan diperiksa"] + [
-                    f"{pasien['user_id']} - {pasien['nama_lengkap']}" 
+                    f"{pasien['nomor_identitas']} - {pasien['nama_lengkap']}" 
                     for pasien in pasien_data
-                    if 'user_id' in pasien and 'nama_lengkap' in pasien]
+                    if 'nomor_identitas' in pasien and 'nama_lengkap' in pasien]
+                
+                # Simpan mapping untuk mengambil _id berdasarkan display text
+                pasien_mapping = {}
+                for pasien in pasien_data:
+                    if 'nomor_identitas' in pasien and 'nama_lengkap' in pasien:
+                        display_text = f"{pasien['nomor_identitas']} - {pasien['nama_lengkap']}"
+                        pasien_mapping[display_text] = {
+                            '_id': str(pasien['_id']),
+                            'nomor_identitas': pasien['nomor_identitas'],
+                            'nama_lengkap': pasien['nama_lengkap']
+                        }
                 
             except Exception as e:
                 st.error(f"Error mengambil data pasien: {e}")
                 pasien_options = ["Pilih Data Pasien yang akan diperiksa"]
+                pasien_mapping = {}
             
-            # Dropdown untuk memilih pasien
-            selected_pasien = st.selectbox("Pilih Data Pasien yang akan diperiksa", options=pasien_options, key="pasien_dropdown_form")
-            # Input tanggal pemeriksaan
+            # Dropdown untuk memilih pasien - tampilan lebih bersih
+            selected_pasien_display = st.selectbox(
+                "Pilih Data Pasien yang akan diperiksa", 
+                options=pasien_options, 
+                key="pasien_dropdown_form"
+            )
+            
             tanggal = st.date_input("Tanggal Pemeriksaan", key="tanggal_form")
             col1, col2 = st.columns(2)
             with col1:
                 tinggi_badan = st.number_input("Tinggi Badan (cm)", min_value=0.0, step=0.1, format="%.1f", key="tinggi_form")
             with col2:
                 berat_badan = st.number_input("Berat Badan (kg)", min_value=0.0, step=0.1, format="%.1f", key="berat_form")
-            
-            # Upload file data GAIT pasien
             uploaded_file = st.file_uploader("Upload file data gait pasien (Format .xlsx)", type=["xlsx"], key="file_uploader_form")
-            # Tombol submit di dalam form
             submit_button = st.form_submit_button("Simpan Data Pemeriksaan", type="primary", use_container_width=True)
-        
-        # Proses setelah submit
-        if submit_button:
-            # MULAI TIMER UPLOAD
-            start_time = time.time()
-            
-            if selected_pasien == "Pilih Data Pasien yang akan diperiksa":
+
+        if submit_button:  
+            if selected_pasien_display == "Pilih Data Pasien yang akan diperiksa":
                 st.warning("Silakan pilih pasien terlebih dahulu sebelum mengupload file.")
                 return
             if uploaded_file is None:
@@ -496,15 +542,16 @@ class DokterPage:
                 else:
                     bmi_class = "Gemuk Berat"
             
-            parts = selected_pasien.split(" - ")
-            pasien_user_id = parts[0].strip()
-            nama_pasien = parts[1].strip()
-            
-            # Catat ukuran file
-            file_size_bytes = len(uploaded_file.getvalue())
-            file_size_kb = file_size_bytes / 1024
-            file_size_mb = file_size_kb / 1024
-            
+            # Ambil data pasien dari mapping berdasarkan display text yang dipilih
+            if selected_pasien_display in pasien_mapping:
+                pasien_data_selected = pasien_mapping[selected_pasien_display]
+                pasien_object_id = pasien_data_selected['_id']
+                pasien_nomor_identitas = pasien_data_selected['nomor_identitas']
+                nama_pasien = pasien_data_selected['nama_lengkap']
+            else:
+                st.error("Data pasien tidak valid.")
+                return
+
             try:              
                 # Proses file dengan GaitAnalysisData
                 gait_data = GaitAnalysisData(uploaded_file)
@@ -526,14 +573,15 @@ class DokterPage:
                         "RAnkleAngles_X": norm_kinematics["RAnkleAngles_X"][i],
                     }
                     rows.append(row)
-    
+
                 st.session_state.norm_kinematics_df = pd.DataFrame(rows)
                 
                 # Simpan data pasien ke MongoDB
                 examination_data = {
-                    'pasien_id': pasien_user_id,
+                    'pasien_id': ObjectId(pasien_object_id),
+                    'pasien_nomor_identitas': pasien_nomor_identitas,
                     'nama_pasien': nama_pasien,
-                    'dokter_id': st.session_state.get('dokter_user_id', 'unknown'),
+                    'dokter_id': ObjectId(st.session_state.get('dokter_user_id')),
                     'dokter_nama': st.session_state.get('dokter_nama', 'unknown'),
                     'tanggal_pemeriksaan': tanggal.strftime("%Y-%m-%d"),
                     'upload_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -543,83 +591,57 @@ class DokterPage:
                     'bmi_classification': bmi_class,
                     'file_info': {
                         'file_name': uploaded_file.name,
-                        'file_size_mb': round(file_size_mb, 2),
                         'upload_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")},
                     'gait_data': processed_data,
                     'norm_kinematics': rows
                 }
                 
                 client = get_mongo_client()
-                db = client['GaitDB']
+                db = client['tugasakhir']
                 collection = db['patient_examinations']
-    
-                st.session_state.current_pasien_id = pasien_user_id
+
+                st.session_state.current_pasien_id = pasien_object_id
+                st.session_state.current_pasien_nomor_identitas = pasien_nomor_identitas
                 st.session_state.current_nama_pasien = nama_pasien
                 st.session_state.current_tanggal_pemeriksaan = tanggal.strftime("%Y-%m-%d")
                 
-                current_key = f"patient_{pasien_user_id}_{tanggal.strftime('%Y-%m-%d')}"
+                current_key = f"patient_{pasien_object_id}_{tanggal.strftime('%Y-%m-%d')}"
                 st.session_state.current_patient_key = current_key
 
-                self.reset_ai_summary_for_patient_and_date(pasien_user_id, tanggal.strftime("%Y-%m-%d"))
+                self.reset_ai_summary_for_patient_and_date(pasien_object_id, tanggal.strftime("%Y-%m-%d"))
                 
                 # Cek apakah sudah ada pemeriksaan
-                existing_exam = collection.find_one({'pasien_id': pasien_user_id, 'tanggal_pemeriksaan': tanggal.strftime("%Y-%m-%d")})
-                
-                # AKHIRI TIMER UPLOAD
-                end_time = time.time()
-                upload_time = end_time - start_time
-                
-                # Hitung kecepatan upload (Mbps)
-                file_size_bits = file_size_bytes * 8
-                upload_speed_mbps = (file_size_bits / upload_time) / 1_000_000 if upload_time > 0 else 0
-                
-                # Simpan ke session state
-                st.session_state.upload_times.append({
-                    'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    'pasien': nama_pasien,
-                    'file_size_mb': round(file_size_mb, 2),
-                    'execution_time': round(upload_time, 3),
-                    'upload_speed_mbps': round(upload_speed_mbps, 2)
+                existing_exam = collection.find_one({
+                    'pasien_id': ObjectId(pasien_object_id), 
+                    'tanggal_pemeriksaan': tanggal.strftime("%Y-%m-%d")
                 })
-                
+
                 if existing_exam:
                     collection.update_one(
                         {'_id': existing_exam['_id']},
                         {'$set': examination_data}
                     )
-                    st.success(f"✅ Data gait pasien dengan NIK {pasien_user_id} berhasil diupdate!")
+                    st.success(f"Data gait pasien dengan NIK {pasien_nomor_identitas} berhasil diupdate!")
                 else:
                     collection.insert_one(examination_data)
-                    st.success(f"✅ Data pasien dengan NIK {pasien_user_id} berhasil disimpan!")
-                
-                # Tampilkan informasi waktu
-                st.info(f"⏱️ **Waktu Upload & Proses Data:** {upload_time:.2f} detik | "
-                       f"📁 Ukuran File: {file_size_mb:.2f} MB | "
-                       f"📡 Kecepatan Upload: {upload_speed_mbps:.2f} Mbps")
-                
-                # Tampilkan statistik upload
-                self._show_upload_statistics()
-                
+                    st.success(f"Data pasien dengan NIK {pasien_nomor_identitas} berhasil disimpan!")
             except Exception as e:
                 st.error(f"Error dalam memproses file: {e}")
 
     # Menu Riwayat Pemeriksaan Pasien
     def show_examination_history(self):
         st.subheader("Riwayat Pemeriksaan")
-        
-        # Buat 2 tab
+
         tab1, tab2 = st.tabs(["Riwayat Pemeriksaan", "Detail Riwayat Pasien"])
-        
         with tab1:
             self._show_examination_list()
-        
         with tab2:
             self.show_patient_detail_history()
 
     def _show_examination_list(self):
         try:
             client = get_mongo_client()
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['patient_examinations']
             
             dokter_id = st.session_state.get('dokter_user_id', None)
@@ -630,7 +652,7 @@ class DokterPage:
                 return
     
             # Ambil data pemeriksaan hanya untuk dokter yang login
-            examinations = list(collection.find({'dokter_id': dokter_id}).sort('upload_date', -1))
+            examinations = list(collection.find({'dokter_id': ObjectId(dokter_id)}).sort('upload_date', -1))
             
             if not examinations:
                 st.info(f"Belum ada riwayat pemeriksaan pasien untuk Dr. {dokter_nama}.")
@@ -642,7 +664,7 @@ class DokterPage:
                 file_info = exam.get('file_info', {})
                 table_data.append({
                     'Tanggal Pemeriksaan': exam.get('tanggal_pemeriksaan', 'N/A'),
-                    'NIK Pasien': exam.get('pasien_id', 'N/A'),
+                    'NIK Pasien': exam.get('pasien_nomor_identitas', 'N/A'),
                     'Nama Pasien': exam.get('nama_pasien', 'N/A'),
                     'Tinggi (cm)':  exam.get('tinggi_badan', 'N/A'),
                     'Berat (kg)': exam.get('berat_badan', 'N/A'),
@@ -689,44 +711,81 @@ class DokterPage:
         
         try:
             client = get_mongo_client()
-            db = client['GaitDB']
+            db = client['tugasakhir']
             users_collection = db['users']
             examinations_collection = db['patient_examinations']
             
             # Ambil semua data pasien
-            pasien_data = list(users_collection.find({'role': 'pasien'}, {'user_id': 1, 'nama_lengkap': 1, 'tanggal_lahir': 1, 'jenis_kelamin': 1}))
+            pasien_data = list(users_collection.find(
+                {'role': 'pasien'}, 
+                {'_id': 1, 'nomor_identitas': 1, 'nama_lengkap': 1, 'tanggal_lahir': 1, 'jenis_kelamin': 1}
+            ))
             
             if not pasien_data:
                 st.info("Belum ada data pasien terdaftar.")
                 return
             
-            # Pilih pasien
-            pasien_options = ["Silakan pilih pasien"] + [f"{p['user_id']} - {p['nama_lengkap']}" for p in pasien_data]
-            selected_label = st.selectbox("Pilih Pasien", options=pasien_options, key="detail_pasien_select", index=0)
+            # Buat opsi dropdown - HANYA menampilkan NIK dan Nama
+            pasien_options = ["Silakan pilih pasien"] + [
+                f"{p['nomor_identitas']} - {p['nama_lengkap']}" 
+                for p in pasien_data
+                if 'nomor_identitas' in p and 'nama_lengkap' in p
+            ]
+            
+            # Simpan mapping untuk lookup
+            pasien_mapping = {
+                f"{p['nomor_identitas']} - {p['nama_lengkap']}": {
+                    'id': str(p['_id']),
+                    'nomor_identitas': p['nomor_identitas'],
+                    'nama_lengkap': p['nama_lengkap'],
+                    'tanggal_lahir': p.get('tanggal_lahir', '-'),
+                    'jenis_kelamin': p.get('jenis_kelamin', '-')
+                }
+                for p in pasien_data
+                if 'nomor_identitas' in p and 'nama_lengkap' in p
+            }
+            
+            # Dropdown untuk memilih pasien - hanya menampilkan NIK dan Nama
+            selected_label = st.selectbox(
+                "Pilih Pasien", 
+                options=pasien_options, 
+                key="detail_pasien_select", 
+                index=0
+            )
             
             if selected_label == "Silakan pilih pasien" or not selected_label:
                 st.info("Silakan pilih pasien terlebih dahulu untuk melihat riwayat pemeriksaan.")
                 return
                 
-            pasien_id = selected_label.split(" - ")[0].strip()
-                
-                # # Ambil data profil pasien
-                # profil_pasien = next((p for p in pasien_data if p['user_id'] == pasien_id), None)
-                
-                # if profil_pasien:
-                #     with st.expander("📋 Profil Pasien", expanded=True):
-                #         col1, col2, col3 = st.columns(3)
-                #         with col1:
-                #             st.markdown(f"**NIK:** {profil_pasien['user_id']}")
-                #             st.markdown(f"**Nama Lengkap:** {profil_pasien['nama_lengkap']}")
-                #         with col2:
-                #             st.markdown(f"**Tanggal Lahir:** {profil_pasien.get('tanggal_lahir', '-')}")
-                #             st.markdown(f"**Jenis Kelamin:** {profil_pasien.get('jenis_kelamin', '-')}")
-                #         with col3:
-                #             st.markdown(f"**Usia:** {self._calculate_age(profil_pasien.get('tanggal_lahir', ''))} tahun")
+            # Ambil data pasien dari mapping
+            pasien_info = pasien_mapping.get(selected_label)
+            if not pasien_info:
+                st.error("Data pasien tidak ditemukan.")
+                return
+            
+            pasien_object_id = pasien_info['id']
+            pasien_nomor_identitas = pasien_info['nomor_identitas']
+            nama_pasien = pasien_info['nama_lengkap']
+            
+            # Ambil data profil pasien
+            if pasien_info:
+                with st.expander("Profil Pasien", expanded=True):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        # st.markdown(f"**ID:** {pasien_object_id}")
+                        st.markdown(f"**NIK:** {pasien_nomor_identitas}")
+                        st.markdown(f"**Nama Lengkap:** {nama_pasien}")
+                        st.markdown(f"**Jenis Kelamin:** {pasien_info.get('jenis_kelamin', '-')}")
+
+                    with col2:
+                        st.markdown(f"**Tanggal Lahir:** {pasien_info.get('tanggal_lahir', '-')}")
+                        st.markdown(f"**Usia:** {self._calculate_age(pasien_info.get('tanggal_lahir', ''))} tahun")
                 
             dokter_id = st.session_state.get('dokter_user_id')
-            examinations = list(examinations_collection.find({'pasien_id': pasien_id, 'dokter_id': dokter_id}).sort('tanggal_pemeriksaan', -1))
+            examinations = list(examinations_collection.find({
+                'pasien_id': ObjectId(pasien_object_id), 
+                'dokter_id': ObjectId(dokter_id)
+            }).sort('tanggal_pemeriksaan', -1))
                 
             if not examinations:
                 st.warning(f"Belum ada riwayat pemeriksaan untuk pasien ini.")
@@ -734,16 +793,20 @@ class DokterPage:
                 
             # Pilih tanggal pemeriksaan
             tanggal_options = {f"{e['tanggal_pemeriksaan']}": e for e in examinations}
-            selected_tanggal_label = st.selectbox("Pilih Tanggal Pemeriksaan", options=list(tanggal_options.keys()), key="detail_tanggal_select")
+            selected_tanggal_label = st.selectbox(
+                "Pilih Tanggal Pemeriksaan", 
+                options=list(tanggal_options.keys()), 
+                key="detail_tanggal_select"
+            )
                 
             if selected_tanggal_label:
                 selected_exam = tanggal_options[selected_tanggal_label]
-                self._show_patient_examination_detail(selected_exam, pasien_id)
+                self._show_patient_examination_detail(selected_exam, pasien_object_id)
                     
         except Exception as e:
             st.error(f"Error mengambil data riwayat: {e}")
-    
-    def _show_patient_examination_detail(self, examination, pasien_id):
+            
+    def _show_patient_examination_detail(self, examination, pasien_object_id):
         
         tanggal = examination.get('tanggal_pemeriksaan')
         st.markdown(f"#### Hasil Pemeriksaan - {tanggal}")
@@ -888,7 +951,7 @@ class DokterPage:
         st.session_state.phase_indices = phase_indices
         
         # Tampilkan visualisasi
-        self._show_detail_visualization(kinematic_data, pasien_id, tanggal, examination)
+        self._show_detail_visualization(kinematic_data, pasien_object_id, tanggal, examination)
         
         # Kembalikan session state seperti semula
         if temp_norm_kinematics_df is not None:
@@ -906,7 +969,7 @@ class DokterPage:
     def _get_normal_data_for_comparison(self):
         try:
             client = get_mongo_client()
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['gait_data']
             
             cursor = collection.find().limit(100)
@@ -1097,7 +1160,7 @@ class DokterPage:
         )
         return fig
     
-    def _show_detail_visualization(self, kinematic_data, pasien_id, tanggal_pemeriksaan, pemeriksaan):
+    def _show_detail_visualization(self, kinematic_data, pasien_object_id, tanggal_pemeriksaan, pemeriksaan):
         
         # Buat visualisasi untuk setiap joint
         fig1 = self._create_joint_figure_for_detail(kinematic_data['lpelvis'], "Left Pelvis", 'orange', 
@@ -1199,10 +1262,9 @@ class DokterPage:
             # Tampilkan tabel kinematika gait yang baru
             self._show_gait_kinematics_table()
             # Tampilkan AI summaries
-            self._show_ai_summaries_for_detail(pasien_id, tanggal_pemeriksaan)
+            self._show_ai_summaries_for_detail(pasien_object_id, tanggal_pemeriksaan)
     
     def _show_mae_phases_table(self):
-        """Menampilkan tabel MAE per fase gait yang sudah ada"""
         if not all(key in st.session_state for key in [
             'mae_pelvis_left_phases', 'mae_pelvis_right_phases',
             'mae_knee_left_phases', 'mae_knee_right_phases',
@@ -1244,11 +1306,9 @@ class DokterPage:
         
         mae_phases_df = pd.DataFrame(mae_phases_data)
         st.dataframe(mae_phases_df, use_container_width=True, hide_index=True)
-        st.markdown("---")
+        # st.markdown("---")
     
     def _show_gait_kinematics_table(self):
-        """Menampilkan tabel hasil kinematika gait untuk kaki kanan dan kiri"""
-        
         # Periksa apakah data MAE per fase tersedia
         if not all(key in st.session_state for key in [
             'mae_pelvis_left_phases', 'mae_pelvis_right_phases',
@@ -1261,8 +1321,6 @@ class DokterPage:
             return
         
         st.markdown("### Hasil Kinematika Gait")
-        
-        # Daftar fase gait dengan rentang persentase yang sesuai
         phases = [
             "Initial Contact (0-2%)",
             "Loading Response (2-10%)",
@@ -1309,7 +1367,6 @@ class DokterPage:
         
         # Fungsi untuk mendapatkan nilai rata-rata dalam rentang fase tertentu
         def get_phase_average(values, phase_start, phase_end):
-            """Menghitung rata-rata nilai dalam rentang persentase fase"""
             # Persentase dari 0-100
             percentages = list(range(101))
             indices = [i for i, p in enumerate(percentages) if phase_start <= p <= phase_end]
@@ -1380,7 +1437,7 @@ class DokterPage:
         df_right = pd.DataFrame(right_table_data)
         st.dataframe(df_right, use_container_width=True, hide_index=True)
         
-        st.markdown("---")
+        # st.markdown("---")
         
         # Buat tabel untuk Kaki Kiri
         st.markdown("#### Kaki Kiri")
@@ -1422,17 +1479,17 @@ class DokterPage:
         
         df_left = pd.DataFrame(left_table_data)
         st.dataframe(df_left, use_container_width=True, hide_index=True)
-        st.markdown("---")
+        # st.markdown("---")
     
-    def _get_ai_summaries_for_detail(self, pasien_id, tanggal_pemeriksaan):
+    def _get_ai_summaries_for_detail(self, pasien_object_id, tanggal_pemeriksaan):
         try:
             client = get_mongo_client()
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['ai_summaries']
             
             summary = collection.find_one(
                 {
-                    'pasien_id': pasien_id,
+                    'pasien_id': ObjectId(pasien_object_id),
                     'tanggal_pemeriksaan': tanggal_pemeriksaan
                 },
                 sort=[('timestamp', -1)]
@@ -1444,9 +1501,9 @@ class DokterPage:
             st.error(f"Error mengambil ringkasan AI: {e}")
             return []
     
-    def _show_ai_summaries_for_detail(self, pasien_id, tanggal_pemeriksaan):
+    def _show_ai_summaries_for_detail(self, pasien_object_id, tanggal_pemeriksaan):
         
-        ai_summaries = self._get_ai_summaries_for_detail(pasien_id, tanggal_pemeriksaan)
+        ai_summaries = self._get_ai_summaries_for_detail(pasien_object_id, tanggal_pemeriksaan)
         
         if not ai_summaries:
             st.info("Belum ada hasil analisis AI untuk pemeriksaan ini.")
@@ -1505,14 +1562,13 @@ class DokterPage:
                     df_mae = pd.DataFrame(mae_data)
                     st.dataframe(df_mae, use_container_width=True, hide_index=True)
                 
-                # Pemisah antar ringkasan jika ada lebih dari satu
+                # Pemisar antar ringkasan jika ada lebih dari satu
                 if i < len(ai_summaries):
                     st.markdown("---")
 
     def show_dashboard(self):
         st.markdown("## Dashboard Gait Analysis")
 
-        # CEK LEBIH EFISIEN - hanya cek key existence
         has_patient_data = ('uploaded_patient_data' in st.session_state and 
                            'norm_kinematics_df' in st.session_state and
                            st.session_state.norm_kinematics_df is not None)
@@ -1523,23 +1579,16 @@ class DokterPage:
             except Exception as e:
                 st.error(f"Error dalam memproses dashboard: {e}")
         else:
-            st.warning("ℹ️ Tidak ada data pasien yang diupload. Silakan upload data pasien di menu 'Input Pemeriksan Pasien' untuk melihat analisis perbandingan.")
+            st.warning("Tidak ada data pasien yang diupload. Silakan upload data pasien di menu 'Input Pemeriksan Pasien' untuk melihat analisis perbandingan.")
             self.show_normal_dashboard()
 
-    # Proses dashboard dengan data pasien (dengan timer render)
+    # Proses dashboard dengan data pasien
     def process_dashboard_with_patient(self):
-        # MULAI TIMER RENDER
-        render_start_time = time.time()
-        
-        # Inisialisasi render_times di session state
-        if 'render_times' not in st.session_state:
-            st.session_state.render_times = []
-        
         px.defaults.template = 'plotly_dark'
         px.defaults.color_continuous_scale = 'reds'
 
         client = get_mongo_client()
-        db = client['GaitDB']
+        db = client['tugasakhir']
         collection = db['gait_data']
 
         cursor = collection.find().limit(100)
@@ -1595,84 +1644,72 @@ class DokterPage:
         
         # Proses visualisasi
         self.create_visualizations(filtered_df, norm_kinematics_df)
-        
-        # AKHIRI TIMER RENDER
-        render_end_time = time.time()
-        render_time = render_end_time - render_start_time
-        
-        # Hitung jumlah data points yang diproses
-        data_points = len(filtered_df) * 101 * 8  # 8 joint, 101 titik per joint
-        
-        # Simpan ke session state
-        st.session_state.render_times.append({
-            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'total_records': len(filtered_df),
-            'data_points': data_points,
-            'execution_time': round(render_time, 3)
-        })
-        
-        st.info(f"⏱️ **Waktu Render Visualisasi Dashboard:** {render_time:.2f} detik | "
-               f"📊 Data Points: {data_points:,}")
-        
-        # Tampilkan statistik render
-        self._show_render_statistics()
 
     # dashboard baseline data normal (tanpa pemeriksaan pasien)
     def show_normal_dashboard(self):
         px.defaults.template = 'plotly_dark'
         px.defaults.color_continuous_scale = 'reds'
 
-        client = get_mongo_client()
-        db = client['GaitDB']
-        collection = db['gait_data']
+        try:
+            client = get_mongo_client()
+            db = client['tugasakhir']
+            collection = db['gait_data']
 
-        cursor = collection.find().limit(100)
-        data = list(cursor)
-        if len(data) == 0:
-            st.error("Database Normal Belum Ada. Silahkan Upload Data Normal pada Menu 'Input Baseline Data Gait'")
-            st.info("Untuk melihat dashboard analisis gait, Anda perlu mengupload data subjek normal terlebih dahulu.")
-            return
-
-        df = pd.json_normalize(data)
-        df.columns = df.columns.str.replace('Trial Information.', '') # Mengubah nama kolom
-        df.columns = df.columns.str.replace('Subject Parameters.', '')
-        df.columns = df.columns.str.replace('Body Measurements.', '')
-        df.columns = df.columns.str.replace('Norm Kinematics.', '')
-
-        st.markdown("<div class='filter-box'>", unsafe_allow_html=True)
-        st.markdown("### Filter Data")
-
-        col1, col2, col3 = st.columns([2, 2, 2])
-        with col1:
-            min_age = df['Age'].min()
-            max_age = df['Age'].max()
-            age_range = st.slider('Filter by Age Range:', min_value=min_age, max_value=max_age, value=(min_age, max_age))
-
-        with col2:
-            bmi_options = ["All BMI Classification"] + list(df["BMI Classification"].value_counts().keys().sort_values())
-            classbmi = st.selectbox(label="BMI Classification", options=bmi_options)
-
-        with col3:
-            gender_mapping = {"L": "Pria", "P": "Wanita"}
-            df["Gender"] = df["Gender"].map(gender_mapping)
-            gender_options = ["All Gender"] + list(df["Gender"].value_counts().keys().sort_values())
-            gender = st.selectbox(label="Gender", options=gender_options)
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        filtered_df = df[(df['Age'] >= age_range[0]) & (df['Age'] <= age_range[1])]
-        if classbmi != "All BMI Classification":
-            filtered_df = filtered_df[filtered_df['BMI Classification'] == classbmi]
-        if gender != "All Gender":
-            filtered_df = filtered_df[filtered_df["Gender"] == gender]
+            cursor = collection.find().limit(100)
+            data = list(cursor)
             
-        if filtered_df.empty:
-            st.error(f"There is no data with gender {gender} classified as {classbmi}.")
-        else:
-            st.markdown(f"**Total Records:** {len(filtered_df)}")
-            st.session_state.filtered_normal_df = filtered_df
-            self.show_normal_charts_only(filtered_df)
+            if len(data) == 0:
+                st.error("Database Normal Belum Ada. Silahkan Upload Data Normal pada Menu 'Input Baseline Data Gait'")
+                st.info("Untuk melihat dashboard analisis gait, Anda perlu mengupload data subjek normal terlebih dahulu.")
+                return
+         
+            # Normalisasi data untuk DataFrame
+            df = pd.json_normalize(data)
+            df.columns = df.columns.str.replace('Trial Information.', '')
+            df.columns = df.columns.str.replace('Subject Parameters.', '')
+            df.columns = df.columns.str.replace('Body Measurements.', '')
+            df.columns = df.columns.str.replace('Norm Kinematics.', '')
 
+            # Filter UI
+            st.markdown("<div class='filter-box'>", unsafe_allow_html=True)
+            st.markdown("### Filter Data")
+
+            col1, col2, col3 = st.columns([2, 2, 2])
+            with col1:
+                min_age = df['Age'].min()
+                max_age = df['Age'].max()
+                age_range = st.slider('Filter by Age Range:', min_value=min_age, max_value=max_age, value=(min_age, max_age))
+
+            with col2:
+                bmi_options = ["All BMI Classification"] + list(df["BMI Classification"].value_counts().keys().sort_values())
+                classbmi = st.selectbox(label="BMI Classification", options=bmi_options)
+
+            with col3:
+                gender_mapping = {"L": "Pria", "P": "Wanita"}
+                df["Gender"] = df["Gender"].map(gender_mapping)
+                gender_options = ["All Gender"] + list(df["Gender"].value_counts().keys().sort_values())
+                gender = st.selectbox(label="Gender", options=gender_options)
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            # Apply filters
+            filtered_df = df[(df['Age'] >= age_range[0]) & (df['Age'] <= age_range[1])]
+            if classbmi != "All BMI Classification":
+                filtered_df = filtered_df[filtered_df['BMI Classification'] == classbmi]
+            if gender != "All Gender":
+                filtered_df = filtered_df[filtered_df["Gender"] == gender]
+                
+            if filtered_df.empty:
+                st.error(f"There is no data with gender {gender} classified as {classbmi}.")
+                return
+            
+            # Tampilkan visualisasi
+            self.show_normal_charts_only(filtered_df)
+            
+        except Exception as e:
+            st.error(f"Error dalam memproses dashboard: {e}")
+            traceback.print_exc()
+            
     # Visualisasi untuk semua sendi
     def create_visualizations(self, filtered_df, norm_kinematics_df):
         percentage_cycle = list(range(101))
@@ -2370,6 +2407,7 @@ class DokterPage:
             hovermode="x unified"
         )
 
+        # Tampilkan tabs
         tab1, tab2, tab3, tab4 = st.tabs(["PELVIS", "KNEE","HIP","ANKLE"])
 
         with tab1:
@@ -2598,7 +2636,6 @@ class DokterPage:
         return bounds
 
     def show_mae_overall_summary(self):
-        """Menampilkan ringkasan MAE keseluruhan untuk semua sendi"""
         st.markdown("### Ringkasan MAE Keseluruhan")
             # Validasi data MAE keseluruhan
         required_mae_keys = [
@@ -2654,7 +2691,6 @@ class DokterPage:
         st.dataframe(df_mae_overall, use_container_width=True, hide_index=True)
         
     def _show_mae_phases_table(self):
-        """Menampilkan tabel MAE per fase gait yang sudah ada"""
         if not all(key in st.session_state for key in [
             'mae_pelvis_left_phases', 'mae_pelvis_right_phases',
             'mae_knee_left_phases', 'mae_knee_right_phases',
@@ -2696,11 +2732,9 @@ class DokterPage:
         
         mae_phases_df = pd.DataFrame(mae_phases_data)
         st.dataframe(mae_phases_df, use_container_width=True, hide_index=True)
-        st.markdown("---")
+        # st.markdown("---")
     
     def _show_gait_kinematics_table(self):
-        """Menampilkan tabel hasil kinematika gait untuk kaki kanan dan kiri"""
-        
         # Periksa apakah data MAE per fase tersedia
         if not all(key in st.session_state for key in [
             'mae_pelvis_left_phases', 'mae_pelvis_right_phases',
@@ -2714,7 +2748,6 @@ class DokterPage:
         
         st.markdown("### Hasil Kinematika Gait")
         
-        # Daftar fase gait dengan rentang persentase yang sesuai
         phases = [
             "Initial Contact (0-2%)",
             "Loading Response (2-10%)",
@@ -2761,7 +2794,6 @@ class DokterPage:
         
         # Fungsi untuk mendapatkan nilai rata-rata dalam rentang fase tertentu
         def get_phase_average(values, phase_start, phase_end):
-            """Menghitung rata-rata nilai dalam rentang persentase fase"""
             # Persentase dari 0-100
             percentages = list(range(101))
             indices = [i for i, p in enumerate(percentages) if phase_start <= p <= phase_end]
@@ -2832,7 +2864,7 @@ class DokterPage:
         df_right = pd.DataFrame(right_table_data)
         st.dataframe(df_right, use_container_width=True, hide_index=True)
         
-        st.markdown("---")
+        # st.markdown("---")
         
         # Buat tabel untuk Kaki Kiri
         st.markdown("#### Kaki Kiri")
@@ -2898,11 +2930,7 @@ class DokterPage:
         if 'current_patient_key' not in st.session_state:
             st.warning("Belum ada data pasien. Silakan upload data pasien terlebih dahulu.")
             return
-    
-        # Inisialisasi ai_generation_times
-        if 'ai_generation_times' not in st.session_state:
-            st.session_state.ai_generation_times = []
-        
+
         current_patient_key = st.session_state.current_patient_key
         
         # Ambil data upper bound dan lower bound
@@ -2938,22 +2966,6 @@ class DokterPage:
             st.markdown("#### Hasil Ringkasan AI")
             st.info(st.session_state[patient_saved_key])
             st.markdown("---")
-            
-            # Tampilkan statistik AI terakhir
-            if st.session_state.ai_generation_times:
-                last_ai = st.session_state.ai_generation_times[-1]
-                st.caption(f"⏱️ Generate terakhir: {last_ai['execution_time']:.2f} detik")
-            
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                if st.button("Generate Ringkasan Baru", use_container_width=True, type="secondary"):
-                    if patient_saved_key in st.session_state:
-                        del st.session_state[patient_saved_key]
-                    if patient_ai_generated_key in st.session_state:
-                        del st.session_state[patient_ai_generated_key]
-                    if f'ai_summary_content_{current_patient_key}' in st.session_state:
-                        del st.session_state[f'ai_summary_content_{current_patient_key}']
-                    st.rerun()
             return
         
         # Jika belum ada hasil AI yang digenerate
@@ -2973,10 +2985,7 @@ class DokterPage:
                 if gemini_model is None:
                     st.error("Fitur AI tidak tersedia karena API key Gemini tidak dikonfigurasi.")
                     return
-                
-                # MULAI TIMER AI
-                ai_start_time = time.time()
-                
+
                 # Hitung overall MAE
                 all_mae_values = [
                     st.session_state.mae_pelvis_left,
@@ -3050,7 +3059,7 @@ class DokterPage:
                 - Gunakan data upper bound dan lower bound untuk menentukan apakah parameter berada di luar rentang normal
                 - Sebutkan secara singkat jika terdapat parameter yang berada di luar rentang normal
                 - Prioritaskan temuan dengan MAE tinggi dan berada di luar rentang normal
-                - Gunakan format **bold** untuk menyoroti sendi bermasalah, fase gait kritis, dan tingkat deviasi
+                - Gunakan format **bold** untuk menyorot sendi bermasalah, fase gait kritis, dan tingkat deviasi
                 - Jangan menggunakan bold secara berlebihan
                 
                 STRUKTUR:
@@ -3089,27 +3098,12 @@ class DokterPage:
                 except Exception as e:
                     st.error(f"Error generating AI summaries: {e}")
                     summary_content = "Ringkasan tidak tersedia. Silakan periksa koneksi API Gemini atau coba lagi nanti."
-                
-                # AKHIRI TIMER AI
-                ai_end_time = time.time()
-                ai_generation_time = ai_end_time - ai_start_time
-                
-                # Simpan ke session state
-                st.session_state.ai_generation_times.append({
-                    'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    'execution_time': round(ai_generation_time, 3),
-                    'prompt_length': len(final_prompt),
-                    'response_length': len(summary_content)
-                })
-                
+
                 st.session_state[f'ai_summary_content_{current_patient_key}'] = summary_content
                 st.session_state[patient_ai_generated_key] = True
                 
                 # Tampilkan waktu generate
-                st.success(f"✅ Ringkasan AI berhasil digenerate! ⏱️ Waktu: {ai_generation_time:.2f} detik")
-                
-                # Tampilkan statistik AI
-                self._show_ai_generation_statistics()
+                st.success(f"Ringkasan AI berhasil digenerate!")
                 
                 st.rerun()
         
@@ -3118,21 +3112,16 @@ class DokterPage:
             # Ambil summaries dari session state
             summary_content = st.session_state.get(f'ai_summary_content_{current_patient_key}', "")
             if not summary_content:
-                st.warning("Tidak ada ringkasan yang dihasilkan. Silakan generate ulang.")
-                if st.button("Generate Ulang"):
-                    if f'ai_summaries_generated_{current_patient_key}' in st.session_state:
-                        del st.session_state[f'ai_summaries_generated_{current_patient_key}']
-                    st.rerun()
+                st.warning("Tidak ada ringkasan yang dihasilkan.")
+                # if st.button("Generate Ulang"):
+                #     if f'ai_summaries_generated_{current_patient_key}' in st.session_state:
+                #         del st.session_state[f'ai_summaries_generated_{current_patient_key}']
+                #     st.rerun()
                 return
 
             st.markdown("### Hasil Ringkasan AI")
             st.markdown(summary_content)
             st.markdown("---")
-
-            # Tampilkan waktu generate terakhir
-            if st.session_state.ai_generation_times:
-                last_ai = st.session_state.ai_generation_times[-1]
-                st.caption(f"⏱️ Waktu generate terakhir: {last_ai['execution_time']:.2f} detik")
 
             # Dropdown untuk memilih dan menyimpan hasil terbaik
             st.markdown("### Simpan Hasil")
@@ -3177,114 +3166,48 @@ class DokterPage:
                 else:
                     st.error("Gagal menyimpan ke database")
 
-    # ==================== FUNGSI STATISTIK ====================
-    def _show_upload_statistics(self):
-        """Menampilkan statistik waktu upload"""
-        if 'upload_times' in st.session_state and st.session_state.upload_times:
-            with st.expander("📊 Statistik Riwayat Upload", expanded=False):
-                df_uploads = pd.DataFrame(st.session_state.upload_times)
-                
-                if not df_uploads.empty:
-                    # Hitung statistik
-                    avg_time = df_uploads['execution_time'].mean()
-                    min_time = df_uploads['execution_time'].min()
-                    max_time = df_uploads['execution_time'].max()
-                    total_uploads = len(df_uploads)
-                    avg_speed = df_uploads['upload_speed_mbps'].mean()
-                    
-                    col1, col2, col3, col4, col5 = st.columns(5)
-                    with col1:
-                        st.metric("Total Upload", total_uploads)
-                    with col2:
-                        st.metric("Rata-rata Waktu", f"{avg_time:.2f} dtk")
-                    with col3:
-                        st.metric("Upload Tercepat", f"{min_time:.2f} dtk")
-                    with col4:
-                        st.metric("Upload Terlama", f"{max_time:.2f} dtk")
-                    with col5:
-                        st.metric("Rata-rata Kecepatan", f"{avg_speed:.2f} Mbps")
-                    
-                    st.dataframe(df_uploads[['timestamp', 'pasien', 'file_size_mb', 'execution_time', 'upload_speed_mbps']], 
-                                use_container_width=True)
-
-    def _show_render_statistics(self):
-        """Menampilkan statistik waktu render visualisasi"""
-        if 'render_times' in st.session_state and st.session_state.render_times:
-            with st.expander("📊 Statistik Waktu Render Dashboard", expanded=False):
-                df_render = pd.DataFrame(st.session_state.render_times)
-                
-                if not df_render.empty:
-                    avg_time = df_render['execution_time'].mean()
-                    min_time = df_render['execution_time'].min()
-                    max_time = df_render['execution_time'].max()
-                    total_renders = len(df_render)
-                    
-                    col1, col2, col3, col4 = st.columns(4)
-                    with col1:
-                        st.metric("Total Render", total_renders)
-                    with col2:
-                        st.metric("Rata-rata Waktu", f"{avg_time:.2f} dtk")
-                    with col3:
-                        st.metric("Tercepat", f"{min_time:.2f} dtk")
-                    with col4:
-                        st.metric("Terlama", f"{max_time:.2f} dtk")
-                    
-                    st.dataframe(df_render[['timestamp', 'total_records', 'execution_time']], 
-                                use_container_width=True)
-
-    def _show_ai_generation_statistics(self):
-        """Menampilkan statistik waktu generate AI"""
-        if 'ai_generation_times' in st.session_state and st.session_state.ai_generation_times:
-            with st.expander("📊 Statistik Waktu Generate AI", expanded=False):
-                df_ai = pd.DataFrame(st.session_state.ai_generation_times)
-                
-                if not df_ai.empty:
-                    avg_time = df_ai['execution_time'].mean()
-                    min_time = df_ai['execution_time'].min()
-                    max_time = df_ai['execution_time'].max()
-                    total_generations = len(df_ai)
-                    
-                    col1, col2, col3, col4 = st.columns(4)
-                    with col1:
-                        st.metric("Total Generate", total_generations)
-                    with col2:
-                        st.metric("Rata-rata Waktu", f"{avg_time:.2f} dtk")
-                    with col3:
-                        st.metric("Tercepat", f"{min_time:.2f} dtk")
-                    with col4:
-                        st.metric("Terlama", f"{max_time:.2f} dtk")
-                    
-                    st.dataframe(df_ai[['timestamp', 'execution_time', 'response_length']], 
-                                use_container_width=True)
-
     # Simpan ringkasan yang dipilih ke database dengan data MAE per fase
     def save_single_summary(self, content, mae_overall, mae_phases, bounds_data):
         try:
             client = get_mongo_client()
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['ai_summaries']
+            examination_collection = db['patient_examinations']
 
-            pasien_id = st.session_state.get('current_pasien_id', None)
+            pasien_object_id = st.session_state.get('current_pasien_id', None)
+            pasien_nomor_identitas = st.session_state.get('current_pasien_nomor_identitas', None)
             nama_pasien = st.session_state.get('current_nama_pasien', None)
             tanggal_pemeriksaan = st.session_state.get('current_tanggal_pemeriksaan', None)
 
-            if not pasien_id and 'norm_kinematics_df' in st.session_state:
+            if not pasien_object_id:
                 st.warning("Data pasien tidak ditemukan di session state. Pastikan data pasien sudah diupload.")
+                return False
+
+            # Cari pemeriksaan pasien yang sesuai
+            examination = examination_collection.find_one({
+                'pasien_id': ObjectId(pasien_object_id),
+                'tanggal_pemeriksaan': tanggal_pemeriksaan
+            })
+            
+            if not examination:
+                st.warning(f"Pemeriksaan untuk pasien {nama_pasien} pada tanggal {tanggal_pemeriksaan} tidak ditemukan.")
                 return False
             
             # Data yang akan disimpan
             summary_data = {
                 'timestamp': datetime.now(),
-                'dokter_id': st.session_state.get('dokter_user_id'),
+                'dokter_id': ObjectId(st.session_state.get('dokter_user_id')),
                 'dokter_nama': st.session_state.get('dokter_nama'),
-                'pasien_id': pasien_id,
+                'pasien_id': ObjectId(pasien_object_id),
+                'pasien_nomor_identitas': pasien_nomor_identitas,
                 'nama_pasien': nama_pasien,
                 'tanggal_pemeriksaan': tanggal_pemeriksaan,
+                'patient_examination_id': examination['_id'],
                 'content': content,
                 'mae_overall': mae_overall,
                 'mae_phases': mae_phases,
                 'bounds_data': bounds_data,
-                'is_best_selected': True
+                # 'is_best_selected': True
             }
             
             # Simpan ke database
@@ -3320,6 +3243,7 @@ class DokterPage:
             'uploaded_patient_data',
             'norm_kinematics_df',
             'current_pasien_id',
+            'current_pasien_nomor_identitas',
             'current_nama_pasien',
             'current_tanggal_pemeriksaan',
             'current_patient_key',
@@ -3334,8 +3258,8 @@ class DokterPage:
         self.reset_ai_summary_session_state_except_current()
 
     # Reset AI summary untuk pasien dan tanggal tertentu
-    def reset_ai_summary_for_patient_and_date(self, pasien_id, tanggal_pemeriksaan):
-        patient_date_key = f"patient_{pasien_id}_{tanggal_pemeriksaan}"
+    def reset_ai_summary_for_patient_and_date(self, pasien_object_id, tanggal_pemeriksaan):
+        patient_date_key = f"patient_{pasien_object_id}_{tanggal_pemeriksaan}"
         
         # Kunci-kunci yang perlu dihapus untuk pasien dan tanggal ini
         keys_to_reset = [
@@ -3351,3 +3275,14 @@ class DokterPage:
         if 'ai_summaries_generated' in st.session_state and st.session_state.get('current_patient_key') == patient_date_key:
             if 'ai_summaries_generated' in st.session_state:
                 del st.session_state['ai_summaries_generated']
+
+    def _calculate_age(self, birth_date_str):
+        if not birth_date_str or birth_date_str == '-':
+            return '-'
+        try:
+            birth_date = datetime.strptime(birth_date_str, "%d-%m-%Y")
+            today = datetime.now()
+            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+            return age
+        except:
+            return '-'
