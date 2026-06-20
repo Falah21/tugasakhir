@@ -36,7 +36,7 @@ class AdminPage:
         self.admin_pass = st.secrets["ADMIN_PASSWORD"]
         # Koneksi MongoDB
         self.client = MongoClient(st.secrets["MONGO_URI"])
-        self.db = self.client['GaitDB']
+        self.db = self.client['tugasakhir']
         self.collection = self.db['gait_data']
         
         # Inisialisasi session state untuk data pasien
@@ -48,15 +48,16 @@ class AdminPage:
     def _authenticate_admin(self, username, password):
         try:
             client = MongoClient(st.secrets["MONGO_URI"])
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['users']
             
-            admin = collection.find_one({'user_id': username, 'role': 'admin'})
+            admin = collection.find_one({'nomor_identitas': username, 'role': 'admin'})
             if admin:
                 stored_password = admin.get('password')
                 if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
                     return {
-                        'user_id': admin.get('user_id'),
+                        '_id': str(admin.get('_id')),
+                        'nomor_identitas': admin.get('nomor_identitas'),
                         'nama_lengkap': admin.get('nama_lengkap'),
                         'role': admin.get('role')}
             return None
@@ -86,7 +87,12 @@ class AdminPage:
                     st.rerun()
                 elif username == self.admin_user and password == self.admin_pass:
                     st.session_state.admin_logged_in = True
-                    st.session_state.admin_user_data = {'user_id': self.admin_user, 'nama_lengkap': 'Super Admin', 'role': 'admin'}
+                    st.session_state.admin_user_data = {
+                        '_id': 'super_admin',
+                        'nomor_identitas': self.admin_user, 
+                        'nama_lengkap': 'Super Admin', 
+                        'role': 'admin'
+                    }
                     st.rerun()
                 else:
                     st.error("Username atau password salah!")
@@ -140,7 +146,7 @@ class AdminPage:
         
         try:
             client = MongoClient(st.secrets["MONGO_URI"])
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['patient_examinations']
             total_exams = collection.count_documents({})
         except:
@@ -211,7 +217,7 @@ class AdminPage:
             if filtered_data:
                 df_users = pd.DataFrame(filtered_data)
                 df_users.insert(0, 'No', range(1, len(df_users) + 1))
-                display_columns = ['No', 'User ID', 'Nama Lengkap', 'Role', 'Jenis Kelamin', 'Tanggal Lahir', 'Tanggal Dibuat']
+                display_columns = ['No', 'Nomor Identitas', 'Nama Lengkap', 'Role', 'Jenis Kelamin', 'Tanggal Lahir', 'Tanggal Dibuat']
                 df_display = df_users[display_columns]
                 st.dataframe(df_display, use_container_width=True, hide_index=True)
             else:
@@ -224,7 +230,7 @@ class AdminPage:
                 
                 with col1:
                     role = st.selectbox("Jenis User", ["pasien", "dokter", "admin"])
-                    user_id = st.text_input("User ID", placeholder="Masukkan NIK untuk pasien, NIP untuk dokter/admin")
+                    nomor_identitas = st.text_input("Nomor Identitas", placeholder="Masukkan NIK untuk pasien, NIP untuk dokter/admin")
                     nama_lengkap = st.text_input("Nama Lengkap", placeholder="Masukkan nama lengkap")
                     
                 with col2:
@@ -235,17 +241,17 @@ class AdminPage:
                 submitted = st.form_submit_button("Tambah Pengguna Baru")
                 
                 if submitted:
-                    if user_id and nama_lengkap and password:
+                    if nomor_identitas and nama_lengkap and password:
                         errors = []
                         if role in ["dokter", "admin"]:
-                            if not user_id.isdigit():
+                            if not nomor_identitas.isdigit():
                                 errors.append(f"NIP untuk {role} harus berupa angka (tidak boleh huruf).")
-                            if len(user_id) != 18:
+                            if len(nomor_identitas) != 18:
                                 errors.append(f"NIP untuk {role} harus terdiri dari 18 digit.")
                         else:
-                            if not user_id.isdigit():
+                            if not nomor_identitas.isdigit():
                                 errors.append("NIK harus berupa angka (tidak boleh huruf).")
-                            if len(user_id) != 16:
+                            if len(nomor_identitas) != 16:
                                 errors.append("NIK harus terdiri dari 16 digit.")
                                 
                         if any(char.isdigit() for char in nama_lengkap):
@@ -257,7 +263,7 @@ class AdminPage:
                                 st.error(err)
                         else:
                             user_data = {
-                                'user_id': user_id,
+                                'nomor_identitas': nomor_identitas,
                                 'nama_lengkap': nama_lengkap,
                                 'password': password,
                                 'role': role,
@@ -283,7 +289,7 @@ class AdminPage:
 
                 edit_options = []
                 for user in all_users:
-                    display_text = f"{user.get('Nama Lengkap', 'N/A')} ({user.get('User ID', 'N/A')}) - {user.get('Role', 'N/A')}"
+                    display_text = f"{user.get('Nama Lengkap', 'N/A')} ({user.get('Nomor Identitas', 'N/A')}) - {user.get('Role', 'N/A')}"
                     edit_options.append((user.get('_id', ''), display_text))
                 
                 if edit_options:
@@ -303,7 +309,7 @@ class AdminPage:
                                 col_form1, col_form2 = st.columns(2)
                                 
                                 with col_form1:
-                                    new_user_id = st.text_input("User ID", value=selected_user.get('User ID', ''))
+                                    new_nomor_identitas = st.text_input("Nomor Identitas", value=selected_user.get('Nomor Identitas', ''))
                                     new_nama = st.text_input("Nama Lengkap", value=selected_user.get('Nama Lengkap', ''))
                                     new_role = st.selectbox("Role", ["pasien", "dokter", "admin"], index=["pasien", "dokter", "admin"].index(selected_user.get('Role', 'pasien'))
                                                             if selected_user.get('Role') in ["pasien", "dokter", "admin"] else 0)
@@ -323,14 +329,14 @@ class AdminPage:
                                 if st.form_submit_button("Update Pengguna"):
                                     errors = []
                                     if new_role in ["dokter", "admin"]:
-                                        if not new_user_id.isdigit():
+                                        if not new_nomor_identitas.isdigit():
                                             errors.append(f"NIP untuk {new_role} harus berupa angka (tidak boleh huruf).")
-                                        if len(new_user_id) != 18:
+                                        if len(new_nomor_identitas) != 18:
                                             errors.append(f"NIP untuk {new_role} harus terdiri dari 18 digit.")
                                     else:
-                                        if not new_user_id.isdigit():
+                                        if not new_nomor_identitas.isdigit():
                                             errors.append("NIK harus berupa angka (tidak boleh huruf).")
-                                        if len(new_user_id) != 16:
+                                        if len(new_nomor_identitas) != 16:
                                             errors.append("NIK harus terdiri dari 16 digit.")
                                     if any(char.isdigit() for char in new_nama):
                                         errors.append("Nama lengkap harus berupa huruf dan tidak boleh mengandung angka.")
@@ -341,7 +347,7 @@ class AdminPage:
                                             st.error(err)
                                     else:
                                         update_data = {
-                                            'user_id': new_user_id,
+                                            'nomor_identitas': new_nomor_identitas,
                                             'nama_lengkap': new_nama,
                                             'role': new_role,
                                             'tanggal_lahir': new_tanggal_lahir.strftime("%d-%m-%Y"),
@@ -362,7 +368,7 @@ class AdminPage:
 
                 delete_options = []
                 for user in all_users:
-                    display_text = f"{user.get('Nama Lengkap', 'N/A')} ({user.get('User ID', 'N/A')}) - {user.get('Role', 'N/A')}"
+                    display_text = f"{user.get('Nama Lengkap', 'N/A')} ({user.get('Nomor Identitas', 'N/A')}) - {user.get('Role', 'N/A')}"
                     delete_options.append((user.get('_id', ''), display_text))
                 
                 if delete_options:
@@ -378,13 +384,18 @@ class AdminPage:
                         selected_user = next((user for user in all_users if user.get('_id') == selected_delete_option), None)
                         if selected_user:
                             st.warning(f" Anda akan menghapus pengguna: {selected_user.get('Nama Lengkap')}")
-                            st.write(f"User ID: {selected_user.get('User ID')}")
+                            st.write(f"Nomor Identitas: {selected_user.get('Nomor Identitas')}")
                             st.write(f"Role: {selected_user.get('Role')}")
                             st.write(f"Jenis Kelamin: {selected_user.get('Jenis Kelamin')}")
                             st.write(f"Tanggal Lahir: {selected_user.get('Tanggal Lahir')}")
 
                             if selected_user.get('Role') == 'admin':
                                 st.error(" **PERINGATAN:** Menghapus akun admin mungkin dapat menyebabkan masalah akses!")
+
+                            # Cek apakah user memiliki data pemeriksaan
+                            has_examinations = self._check_user_examinations(selected_user['_id'])
+                            if has_examinations:
+                                st.warning("⚠️ **Perhatian:** Pengguna ini memiliki riwayat pemeriksaan. Menghapus user akan menghapus semua data pemeriksaannya!")
 
                             col_confirm1, col_confirm2 = st.columns(2)
                             with col_confirm1:
@@ -583,7 +594,7 @@ class AdminPage:
         
         try:
             client = MongoClient(st.secrets["MONGO_URI"])
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['patient_examinations']
 
             examinations = list(collection.find().sort('upload_date', -1))
@@ -604,10 +615,27 @@ class AdminPage:
             
             table_data = []
             for exam in examinations:
-                pasien_id = exam.get('pasien_id', 'N/A')
+                # Ambil data pasien dari referensi ObjectId
+                pasien_id = exam.get('pasien_id')
                 nama_pasien = exam.get('nama_pasien', 'N/A')
-                dokter_id = exam.get('dokter_id', 'N/A')
+                if isinstance(pasien_id, ObjectId):
+                    # Jika pasien_id adalah ObjectId, cari data pasien
+                    pasien_data = self._get_user_by_id(str(pasien_id))
+                    if pasien_data:
+                        nama_pasien = pasien_data.get('nama_lengkap', 'N/A')
+                        nomor_identitas = pasien_data.get('nomor_identitas', 'N/A')
+                    else:
+                        nomor_identitas = str(pasien_id)
+                else:
+                    nomor_identitas = pasien_id if pasien_id else 'N/A'
+                
+                dokter_id = exam.get('dokter_id')
                 dokter_nama = exam.get('dokter_nama', 'N/A')
+                if isinstance(dokter_id, ObjectId):
+                    dokter_data = self._get_user_by_id(str(dokter_id))
+                    if dokter_data:
+                        dokter_nama = dokter_data.get('nama_lengkap', 'N/A')
+                
                 tanggal_pemeriksaan = exam.get('tanggal_pemeriksaan', 'N/A')
                 upload_date = exam.get('upload_date', 'N/A')
                 tinggi_badan = exam.get('tinggi_badan', 'N/A')
@@ -619,7 +647,7 @@ class AdminPage:
                 
                 table_data.append({
                     'Tanggal Pemeriksaan': tanggal_pemeriksaan,
-                    'NIK Pasien': pasien_id,
+                    'ID Pasien': nomor_identitas,
                     'Nama Pasien': nama_pasien,
                     'Tinggi (cm)': f"{tinggi_badan:.1f}" if isinstance(tinggi_badan, (int, float)) else tinggi_badan,
                     'Berat (kg)': f"{berat_badan:.1f}" if isinstance(berat_badan, (int, float)) else berat_badan,
@@ -633,7 +661,7 @@ class AdminPage:
             st.markdown("### Filter Data")
             col1, col2, col3 = st.columns(3)
             with col1:
-                filter_nik = st.text_input("Filter berdasarkan NIK Pasien:")
+                filter_nik = st.text_input("Filter berdasarkan ID Pasien:")
             with col2:
                 filter_nama = st.text_input("Filter berdasarkan Nama Pasien:")
             with col3:
@@ -641,7 +669,7 @@ class AdminPage:
 
             filtered_df = df.copy()
             if filter_nik:
-                filtered_df = filtered_df[filtered_df['NIK Pasien'].str.contains(filter_nik, case=False, na=False)]
+                filtered_df = filtered_df[filtered_df['ID Pasien'].astype(str).str.contains(filter_nik, case=False, na=False)]
             if filter_nama:
                 filtered_df = filtered_df[filtered_df['Nama Pasien'].str.contains(filter_nama, case=False, na=False)]
             if filter_dokter:
@@ -665,11 +693,55 @@ class AdminPage:
 
 
     # FUNGSI HELPER
+    def _get_user_by_id(self, user_id):
+        """Mendapatkan data user berdasarkan ObjectId atau string ID"""
+        try:
+            client = MongoClient(st.secrets["MONGO_URI"])
+            db = client['tugasakhir']
+            collection = db['users']
+            
+            # Coba sebagai ObjectId
+            try:
+                user = collection.find_one({'_id': ObjectId(user_id)})
+            except:
+                # Jika tidak valid, coba sebagai string
+                user = collection.find_one({'_id': user_id})
+            
+            if user:
+                return {
+                    '_id': str(user['_id']),
+                    'nomor_identitas': user.get('nomor_identitas', ''),
+                    'nama_lengkap': user.get('nama_lengkap', ''),
+                    'role': user.get('role', ''),
+                }
+            return None
+        except Exception as e:
+            print(f"Error getting user by ID: {e}")
+            return None
+
+    def _check_user_examinations(self, user_id):
+        """Cek apakah user memiliki data pemeriksaan"""
+        try:
+            client = MongoClient(st.secrets["MONGO_URI"])
+            db = client['tugasakhir']
+            collection = db['patient_examinations']
+            
+            # Coba sebagai ObjectId
+            try:
+                count = collection.count_documents({'pasien_id': ObjectId(user_id)})
+            except:
+                count = collection.count_documents({'pasien_id': user_id})
+            
+            return count > 0
+        except Exception as e:
+            print(f"Error checking user examinations: {e}")
+            return False
+
     def _load_pasien_data(self):
         if not st.session_state.pasien_list_initialized:
             try:
                 client = MongoClient(st.secrets["MONGO_URI"])
-                db = client['GaitDB']
+                db = client['tugasakhir']
                 collection = db['users']
 
                 pasien_data = list(collection.find({'role': 'pasien'}))
@@ -677,7 +749,8 @@ class AdminPage:
                 st.session_state.pasien_list = []
                 for pasien in pasien_data:
                     st.session_state.pasien_list.append({
-                        "User ID": pasien.get('user_id', ''),
+                        "_id": str(pasien['_id']),
+                        "Nomor Identitas": pasien.get('nomor_identitas', ''),
                         "Nama Lengkap": pasien.get('nama_lengkap', ''),
                         "Tanggal Lahir": pasien.get('tanggal_lahir', ''),
                         "Jenis Kelamin": pasien.get('jenis_kelamin', ''),
@@ -693,7 +766,7 @@ class AdminPage:
     def _get_all_users(self):
         try:
             client = MongoClient(st.secrets["MONGO_URI"])
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['users']
             
             all_users = list(collection.find({}, {'password': 0}))
@@ -702,7 +775,7 @@ class AdminPage:
             for user in all_users:
                 user_data = {
                     "_id": str(user['_id']), 
-                    "User ID": user.get('user_id', ''),
+                    "Nomor Identitas": user.get('nomor_identitas', ''),
                     "Nama Lengkap": user.get('nama_lengkap', ''),
                     "Role": user.get('role', ''),
                     "Tanggal Lahir": user.get('tanggal_lahir', ''),
@@ -719,13 +792,13 @@ class AdminPage:
     def _add_new_user(self, user_data):
         try:
             client = MongoClient(st.secrets["MONGO_URI"])
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['users']
             
-            # Cek apakah user_id sudah ada
-            existing_user = collection.find_one({'user_id': user_data['user_id']})
+            # Cek apakah nomor_identitas sudah ada
+            existing_user = collection.find_one({'nomor_identitas': user_data['nomor_identitas']})
             if existing_user:
-                st.error(f"User ID '{user_data['user_id']}' sudah terdaftar")
+                st.error(f"Nomor Identitas '{user_data['nomor_identitas']}' sudah terdaftar")
                 return False
             
              # Hash password dengan bcrypt
@@ -733,9 +806,9 @@ class AdminPage:
             
             # Siapkan data untuk disimpan
             new_user = {
-                'user_id': user_data['user_id'],
+                'nomor_identitas': user_data['nomor_identitas'],
                 'nama_lengkap': user_data['nama_lengkap'],
-                'password': hashed_password.decode('utf-8'),  # Simpan sebagai string
+                'password': hashed_password.decode('utf-8'),
                 'role': user_data['role'],
                 'tanggal_lahir': user_data['tanggal_lahir'],
                 'jenis_kelamin': user_data['jenis_kelamin'],
@@ -756,26 +829,24 @@ class AdminPage:
     def _update_user(self, user_id, update_data):
         try:
             client = MongoClient(st.secrets["MONGO_URI"])
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['users']
             
-            # Cek duplikasi user_id (jika ada perubahan user_id)
-            if 'user_id' in update_data:
+            # Cek duplikasi nomor_identitas (jika ada perubahan)
+            if 'nomor_identitas' in update_data:
                 existing_user = collection.find_one({
-                    'user_id': update_data['user_id'],
-                    '_id': {'$ne': ObjectId(user_id)}  # Cari user dengan user_id sama tapi bukan dirinya sendiri
+                    'nomor_identitas': update_data['nomor_identitas'],
+                    '_id': {'$ne': ObjectId(user_id)}
                 })
                 if existing_user:
-                    st.error(f"User ID'{update_data['user_id']}' sudah terdaftar! Silahkan gunakan ID lain.")
+                    st.error(f"Nomor Identitas '{update_data['nomor_identitas']}' sudah terdaftar! Silahkan gunakan ID lain.")
                     return False
                     
             # Hapus password dari update_data jika tidak ingin diupdate
             if 'password' in update_data and update_data['password']:
-                # Hash password baru
                 hashed_password = bcrypt.hashpw(update_data['password'].encode('utf-8'), bcrypt.gensalt())
                 update_data['password'] = hashed_password.decode('utf-8')
             elif 'password' in update_data:
-            # Hapus password dari update jika kosong
                 del update_data['password']
             
             result = collection.update_one(
@@ -793,8 +864,17 @@ class AdminPage:
     def _delete_user(self, user_id):
         try:
             client = MongoClient(st.secrets["MONGO_URI"])
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['users']
+            
+            # Hapus juga data pemeriksaan yang terkait
+            exam_collection = db['patient_examinations']
+            
+            # Coba sebagai ObjectId
+            try:
+                exam_collection.delete_many({'pasien_id': ObjectId(user_id)})
+            except:
+                exam_collection.delete_many({'pasien_id': user_id})
             
             result = collection.delete_one({'_id': ObjectId(user_id)})
             
