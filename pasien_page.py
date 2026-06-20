@@ -7,6 +7,7 @@ from datetime import date, datetime
 from pymongo import MongoClient
 from css_style import load_css
 from register_page import RegisterPage
+from bson import ObjectId
 
 # Optimasi koneksi MongoDB
 def get_mongo_client():
@@ -28,7 +29,7 @@ def login_form_pasien(role_label: str = "Pasien"):
     st.markdown("<h2>Sistem Dashboard Gait Analysis</h2>", unsafe_allow_html=True)
     st.markdown("<p class='subtitle'>Selamat Datang di Sistem Dashboard Pemeriksaan Gait</p>", unsafe_allow_html=True)
     st.subheader(f"Login - {role_label}")
-    user_id = st.text_input("NIK", max_chars=16, placeholder="Masukkan NIK anda")
+    nomor_identitas = st.text_input("NIK", max_chars=16, placeholder="Masukkan NIK anda")
     password = st.text_input("Password", type="password", placeholder="Masukkan password anda")
     submit = st.button("Login", use_container_width=True)
     st.markdown("<p class='register-link'>Belum punya akun?</p>", unsafe_allow_html=True)
@@ -36,7 +37,7 @@ def login_form_pasien(role_label: str = "Pasien"):
         st.session_state.show_register = True
         st.rerun()
 
-    return user_id, password, submit
+    return nomor_identitas, password, submit
 
 class PasienPage:
     def __init__(self):
@@ -44,24 +45,27 @@ class PasienPage:
         st.session_state.setdefault("pasien_list", [])
         st.session_state.setdefault("show_register", False)
         st.session_state.setdefault("pasien_logged_in", False)
-        st.session_state.setdefault("pasien_user_id", None)
+        st.session_state.setdefault("pasien_user_id", None)  # Ini akan menyimpan ObjectId sebagai string
+        st.session_state.setdefault("pasien_nomor_identitas", None)
         st.session_state.setdefault("pasien_menu", "Dashboard")
         
         self.register_page = RegisterPage()
 
-    def _authenticate_pasien(self, user_id, password):
+    def _authenticate_pasien(self, nomor_identitas, password):
         try:
             client = get_mongo_client()
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['users']
             
-            pasien = collection.find_one({'user_id': user_id, 'role': 'pasien'})
+            # Cari berdasarkan nomor_identitas
+            pasien = collection.find_one({'nomor_identitas': nomor_identitas, 'role': 'pasien'})
             
             if pasien:
                 stored_password = pasien.get('password')
                 if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
                     return {
-                        'user_id': pasien.get('user_id'),
+                        '_id': str(pasien.get('_id')),  # Simpan ObjectId sebagai string
+                        'nomor_identitas': pasien.get('nomor_identitas'),
                         'nama_lengkap': pasien.get('nama_lengkap'),
                         'role': pasien.get('role'),
                         'tanggal_lahir': pasien.get('tanggal_lahir'),
@@ -81,13 +85,14 @@ class PasienPage:
             return
         
         if not st.session_state.get("pasien_logged_in", False):
-            user_id, password, submit = login_form_pasien()
+            nomor_identitas, password, submit = login_form_pasien()
             if submit:
-                auth_result = self._authenticate_pasien(user_id, password)
+                auth_result = self._authenticate_pasien(nomor_identitas, password)
                
                 if auth_result:
                     st.session_state.pasien_logged_in = True
-                    st.session_state.pasien_user_id = auth_result['user_id']
+                    st.session_state.pasien_user_id = auth_result['_id']  # Simpan ObjectId
+                    st.session_state.pasien_nomor_identitas = auth_result['nomor_identitas']
                     st.session_state.pasien_nama = auth_result['nama_lengkap']
                     st.session_state.pasien_menu = "Dashboard"
 
@@ -124,8 +129,9 @@ class PasienPage:
                 st.rerun()
 
     def show_dashboard(self):
-        user_id = st.session_state.get("pasien_user_id")
-        profil = self._get_profil_by_user_id(user_id)
+        # Gunakan nomor_identitas untuk mencari profil
+        nomor_identitas = st.session_state.get("pasien_nomor_identitas")
+        profil = self._get_profil_by_nomor_identitas(nomor_identitas)
         if profil:
             st.session_state.pasien_nama = profil["Nama Lengkap"]
 
@@ -134,7 +140,9 @@ class PasienPage:
         if st.button("🔄 Refresh Data", key="refresh_dashboard"):
             self._refresh_data()
 
-        available_dates = self._get_all_pemeriksaan_dates(user_id)
+        # Gunakan ObjectId untuk query
+        user_object_id = st.session_state.get("pasien_user_id")
+        available_dates = self._get_all_pemeriksaan_dates(user_object_id)
         
         if not available_dates:
             st.warning("Silakan lakukan pemeriksaan terlebih dahulu dengan dokter agar dashboard pemeriksaan Gait Anda dapat ditampilkan.")
@@ -142,7 +150,7 @@ class PasienPage:
 
         selected_date = st.selectbox("Pilih Tanggal Pemeriksaan", options=available_dates, format_func=lambda x: x.strftime("%d %B %Y"))
         
-        pemeriksaan = self._get_pemeriksaan_data(user_id, selected_date)
+        pemeriksaan = self._get_pemeriksaan_data(user_object_id, selected_date)
         if not pemeriksaan:
             st.warning(f"Tidak ada data pemeriksaan untuk tanggal {selected_date.strftime('%d %B %Y')}")
             return
@@ -156,12 +164,13 @@ class PasienPage:
         
         kinematic_data = self._process_kinematic_data(normal_data, pemeriksaan.get('gait_data', {}).get('Norm Kinematics', {}))
         
-        self._show_dashboard_visualization(kinematic_data, pasien_id=user_id, tanggal_pemeriksaan=selected_date.strftime("%Y-%m-%d"), pemeriksaan=pemeriksaan)
+        # Kirim ObjectId sebagai string untuk query AI summaries
+        self._show_dashboard_visualization(kinematic_data, pasien_id=user_object_id, tanggal_pemeriksaan=selected_date.strftime("%Y-%m-%d"), pemeriksaan=pemeriksaan)
 
     # Menu Profile
     def show_profile(self):
-        user_id = st.session_state.get("pasien_user_id")
-        profil = self._get_profil_by_user_id(user_id)
+        nomor_identitas = st.session_state.get("pasien_nomor_identitas")
+        profil = self._get_profil_by_nomor_identitas(nomor_identitas)
         
         st.markdown("<h1 style='text-align: center; color: #560000;'>Profil Pasien</h1>", unsafe_allow_html=True)
         
@@ -170,7 +179,7 @@ class PasienPage:
             col1, col2 = st.columns(2)
             with col1:
                 with st.container(border=True):
-                    st.markdown(f"**NIK:** {profil['User ID']}")
+                    st.markdown(f"**NIK:** {profil['Nomor Identitas']}")
                     st.markdown(f"**Nama Lengkap:** {profil['Nama Lengkap']}")
                     st.markdown(f"**Tanggal Lahir:** {profil['Tanggal Lahir']}")
             with col2:
@@ -185,6 +194,7 @@ class PasienPage:
     def _logout(self):
         st.session_state.pasien_logged_in = False
         st.session_state.pasien_user_id = None
+        st.session_state.pasien_nomor_identitas = None
         st.session_state.pasien_nama = None
         st.session_state.show_register = False
         st.session_state.role = None
@@ -193,13 +203,14 @@ class PasienPage:
     def _load_pasien_list(self):
         try:
             client = get_mongo_client()
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['users']
             pasien_data = list(collection.find({'role': 'pasien'}))
             st.session_state["pasien_list"] = []
             for pasien in pasien_data:
                 st.session_state["pasien_list"].append({
-                    "User ID": pasien.get('user_id'),
+                    "_id": str(pasien.get('_id')),
+                    "Nomor Identitas": pasien.get('nomor_identitas'),
                     "Nama Lengkap": pasien.get('nama_lengkap'),
                     "Tanggal Lahir": pasien.get('tanggal_lahir'),
                     "Jenis Kelamin": pasien.get('jenis_kelamin'),
@@ -217,16 +228,16 @@ class PasienPage:
         except Exception as e:
             st.error(f"Error refreshing data: {e}")
 
-    def _get_profil_by_user_id(self, user_id):
+    def _get_profil_by_nomor_identitas(self, nomor_identitas):
         for p in st.session_state["pasien_list"]:
-            if p["User ID"] == user_id:
+            if p["Nomor Identitas"] == nomor_identitas:
                 return p
         return None
 
     def _get_normal_data(self):
         try:
             client = get_mongo_client()
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['gait_data']
             
             cursor = collection.find().limit(100)
@@ -246,27 +257,43 @@ class PasienPage:
             st.error(f"Error mengambil data normal: {e}")
             return None
         
-    def _get_pemeriksaan_data(self, pasien_id, tanggal):
+    def _get_pemeriksaan_data(self, pasien_object_id, tanggal):
         try:
             client = get_mongo_client()
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['patient_examinations']
             
-            # Cari data pemeriksaan berdasarkan user_id dan tanggal
-            pemeriksaan = collection.find_one({'pasien_id': pasien_id, 'tanggal_pemeriksaan': tanggal.strftime("%Y-%m-%d")})
+            # Konversi string ObjectId ke ObjectId
+            try:
+                pasien_id_obj = ObjectId(pasien_object_id)
+            except:
+                # Jika bukan ObjectId yang valid, coba sebagai string
+                pasien_id_obj = pasien_object_id
+            
+            # Cari data pemeriksaan berdasarkan pasien_id (ObjectId) dan tanggal
+            pemeriksaan = collection.find_one({
+                'pasien_id': pasien_id_obj, 
+                'tanggal_pemeriksaan': tanggal.strftime("%Y-%m-%d")
+            })
             return pemeriksaan
             
         except Exception as e:
             st.error(f"Error mengambil data pemeriksaan: {e}")
             return None
 
-    def _get_all_pemeriksaan_dates(self, pasien_id):
+    def _get_all_pemeriksaan_dates(self, pasien_object_id):
         try:
             client = get_mongo_client()
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['patient_examinations']
 
-            pemeriksaan_list = collection.find({'pasien_id': pasien_id}, {'tanggal_pemeriksaan': 1})
+            # Konversi string ObjectId ke ObjectId
+            try:
+                pasien_id_obj = ObjectId(pasien_object_id)
+            except:
+                pasien_id_obj = pasien_object_id
+
+            pemeriksaan_list = collection.find({'pasien_id': pasien_id_obj}, {'tanggal_pemeriksaan': 1})
             
             dates = []
             for exam in pemeriksaan_list:
@@ -281,17 +308,22 @@ class PasienPage:
             st.error(f"Error mengambil daftar pemeriksaan: {e}")
             return []
 
-    def _get_ai_summaries(self, pasien_id, tanggal_pemeriksaan):
+    def _get_ai_summaries(self, pasien_object_id, tanggal_pemeriksaan):
         try:
             client = get_mongo_client()
-            db = client['GaitDB']
+            db = client['tugasakhir']
             collection = db['ai_summaries']
+            
+            # Konversi string ObjectId ke ObjectId
+            try:
+                pasien_id_obj = ObjectId(pasien_object_id)
+            except:
+                pasien_id_obj = pasien_object_id
             
             summary = collection.find_one(
                 {
-                    'pasien_id': pasien_id,
-                    'tanggal_pemeriksaan': tanggal_pemeriksaan,
-                    'is_best_selected': True
+                    'pasien_id': pasien_id_obj,
+                    'tanggal_pemeriksaan': tanggal_pemeriksaan
                 },
                 sort=[('timestamp', -1)]  # ambil paling terbaru
             )
@@ -302,7 +334,7 @@ class PasienPage:
             st.error(f"Error mengambil ringkasan AI: {e}")
             return []
             
-    # Fungsi Visualisasi
+    # Fungsi Visualisasi (sama seperti sebelumnya)
     def _process_kinematic_data(self, filtered_df, patient_kinematics=None):
         # Pelvis
         l_pelvis_angles = pd.DataFrame(filtered_df['LPelvisAngles_X'].tolist())
@@ -425,7 +457,7 @@ class PasienPage:
         ))
         
         # Data pasien jika ada
-        if patient_data is not None:
+        if patient_data is not None and len(patient_data) > 0:
             fig.add_trace(go.Scatter(
                 x=data["%cycle"], 
                 y=patient_data, 
@@ -488,7 +520,7 @@ class PasienPage:
         fig8 = self._create_joint_figure(kinematic_data['rankle'], "Right Ankle", 'darkblue', 
                                        kinematic_data['patient_data'].get('r_ankle'))
     
-        # Tampilkan dalam tabs - SEKARANG DENGAN 5 TAB
+        # Tampilkan dalam tabs
         tab1, tab2, tab3, tab4, tab5 = st.tabs(["PELVIS", "KNEE", "HIP", "ANKLE", "HASIL PEMERIKSAAN"])
     
         with tab1:
@@ -496,85 +528,80 @@ class PasienPage:
             st.write('Pelvis (dalam bahasa Indonesia: panggul) adalah struktur tulang yang berbentuk cekungan di bawah perut, di antara tulang pinggul, dan di atas paha.')
             
             # Hitung mean differences
-            if kinematic_data['patient_data'].get('l_pelvis'):
+            if kinematic_data['patient_data'].get('l_pelvis') and len(kinematic_data['patient_data']['l_pelvis']) > 0:
                 maelpelvis = np.mean(np.abs(np.array(kinematic_data['patient_data']['l_pelvis']) - kinematic_data['lpelvis']["mean"]))
                 maerpelvis = np.mean(np.abs(np.array(kinematic_data['patient_data']['r_pelvis']) - kinematic_data['rpelvis']["mean"]))
             
             col1, col2 = st.columns(2)
             with col1:
                 st.plotly_chart(fig1, use_container_width=True)
-                if kinematic_data['patient_data'].get('l_pelvis'):
+                if kinematic_data['patient_data'].get('l_pelvis') and len(kinematic_data['patient_data']['l_pelvis']) > 0:
                     st.write(f"**Perbedaan rata-rata sudut pelvis kiri (Anda vs Normal): {maelpelvis:.2f}°**")
             with col2:
                 st.plotly_chart(fig2, use_container_width=True)
-                if kinematic_data['patient_data'].get('r_pelvis'):
+                if kinematic_data['patient_data'].get('r_pelvis') and len(kinematic_data['patient_data']['r_pelvis']) > 0:
                     st.write(f"**Perbedaan rata-rata sudut pelvis kanan (Anda vs Normal): {maerpelvis:.2f}°**")
                 
         with tab2:
             st.subheader("KNEE")
             st.write('Knee (dalam bahasa Indonesia: lutut) adalah bagian tubuh manusia yang terletak di antara paha dan betis, berfungsi sebagai sendi yang menghubungkan tulang femur (paha) dengan tulang tibia (betis).')
             
-            if kinematic_data['patient_data'].get('l_knee'):
+            if kinematic_data['patient_data'].get('l_knee') and len(kinematic_data['patient_data']['l_knee']) > 0:
                 maelknee = np.mean(np.abs(np.array(kinematic_data['patient_data']['l_knee']) - kinematic_data['lknee']["mean"]))
                 maerknee = np.mean(np.abs(np.array(kinematic_data['patient_data']['r_knee']) - kinematic_data['rknee']["mean"]))
             
             col1, col2 = st.columns(2)
             with col1:
                 st.plotly_chart(fig3, use_container_width=True)
-                if kinematic_data['patient_data'].get('l_knee'):
+                if kinematic_data['patient_data'].get('l_knee') and len(kinematic_data['patient_data']['l_knee']) > 0:
                     st.write(f"**Perbedaan rata-rata sudut lutut kiri (Anda vs Normal): {maelknee:.2f}°**")
             with col2:
                 st.plotly_chart(fig4, use_container_width=True)
-                if kinematic_data['patient_data'].get('r_knee'):
+                if kinematic_data['patient_data'].get('r_knee') and len(kinematic_data['patient_data']['r_knee']) > 0:
                     st.write(f"**Perbedaan rata-rata sudut lutut kanan (Anda vs Normal): {maerknee:.2f}°**")
     
         with tab3:
             st.subheader("HIP")
             st.write('Hip (dalam bahasa Indonesia: pinggul) adalah bagian tubuh yang terletak di bawah perut, menghubungkan tubuh bagian atas dengan kaki.')
             
-            if kinematic_data['patient_data'].get('l_hip'):
+            if kinematic_data['patient_data'].get('l_hip') and len(kinematic_data['patient_data']['l_hip']) > 0:
                 maelhip = np.mean(np.abs(np.array(kinematic_data['patient_data']['l_hip']) - kinematic_data['lhip']["mean"]))
                 maerhip = np.mean(np.abs(np.array(kinematic_data['patient_data']['r_hip']) - kinematic_data['rhip']["mean"]))
             
             col1, col2 = st.columns(2)
             with col1:
                 st.plotly_chart(fig5, use_container_width=True)
-                if kinematic_data['patient_data'].get('l_hip'):
+                if kinematic_data['patient_data'].get('l_hip') and len(kinematic_data['patient_data']['l_hip']) > 0:
                     st.write(f"**Perbedaan rata-rata sudut pinggul kiri (Anda vs Normal): {maelhip:.2f}°**")
             with col2:
                 st.plotly_chart(fig6, use_container_width=True)
-                if kinematic_data['patient_data'].get('r_hip'):
+                if kinematic_data['patient_data'].get('r_hip') and len(kinematic_data['patient_data']['r_hip']) > 0:
                     st.write(f"**Perbedaan rata-rata sudut pinggul kanan (Anda vs Normal): {maerhip:.2f}°**")
     
         with tab4:
             st.subheader("ANKLE")
             st.write('Ankle (dalam bahasa Indonesia: pergelangan kaki) adalah sendi yang terletak di antara kaki bagian bawah (tulang tibia dan fibula) dan bagian atas kaki (tulang talus).')
             
-            if kinematic_data['patient_data'].get('l_ankle'):
+            if kinematic_data['patient_data'].get('l_ankle') and len(kinematic_data['patient_data']['l_ankle']) > 0:
                 maelankle = np.mean(np.abs(np.array(kinematic_data['patient_data']['l_ankle']) - kinematic_data['lankle']["mean"]))
                 maerankle = np.mean(np.abs(np.array(kinematic_data['patient_data']['r_ankle']) - kinematic_data['rankle']["mean"]))
             
             col1, col2 = st.columns(2)
             with col1:
                 st.plotly_chart(fig7, use_container_width=True)
-                if kinematic_data['patient_data'].get('l_ankle'):
+                if kinematic_data['patient_data'].get('l_ankle') and len(kinematic_data['patient_data']['l_ankle']) > 0:
                     st.write(f"**Perbedaan rata-rata sudut pergelangan kaki kiri (Anda vs Normal): {maelankle:.2f}°**")
             with col2:
                 st.plotly_chart(fig8, use_container_width=True)
-                if kinematic_data['patient_data'].get('r_ankle'):
+                if kinematic_data['patient_data'].get('r_ankle') and len(kinematic_data['patient_data']['r_ankle']) > 0:
                     st.write(f"**Perbedaan rata-rata sudut pergelangan kaki kanan (Anda vs Normal): {maerankle:.2f}°**")
     
         with tab5:
             self._show_ai_summaries_tab(pasien_id, tanggal_pemeriksaan, pemeriksaan)
 
     def _show_ai_summaries_tab(self, pasien_id, tanggal_pemeriksaan, pemeriksaan):
-        # st.write("Berikut adalah hasil analisis dan rekomendasi dari dokter berdasarkan data pemeriksaan Gait Anda:")
-
         ai_summaries = self._get_ai_summaries(pasien_id, tanggal_pemeriksaan)
 
-        # if ai_summaries:
-        #     latest_summary = ai_summaries[0]
-        
         if not ai_summaries:
             st.info("Belum ada hasil pemeriksaan dari dokter untuk tanggal ini. Silakan tunggu atau konsultasikan dengan dokter Anda.")
             return
@@ -622,31 +649,6 @@ class PasienPage:
         
                 content = summary.get('content', 'Konten tidak tersedia')
                 st.markdown(content)
-        
-        # for i, summary in enumerate(ai_summaries, 1):
-        #     with st.container():
-        #         col1, col2 = st.columns(2)
-        #         with col1:
-        #             st.markdown(f"**Pemeriksa:** {summary.get('dokter_nama', 'Tidak diketahui')}")
-        #             tgl = summary.get('timestamp')
-        #             if tgl:
-        #                 if isinstance(tgl, datetime):
-        #                     tgl_str = tgl.strftime("%d %B %Y")
-        #                 else:
-        #                     tgl_str = str(tgl)
-        #                 st.markdown(f"**Tanggal Analisis:** {tgl_str}")
-                        
-        #         with col2:
-        #             st.markdown("**Informasi Pasien**")
-        #             st.markdown(f"**Berat Badan:** {pemeriksaan.get('berat_badan', '-')} kg")
-        #             st.markdown(f"**Tinggi Badan:** {pemeriksaan.get('tinggi_badan', '-')} cm")
-        #             st.markdown(f"**BMI:** {pemeriksaan.get('bmi', '-')}")
-        #             st.markdown(f"**Klasifikasi BMI:** {pemeriksaan.get('bmi_classification', '-')}")
-                    
-                    
-        #         st.markdown("---")
-        #         content = summary.get('content', 'Konten tidak tersedia')
-        #         st.markdown(content)
                 
                 # Tampilkan MAE Overall jika ada
                 mae_overall = summary.get('mae_overall')
@@ -688,14 +690,3 @@ class PasienPage:
                         
                     df_mae = pd.DataFrame(mae_data)
                     st.dataframe(df_mae, use_container_width=True, hide_index=True)
-                
-                # Pemisah antar ringkasan jika ada lebih dari satu
-                # if i < len(ai_summaries):
-                #     st.markdown("---")
-                #     st.markdown("##")
-
-
-# # Untuk menjalankan
-# if __name__ == "__main__":
-#     app = PasienPage()
-#     app.run()
