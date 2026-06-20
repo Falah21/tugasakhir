@@ -3202,7 +3202,7 @@ class DokterPage:
                 'pasien_nomor_identitas': pasien_nomor_identitas,
                 'nama_pasien': nama_pasien,
                 'tanggal_pemeriksaan': tanggal_pemeriksaan,
-                'patient_examination_id': examination['_id'],
+                'examination_id': examination['_id'],
                 'content': content,
                 'mae_overall': mae_overall,
                 'mae_phases': mae_phases,
