@@ -178,14 +178,6 @@ def load_css():
             margin-bottom: 10px;
         }
 
-        .filter-box {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0px 1px 3px rgba(0,0,0,0.1);
-            margin-bottom: 10px;
-        }
-
         /* Mengubah warna teks di sidebar menjadi putih */
         section[data-testid="stSidebar"] div[class*="stRadio"] label {
             color: white !important;
