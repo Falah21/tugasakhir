@@ -590,8 +590,8 @@ class DokterPage:
                     'bmi': bmi,
                     'bmi_classification': bmi_class,
                     'file_info': {
-                        'file_name': uploaded_file.name,
-                        'upload_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")},
+                        'file_name': uploaded_file.name},
+                        # 'upload_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")},
                     'gait_data': processed_data,
                     # 'norm_kinematics': rows
                 }
