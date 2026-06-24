@@ -79,8 +79,7 @@ def main():
         /* Styling untuk wrapper tombol Streamlit */
         .stButton {
             width: 100%;
-            max-width: 220px;
-            margin: auto;
+            max-width: 280px;
         }
         
         /* Tombol utama */
