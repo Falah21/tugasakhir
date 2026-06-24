@@ -70,7 +70,7 @@ def main():
         .button-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 2rem;
+            gap: 1rem;
             justify-items: center;
             align-items: center;
             margin-top: 1rem;
@@ -155,7 +155,7 @@ def main():
         /* Untuk layar sangat besar */
         @media (min-width: 1400px) {
             .button-grid {
-                gap: 3rem;
+                gap: 1rem;
             }
             
             div[data-testid="stButton"] > button {
