@@ -70,7 +70,7 @@ def main():
         .button-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
+            gap: 2rem;
             justify-items: center;
             align-items: center;
             margin-top: 1rem;
@@ -155,7 +155,7 @@ def main():
         /* Untuk layar sangat besar */
         @media (min-width: 1400px) {
             .button-grid {
-                gap: 1rem;
+                gap: 3rem;
             }
             
             div[data-testid="stButton"] > button {
@@ -172,7 +172,7 @@ def main():
 
     # Tombol responsif di tengah
     st.markdown("<div class='button-container'><div class='button-grid'>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns(3, gap="large")
+    col1, col2, col3 = st.columns(3, gap="small")
 
     with col1:
         if st.button("Admin", key="btn_admin", use_container_width=True):
