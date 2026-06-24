@@ -172,7 +172,7 @@ def main():
 
     # Tombol responsif di tengah
     st.markdown("<div class='button-container'><div class='button-grid'>", unsafe_allow_html=True)
-    left, col1, col2, col3, right = st.columns([2, 2, 2, 2, 2])
+    col1, col2, col3 = st.columns(3, gap="small")
 
     with col1:
         if st.button("Admin", key="btn_admin", use_container_width=True):
