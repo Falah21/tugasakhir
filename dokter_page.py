@@ -348,12 +348,6 @@ class DokterPage:
         for menu in menu_list:
             if st.sidebar.button(menu, use_container_width=True, type="primary" 
                                  if st.session_state.dokter_menu == menu else "secondary"):
-                # # Track ketika user mengklik Dashboard
-                # if menu == "Dashboard":
-                #     st.session_state.dashboard_click_timestamp = time.time()
-                #     st.session_state.dashboard_render_start = time.time()
-                #     st.session_state.last_click_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                #     st.session_state.last_menu_click = "Dashboard"
                 st.session_state.dokter_menu = menu
                 st.rerun()
 
@@ -377,17 +371,6 @@ class DokterPage:
             
             st.rerun()
     
-    # # Di bagian inisialisasi session state (di dalam run() atau di awal file)
-    # def init_session_state():
-    #     if 'dashboard_render_start' not in st.session_state:
-    #         st.session_state.dashboard_render_start = None
-    #     if 'dashboard_render_times' not in st.session_state:
-    #         st.session_state.dashboard_render_times = []
-    #     if 'last_dashboard_render_time' not in st.session_state:
-    #         st.session_state.last_dashboard_render_time = None
-    #     if 'dashboard_click_timestamp' not in st.session_state:
-    #         st.session_state.dashboard_click_timestamp = None
-
     # Menu Input Baseline Data Gait
     def input_data_gait_normal(self):
         st.subheader("Input Baseline Data Gait")
